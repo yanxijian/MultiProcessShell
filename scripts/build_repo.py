@@ -187,6 +187,11 @@ def main() -> int:
     build_cmd = ["cmake", "--build", str(build_dir), "--config", args.config]
     run(build_cmd)
 
+    if not args.no_demos and os.name == "nt":
+        deploy = ROOT / "scripts" / "deploy_demo.py"
+        if deploy.is_file():
+            run([sys.executable, str(deploy), "--build-dir", str(build_dir), "--config", args.config])
+
     if args.test and not args.no_tests:
         which_or_die("ctest")
         run(

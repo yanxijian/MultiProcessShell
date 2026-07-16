@@ -48,6 +48,9 @@ Desktop.ini
 *.tmp
 *.swp
 
+# Local runnable bundle (Qt DLLs); regenerate via scripts/deploy_demo.py
+/dist/
+
 # Qt Creator
 *.pro.user*
 *.autosave
