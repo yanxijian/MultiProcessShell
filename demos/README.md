@@ -1,10 +1,12 @@
 # demos/
 
-Minimum **window-embed** Demo (not the full milestone suite).
+Chrome-like multi-process tab shell Demo (Windows form A).
 
-**Status:** morphology under discussion — **no code yet**.
+**Morphology (final):**
 
-- Chinese: [`docs/zh/demo-morphology.md`](../docs/zh/demo-morphology.md)
-- English: [`docs/en/demo-morphology.md`](../docs/en/demo-morphology.md)
+- [`docs/zh/demo-morphology.md`](../docs/zh/demo-morphology.md)
+- [`docs/en/demo-morphology.md`](../docs/en/demo-morphology.md)
 
-Enable with CMake `-DMPS_BUILD_DEMOS=ON` after implementation lands.
+**Summary:** start with one shell → center **Create Client** → Client page center **New Window** → tabs named `Client{N}-Window{M}` → close / tear-out / merge; last tab torn out destroys the source shell.
+
+**Status:** docs finalized; **implementation not started**.
