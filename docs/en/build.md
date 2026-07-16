@@ -37,6 +37,14 @@ python scripts\deploy_demo.py
 
 Demo targets use the **Windows GUI** subsystem (`WIN32_EXECUTABLE`); double-click does not open an extra console.
 
+### Incremental builds
+
+`build_repo.py` **skips cmake reconfigure** when options already match the cache (`cmake configure: skipped`), so FetchContent protobuf/abseil are not rebuilt for ordinary code edits.
+
+- Day-to-day: just re-run `python scripts\build_repo.py`.  
+- Force reconfigure: `--reconfigure`; wipe: `--fresh` (rebuilds protobuf).  
+- Stay in the same **vcvars** shell; the script prefers `cl` from PATH to avoid toolchain path thrash.
+
 ## M0 (framing + proto tests, Qt optional)
 
 ```bat

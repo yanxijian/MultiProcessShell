@@ -37,6 +37,14 @@ python scripts\deploy_demo.py
 
 Demo 目标为 **Windows GUI** 子系统（`WIN32_EXECUTABLE`），双击不会多出一个控制台。
 
+### 增量编译说明
+
+`build_repo.py` 在 **选项未变** 时会跳过 cmake 重配（打印 `cmake configure: skipped`），避免无意义地重编 FetchContent 的 protobuf/abseil。
+
+- 日常改业务代码：直接再跑 `python scripts\build_repo.py` 即可。  
+- 需要强制重配：`--reconfigure`；彻底清空重来：`--fresh`（会重编 protobuf）。  
+- 在 **同一 vcvars 环境** 下编译；脚本优先使用 PATH 上的 `cl`，减少工具链路径抖动。
+
 ## M0（拼帧 + proto 单测，可不装 Qt）
 
 ```bat

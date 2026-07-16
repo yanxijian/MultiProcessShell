@@ -13,7 +13,8 @@
 - Run inside an **MSVC x64 Developer / vcvars** shell (`cl`, `rc`, `mt` on `PATH`).  
 - Default build enables Demo + Host/Client; set `QTDIR` and `%QTDIR%\bin` on `PATH`.  
 - After a successful Demo build, `build_repo.py` auto-runs `deploy_demo.py`.  
-- `--no-demos` also disables `MPS_BUILD_SRC` (protocol tests only).
+- `--no-demos` also disables `MPS_BUILD_SRC` (protocol tests only).  
+- **Incremental:** skips cmake reconfigure when options match (avoids protobuf rebuild); `--reconfigure` / `--fresh` when needed.
 
 ```bat
 python scripts\build_repo.py

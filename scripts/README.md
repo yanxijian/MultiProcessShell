@@ -13,7 +13,8 @@
 - 请在 **MSVC x64 Developer / vcvars** 环境中运行（`PATH` 上要有 `cl`、`rc`、`mt`）。  
 - 默认会编 Demo + Host/Client；请设置 `QTDIR` 并把 `%QTDIR%\bin` 加入 `PATH`。  
 - Demo 编成功后，`build_repo.py` 会自动跑 `deploy_demo.py`。  
-- `--no-demos` 同时关掉 `MPS_BUILD_SRC`（只跑协议单测）。
+- `--no-demos` 同时关掉 `MPS_BUILD_SRC`（只跑协议单测）。  
+- **增量**：选项未变时跳过 cmake 重配，避免重编 protobuf；强制重配用 `--reconfigure`，清空用 `--fresh`。
 
 ```bat
 python scripts\build_repo.py

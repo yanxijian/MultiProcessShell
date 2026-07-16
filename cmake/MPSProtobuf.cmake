@@ -3,6 +3,9 @@
 include(FetchContent)
 
 function(mps_fetch_protobuf)
+  # Do not re-clone / update on every configure — avoids wiping dep build stamps.
+  set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "" FORCE)
+
   set(protobuf_BUILD_TESTS OFF CACHE BOOL "" FORCE)
   set(protobuf_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
   set(protobuf_INSTALL OFF CACHE BOOL "" FORCE)
@@ -21,6 +24,7 @@ function(mps_fetch_protobuf)
     GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
     GIT_TAG        v29.3
     GIT_SHALLOW    TRUE
+    UPDATE_DISCONNECTED TRUE
   )
 
   FetchContent_MakeAvailable(protobuf)
@@ -39,6 +43,7 @@ function(mps_fetch_protobuf)
 endfunction()
 
 function(mps_fetch_googletest)
+  set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "" FORCE)
   set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
   set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
   FetchContent_Declare(
@@ -46,6 +51,7 @@ function(mps_fetch_googletest)
     GIT_REPOSITORY https://github.com/google/googletest.git
     GIT_TAG        v1.15.2
     GIT_SHALLOW    TRUE
+    UPDATE_DISCONNECTED TRUE
   )
   FetchContent_MakeAvailable(googletest)
 endfunction()
