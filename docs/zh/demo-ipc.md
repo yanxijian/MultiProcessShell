@@ -7,7 +7,7 @@
 
 | # | 决议 |
 |---|------|
-| 1 | 采用精简命令清单 + **标题方案 A**（Host 生成 `Client{N}-Window{M}`，经 `CreateWindow` 下发） |
+| 1 | 采用精简命令清单 + **标题方案 A**（Host 生成 `Client{N}-Window{M}`，经 `CreateSubWindow` 下发） |
 | 2 | **不要** `ApplicationConnected` |
 | 3 | **要** `NotifyMainWindowReattachment` |
 | 4 | IPC **双向**：初期交互从简，框架预留通用调用通道 |
@@ -44,7 +44,7 @@
 | 命令 | dir | 说明 |
 |------|-----|------|
 | `HelloAck` | RES/EVT | `session_id`, `protocol`, `host_caps` |
-| `CreateWindow` | REQ | Host 已分配 `tab_id` + **`title`**（方案 A） |
+| `CreateSubWindow` | REQ | Host 已分配 `tab_id` + **`title`**（方案 A；原名 CreateWindow，因 Win32 宏冲突已改名） |
 | `ActiveSubWindow` | REQ/EVT | 激活对应子窗 |
 | `QueryCloseSubWindow` | REQ | 关 Tab；Demo 可直接同意 |
 | `NotifyMainWindowReattachment` | EVT/REQ | 壳变更 / 即将 reparent |

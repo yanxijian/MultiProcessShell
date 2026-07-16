@@ -110,6 +110,11 @@ def main() -> int:
         help="Configure with MPS_BUILD_TESTS=OFF",
     )
     parser.add_argument(
+        "--no-demos",
+        action="store_true",
+        help="Configure with MPS_BUILD_DEMOS=OFF",
+    )
+    parser.add_argument(
         "--configure-only",
         action="store_true",
         help="Only run cmake configure",
@@ -138,6 +143,8 @@ def main() -> int:
         f"-DCMAKE_BUILD_TYPE={args.config}",
         "-DMPS_FETCH_PROTOBUF=ON",
         f"-DMPS_BUILD_TESTS={'OFF' if args.no_tests else 'ON'}",
+        f"-DMPS_BUILD_DEMOS={'OFF' if args.no_demos else 'ON'}",
+        f"-DMPS_BUILD_SRC={'OFF' if args.no_demos else 'ON'}",
     ]
 
     if args.generator.lower() == "ninja":
@@ -166,6 +173,8 @@ def main() -> int:
 
     if qtdir:
         cmake_cmd.append(f"-DCMAKE_PREFIX_PATH={qtdir}")
+    elif not args.no_demos:
+        raise SystemExit("error: QTDIR is required to build demos (or pass --no-demos)")
     if args.fresh:
         cmake_cmd.append("--fresh")
     for d in args.defs:

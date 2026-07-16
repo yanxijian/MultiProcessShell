@@ -16,8 +16,8 @@ if(MSVC)
 endif()
 
 option(MPS_BUILD_TESTS "Build protocol/unit tests (M0)" ON)
-option(MPS_BUILD_DEMOS "Build demos" OFF)
-option(MPS_BUILD_SRC "Build Host/Client application targets" OFF)
+option(MPS_BUILD_DEMOS "Build Chrome-like shell Demo" ON)
+option(MPS_BUILD_SRC "Build Host/Client libraries used by demos" ON)
 option(MPS_FETCH_PROTOBUF "Fetch protobuf via FetchContent" ON)
 option(MPS_REQUIRE_QT "Require Qt (needed for Host/Client/Demo)" OFF)
 
@@ -27,6 +27,7 @@ include(MPSQt)
 include(MPSProtobuf)
 
 if(MPS_REQUIRE_QT OR MPS_BUILD_SRC OR MPS_BUILD_DEMOS)
+  set(MPS_REQUIRE_QT ON)
   mps_find_qt()
 else()
   set(MPS_QT_VERSION "not-required")
@@ -40,21 +41,22 @@ if(MPS_FETCH_PROTOBUF)
   mps_fetch_protobuf()
 endif()
 
-# M0: framing + generated ipc proto library
 add_subdirectory(src/common)
+
+if(MPS_BUILD_SRC OR MPS_BUILD_DEMOS)
+  add_subdirectory(src/ipc_qt)
+  add_subdirectory(src/host)
+  add_subdirectory(src/client)
+endif()
+
+if(MPS_BUILD_DEMOS)
+  add_subdirectory(demos)
+endif()
 
 if(MPS_BUILD_TESTS)
   enable_testing()
   mps_fetch_googletest()
   add_subdirectory(tests)
-endif()
-
-if(MPS_BUILD_SRC)
-  message(STATUS "MPS_BUILD_SRC=ON (Host/Client app targets not added yet)")
-endif()
-
-if(MPS_BUILD_DEMOS)
-  message(STATUS "MPS_BUILD_DEMOS=ON (demo targets not added yet)")
 endif()
 
 message(STATUS "MultiProcessShell ${PROJECT_VERSION}")

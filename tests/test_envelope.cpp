@@ -72,21 +72,21 @@ TEST(EnvelopeProto, FramedRoundTrip) {
   EXPECT_EQ(parsed.hello().app_name(), "client");
 }
 
-TEST(EnvelopeProto, CreateWindowTitleSchemeA) {
+TEST(EnvelopeProto, CreateSubWindowTitleSchemeA) {
   shell::ipc::v1::Envelope env;
   env.set_protocol(1);
   env.set_id("req-create-1");
   env.set_dir(shell::ipc::v1::DIR_REQ);
   env.set_page_id(1);
   env.set_tab_id(7);
-  env.mutable_create_window()->set_title("Client1-Window2");
+  env.mutable_create_sub_window()->set_title("Client1-Window2");
 
   std::string bytes;
   ASSERT_TRUE(env.SerializeToString(&bytes));
   shell::ipc::v1::Envelope parsed;
   ASSERT_TRUE(parsed.ParseFromString(bytes));
-  ASSERT_TRUE(parsed.has_create_window());
-  EXPECT_EQ(parsed.create_window().title(), "Client1-Window2");
+  ASSERT_TRUE(parsed.has_create_sub_window());
+  EXPECT_EQ(parsed.create_sub_window().title(), "Client1-Window2");
   EXPECT_EQ(parsed.tab_id(), 7);
 }
 

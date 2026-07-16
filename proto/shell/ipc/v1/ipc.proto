@@ -64,7 +64,7 @@ message Envelope {
 
     MainWindowAdded main_window_added = 20;
     MainWindowDestroyed main_window_destroyed = 21;
-    CreateWindow create_window = 22;
+    CreateSubWindow create_sub_window = 22;
     SubWindowAdded sub_window_added = 23;
     SubWindowRemoved sub_window_removed = 24;
     ActiveSubWindow active_sub_window = 25;
@@ -108,13 +108,14 @@ message MainWindowAdded {
 
 message MainWindowDestroyed {}
 
-message CreateWindow {
+message CreateSubWindow {
   // page_id / tab_id on Envelope
   string title = 1; // scheme A: Host-assigned Client{N}-Window{M}
 }
 
 message SubWindowAdded {
   string title = 1; // echo Host title
+  uint64 wid = 2;   // native window handle for this child (may equal main wid)
 }
 
 message SubWindowRemoved {}
