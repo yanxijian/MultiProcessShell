@@ -1,0 +1,155 @@
+syntax = "proto3";
+
+package shell.ipc.v1;
+
+option csharp_namespace = "Shell.Ipc.V1";
+option go_package = "github.com/yanxijian/MultiProcessShell/gen/shell/ipc/v1;ipcv1";
+
+// Demo + product control-plane messages.
+// Framing: uint32 BE length + serialized Envelope.
+
+enum Dir {
+  DIR_UNSPECIFIED = 0;
+  DIR_REQ = 1;
+  DIR_RES = 2;
+  DIR_EVT = 3;
+}
+
+enum EmbedKind {
+  EMBED_UNSPECIFIED = 0;
+  EMBED_HWND = 1;
+  EMBED_XEMBED = 2;
+  EMBED_INPROCESS = 3;
+  EMBED_NONE = 4;
+}
+
+enum ErrorCode {
+  ERROR_UNSPECIFIED = 0;
+  ERROR_TIMEOUT = 1;
+  ERROR_BUSY = 2;
+  ERROR_NOT_FOUND = 3;
+  ERROR_DENIED = 4;
+  ERROR_PROTOCOL = 5;
+  ERROR_EMBED_FAILED = 6;
+  ERROR_UNHEALTHY = 7;
+  ERROR_UNIMPLEMENTED = 8;
+}
+
+message Capabilities {
+  EmbedKind embed = 1;
+  bool tab_drag = 2;
+  bool modal_report = 3;
+  bool heartbeat = 4;
+  bool dpi_sync = 5;
+  bool multi_sub_window = 6;
+  bool invoke = 7; // generic bidirectional Invoke support
+}
+
+message RpcError {
+  ErrorCode code = 1;
+  string message = 2;
+}
+
+message Envelope {
+  uint32 protocol = 1;
+  string id = 2;
+  Dir dir = 3;
+  int64 page_id = 4;
+  int64 tab_id = 5;
+  int64 ts_ms = 6;
+
+  oneof body {
+    Hello hello = 10;
+    HelloAck hello_ack = 11;
+
+    MainWindowAdded main_window_added = 20;
+    MainWindowDestroyed main_window_destroyed = 21;
+    CreateWindow create_window = 22;
+    SubWindowAdded sub_window_added = 23;
+    SubWindowRemoved sub_window_removed = 24;
+    ActiveSubWindow active_sub_window = 25;
+    QueryCloseSubWindow query_close_sub_window = 26;
+    QueryCloseSubWindowResult query_close_sub_window_result = 27;
+
+    NotifyMainWindowReattachment notify_main_window_reattachment = 30;
+    SetDragSuppress set_drag_suppress = 31;
+
+    Heartbeat heartbeat = 40;
+    Ping ping = 41;
+    Pong pong = 42;
+
+    // Bidirectional extension (framework reserve)
+    Invoke invoke = 50;
+    InvokeResult invoke_result = 51;
+
+    RpcError error = 100;
+  }
+}
+
+message Hello {
+  uint32 min_protocol = 1;
+  uint32 max_protocol = 2;
+  uint32 pid = 3;
+  string app_name = 4;
+  Capabilities caps = 5;
+}
+
+message HelloAck {
+  uint32 protocol = 1;
+  string session_id = 2;
+  Capabilities host_caps = 3;
+}
+
+message MainWindowAdded {
+  uint64 wid = 1;
+  uint32 pid = 2;
+  bool visible = 3;
+}
+
+message MainWindowDestroyed {}
+
+message CreateWindow {
+  // page_id / tab_id on Envelope
+  string title = 1; // scheme A: Host-assigned Client{N}-Window{M}
+}
+
+message SubWindowAdded {
+  string title = 1; // echo Host title
+}
+
+message SubWindowRemoved {}
+
+message ActiveSubWindow {
+  // tab_id on Envelope
+}
+
+message QueryCloseSubWindow {
+  // tab_id on Envelope
+}
+
+message QueryCloseSubWindowResult {
+  bool accept = 1;
+}
+
+message NotifyMainWindowReattachment {
+  int64 shell_id = 1; // Host-defined shell window id; 0 if unknown
+}
+
+message SetDragSuppress {
+  bool suppress = 1;
+}
+
+message Heartbeat {}
+
+message Ping {}
+
+message Pong {}
+
+message Invoke {
+  string method = 1;
+  bytes params = 2;
+}
+
+message InvokeResult {
+  bytes payload = 1;
+}

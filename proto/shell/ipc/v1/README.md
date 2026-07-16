@@ -1,8 +1,6 @@
 # proto/shell/ipc/v1
 
-Authoritative IDL location for `shell.ipc.v1`.
+Authoritative IDL for `shell.ipc.v1`.
 
-`.proto` files will be added when milestone **M0** starts. Until then see the Envelope draft in:
-
-- [`docs/zh/multiprocess-shell-spec.md`](../../../docs/zh/multiprocess-shell-spec.md) §5
-- [`docs/en/multiprocess-shell-spec.md`](../../../docs/en/multiprocess-shell-spec.md) §5
+- `ipc.proto` — Demo + product control plane (includes Heartbeat + bidirectional `Invoke` reserve)
+- Contract write-up: [`docs/zh/demo-ipc.md`](../../../docs/zh/demo-ipc.md) / [`docs/en/demo-ipc.md`](../../../docs/en/demo-ipc.md)

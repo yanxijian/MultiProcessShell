@@ -9,7 +9,8 @@ MIT-licensed C++/Qt multi-process shell: Host chrome + Client native-window embe
 | Doc | 中文 | English |
 |-----|------|---------|
 | Technical spec (authoritative) | [`docs/zh/multiprocess-shell-spec.md`](docs/zh/multiprocess-shell-spec.md) | [`docs/en/multiprocess-shell-spec.md`](docs/en/multiprocess-shell-spec.md) |
-| Demo morphology (discussion) | [`docs/zh/demo-morphology.md`](docs/zh/demo-morphology.md) | [`docs/en/demo-morphology.md`](docs/en/demo-morphology.md) |
+| Demo morphology (final) | [`docs/zh/demo-morphology.md`](docs/zh/demo-morphology.md) | [`docs/en/demo-morphology.md`](docs/en/demo-morphology.md) |
+| Demo IPC contract (final) | [`docs/zh/demo-ipc.md`](docs/zh/demo-ipc.md) | [`docs/en/demo-ipc.md`](docs/en/demo-ipc.md) |
 | Build guide | [`docs/build.md`](docs/build.md) | same file (bilingual) |
 
 ## Layout

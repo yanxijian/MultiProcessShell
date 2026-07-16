@@ -74,3 +74,7 @@ Client{N}-Window{M}
 | 3 | Start with one shell + center **Create Client** |
 | 4 | Client page center **New Window** (same Client) |
 | 5 | Titles: `Client{N}-Window{M}` |
+
+## 7. IPC
+
+See [`demo-ipc.md`](demo-ipc.md) (minimal set + scheme A; bidirectional `Invoke` reserve; heartbeat in protocol).

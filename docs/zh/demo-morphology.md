@@ -117,3 +117,7 @@ Client{N}-Window{M}
 | 3 | 启动仅一壳；中央按钮创建 Client |
 | 4 | Client page 中央按钮创建同 Client 子窗口 |
 | 5 | Tab 名：`Client{N}-Window{M}` 各自递增 |
+
+## 9. IPC
+
+见 [`demo-ipc.md`](demo-ipc.md)（精简清单 + 方案 A；双向 `Invoke` 预留；心跳协议预留）。
