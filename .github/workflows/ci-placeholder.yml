@@ -1,0 +1,16 @@
+name: ci-placeholder
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  configure:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Note
+        run: |
+          Write-Host "CI will configure CMake once Qt is provisioned in the workflow."
+          Write-Host "Specs/scripts-only phase: no src/demos build yet."

@@ -1,0 +1,2 @@
+# Scripts for MultiProcessShell (Python 3.10+).
+# No third-party packages required for build_repo.py / build_qt.py.

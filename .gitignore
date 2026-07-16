@@ -1,0 +1,53 @@
+# Build trees
+/build/
+/build-*/
+/out/
+/cmake-build-*/
+/.vs/
+/.vscode/*
+!/.vscode/extensions.json
+/.idea/
+*.user
+*.user.*
+CMakeUserPresets.json
+
+# Compilers / packages
+compile_commands.json
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+_deps/
+
+# Generated protobuf (keep sources under proto/)
+**/generated/
+**/*\.pb\.cc
+**/*\.pb\.h
+**/*_pb2.py
+**/*_pb2.pyi
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# OS / editor
+Thumbs.db
+Desktop.ini
+.DS_Store
+*~
+
+# Logs / temp
+*.log
+*.tmp
+*.swp
+
+# Qt Creator
+*.pro.user*
+*.autosave
