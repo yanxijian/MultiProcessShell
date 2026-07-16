@@ -2,15 +2,16 @@
 
 #include "shell_app.hpp"
 
+#include <QApplication>
 #include <QCloseEvent>
 #include <QDrag>
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QStackedWidget>
 #include <QStyle>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWindow>
-#include <QApplication>
 
 namespace mps::host {
 namespace {
@@ -26,17 +27,26 @@ TabButton::TabButton(const TabInfo& info, QWidget* parent) : QFrame(parent), inf
   lay->setContentsMargins(10, 4, 6, 4);
   lay->setSpacing(6);
   title_ = new QLabel(info_.title, this);
-  auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
-  closeBtn->setFixedSize(18, 18);
-  closeBtn->setFlat(true);
   lay->addWidget(title_);
-  lay->addWidget(closeBtn);
-  connect(closeBtn, &QPushButton::clicked, this, [this] { emit closeRequested(info_.tabId); });
-  const QColor accent = (info_.clientIndex % 2 == 0) ? QColor(200, 60, 60) : QColor(120, 70, 180);
-  setStyleSheet(QStringLiteral(
-      "#TabButton { border: 2px solid %1; border-radius: 4px; background: #f3f3f3; }"
-      "#TabButton[active=\"true\"] { background: #ffffff; }")
-                    .arg(accent.name()));
+  if (!info_.isHome) {
+    auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
+    closeBtn->setFixedSize(18, 18);
+    closeBtn->setFlat(true);
+    lay->addWidget(closeBtn);
+    connect(closeBtn, &QPushButton::clicked, this, [this] { emit closeRequested(info_.tabId); });
+  }
+  if (info_.isHome) {
+    setStyleSheet(QStringLiteral(
+        "#TabButton { border: 2px solid #5a5a5a; border-radius: 4px; background: #f3f3f3; }"
+        "#TabButton[active=\"true\"] { background: #ffffff; }"));
+  } else {
+    const QColor accent =
+        (info_.clientIndex % 2 == 0) ? QColor(200, 60, 60) : QColor(120, 70, 180);
+    setStyleSheet(QStringLiteral(
+                      "#TabButton { border: 2px solid %1; border-radius: 4px; background: #f3f3f3; }"
+                      "#TabButton[active=\"true\"] { background: #ffffff; }")
+                      .arg(accent.name()));
+  }
 }
 
 void TabButton::setInfo(const TabInfo& info) {
@@ -60,6 +70,10 @@ void TabButton::mousePressEvent(QMouseEvent* event) {
 }
 
 void TabButton::mouseMoveEvent(QMouseEvent* event) {
+  if (info_.isHome) {
+    QFrame::mouseMoveEvent(event);
+    return;
+  }
   if (!(event->buttons() & Qt::LeftButton)) {
     QFrame::mouseMoveEvent(event);
     return;
@@ -91,7 +105,8 @@ ShellWindow::ShellWindow(ShellApp* app, QWidget* parent)
   titleBar_ = new QWidget(root);
   titleBar_->setObjectName(QStringLiteral("TitleBar"));
   titleBar_->setFixedHeight(40);
-  titleBar_->setStyleSheet(QStringLiteral("#TitleBar { background: #e8e8e8; border-bottom: 1px solid #c0c0c0; }"));
+  titleBar_->setStyleSheet(
+      QStringLiteral("#TitleBar { background: #e8e8e8; border-bottom: 1px solid #c0c0c0; }"));
   auto* titleLay = new QHBoxLayout(titleBar_);
   titleLay->setContentsMargins(8, 4, 8, 4);
   titleLay->setSpacing(6);
@@ -117,8 +132,8 @@ ShellWindow::ShellWindow(ShellApp* app, QWidget* parent)
 
   titleBar_->installEventFilter(this);
 
-  auto* stack = new QStackedWidget(root);
-  emptyPage_ = new QWidget(stack);
+  stack_ = new QStackedWidget(root);
+  emptyPage_ = new QWidget(stack_);
   auto* emptyLay = new QVBoxLayout(emptyPage_);
   createClientBtn_ = new QPushButton(QStringLiteral("创建 Client"), emptyPage_);
   createClientBtn_->setFixedSize(160, 40);
@@ -127,56 +142,121 @@ ShellWindow::ShellWindow(ShellApp* app, QWidget* parent)
   emptyLay->addStretch();
   connect(createClientBtn_, &QPushButton::clicked, this, &ShellWindow::createClientClicked);
 
-  embed_ = new EmbedContainer(stack);
-  stack->addWidget(emptyPage_);
-  stack->addWidget(embed_);
+  embed_ = new EmbedContainer(stack_);
+  stack_->addWidget(emptyPage_);
+  stack_->addWidget(embed_);
 
   rootLay->addWidget(titleBar_);
-  rootLay->addWidget(stack, 1);
+  rootLay->addWidget(stack_, 1);
 
-  showEmptyState(true);
+  tabs_.push_back(TabInfo::makeHome());
+  activeTabId_ = kHomeTabId;
+  activationHistory_ = {kHomeTabId};
+  rebuildTabs();
+  syncWorkspace();
   setAcceptDrops(true);
 }
 
 void ShellWindow::showEmptyState(bool empty) {
-  auto* stack = qobject_cast<QStackedWidget*>(embed_->parent());
-  if (!stack) {
+  Q_UNUSED(empty);
+  syncWorkspace();
+}
+
+void ShellWindow::syncWorkspace() {
+  if (!stack_) {
     return;
   }
-  stack->setCurrentWidget(empty ? emptyPage_ : static_cast<QWidget*>(embed_));
+  const TabInfo* active = findTab(activeTabId_);
+  const bool showHome = !active || active->isHome || active->wid == 0;
+  if (showHome) {
+    embed_->clearForeignWindow();
+    stack_->setCurrentWidget(emptyPage_);
+  } else {
+    stack_->setCurrentWidget(embed_);
+    embed_->setForeignWindow(active->wid);
+    // Layout may not have applied yet when first switching onto the embed page.
+    QTimer::singleShot(0, this, [this] {
+      if (auto* t = findTab(activeTabId_); t && !t->isHome && t->wid) {
+        embed_->setForeignWindow(t->wid);
+      }
+    });
+  }
+}
+
+int ShellWindow::clientTabCount() const {
+  int n = 0;
+  for (const auto& t : tabs_) {
+    if (!t.isHome) {
+      ++n;
+    }
+  }
+  return n;
 }
 
 void ShellWindow::addTab(const TabInfo& info) {
+  if (info.isHome) {
+    return;
+  }
   tabs_.push_back(info);
   setActiveTab(info.tabId);
   rebuildTabs();
-  showEmptyState(false);
 }
 
 void ShellWindow::removeTab(qint64 tabId) {
+  if (tabId == kHomeTabId) {
+    return;
+  }
+  const bool wasActive = (activeTabId_ == tabId);
   for (int i = 0; i < tabs_.size(); ++i) {
     if (tabs_[i].tabId == tabId) {
       tabs_.removeAt(i);
       break;
     }
   }
-  if (activeTabId_ == tabId) {
-    activeTabId_ = tabs_.isEmpty() ? 0 : tabs_.last().tabId;
+  activationHistory_.removeAll(tabId);
+  if (wasActive) {
+    const qint64 next = previousActivationTarget(tabId);
+    rebuildTabs();
+    setActiveTab(next);
+    return;
   }
   rebuildTabs();
-  syncEmbedToActive();
-  showEmptyState(tabs_.isEmpty());
+  syncWorkspace();
 }
 
 void ShellWindow::setActiveTab(qint64 tabId) {
+  if (!findTab(tabId)) {
+    tabId = kHomeTabId;
+  }
+  pushActivationHistory(tabId);
   activeTabId_ = tabId;
   for (auto* b : tabButtons_) {
     b->setActive(b->info().tabId == tabId);
   }
-  syncEmbedToActive();
-  if (auto* t = findTab(tabId); t && t->session) {
+  syncWorkspace();
+  if (auto* t = findTab(tabId); t && t->session && !t->isHome) {
     t->session->requestActivate(tabId);
   }
+}
+
+void ShellWindow::pushActivationHistory(qint64 tabId) {
+  activationHistory_.removeAll(tabId);
+  activationHistory_.prepend(tabId);
+}
+
+qint64 ShellWindow::previousActivationTarget(qint64 /*closingTabId*/) const {
+  for (qint64 id : activationHistory_) {
+    if (findTab(id)) {
+      return id;
+    }
+  }
+  // History exhausted: prefer any remaining client tab, else Home.
+  for (const auto& t : tabs_) {
+    if (!t.isHome) {
+      return t.tabId;
+    }
+  }
+  return kHomeTabId;
 }
 
 TabInfo* ShellWindow::findTab(qint64 tabId) {
@@ -188,13 +268,16 @@ TabInfo* ShellWindow::findTab(qint64 tabId) {
   return nullptr;
 }
 
-void ShellWindow::syncEmbedToActive() {
-  if (auto* t = findTab(activeTabId_)) {
-    embed_->setForeignWindow(t->wid);
-  } else {
-    embed_->clearForeignWindow();
+const TabInfo* ShellWindow::findTab(qint64 tabId) const {
+  for (const auto& t : tabs_) {
+    if (t.tabId == tabId) {
+      return &t;
+    }
   }
+  return nullptr;
 }
+
+void ShellWindow::syncEmbedToActive() { syncWorkspace(); }
 
 void ShellWindow::rebuildTabs() {
   while (QLayoutItem* item = tabRow_->takeAt(0)) {
@@ -211,50 +294,62 @@ void ShellWindow::rebuildTabs() {
     btn->setActive(t.tabId == activeTabId_);
     connect(btn, &TabButton::activated, this, &ShellWindow::tabActivated);
     connect(btn, &TabButton::closeRequested, this, &ShellWindow::tabCloseRequested);
-    connect(btn, &TabButton::dragStarted, this, [this](qint64 tabId) {
-      auto* mime = new QMimeData;
-      mime->setData(QString::fromUtf8(kTabMime), QByteArray::number(tabId));
-      auto* drag = new QDrag(this);
-      drag->setMimeData(mime);
-      if (auto* t = findTab(tabId); t && t->session) {
-        t->session->setDragSuppress(true);
-      }
-      const auto drop = drag->exec(Qt::MoveAction);
-      if (auto* t = findTab(tabId); t && t->session) {
-        t->session->setDragSuppress(false);
-      }
-      if (drop == Qt::IgnoreAction) {
-        emit tabTearOutRequested(tabId, QCursor::pos());
-      }
-    });
+    if (!t.isHome) {
+      connect(btn, &TabButton::dragStarted, this, [this](qint64 tabId) {
+        auto* mime = new QMimeData;
+        mime->setData(QString::fromUtf8(kTabMime), QByteArray::number(tabId));
+        auto* drag = new QDrag(this);
+        drag->setMimeData(mime);
+        if (auto* info = findTab(tabId); info && info->session) {
+          info->session->setDragSuppress(true);
+        }
+        const auto drop = drag->exec(Qt::MoveAction);
+        if (auto* info = findTab(tabId); info && info->session) {
+          info->session->setDragSuppress(false);
+        }
+        if (drop == Qt::IgnoreAction) {
+          emit tabTearOutRequested(tabId, QCursor::pos());
+        }
+      });
+    }
   }
   tabRow_->addStretch(1);
 }
 
 void ShellWindow::takeTabsFrom(ShellWindow* other, const QList<qint64>& tabIds) {
   for (qint64 id : tabIds) {
+    if (id == kHomeTabId) {
+      continue;
+    }
     for (int i = 0; i < other->tabs_.size(); ++i) {
       if (other->tabs_[i].tabId == id) {
         tabs_.push_back(other->tabs_[i]);
         other->tabs_.removeAt(i);
+        other->activationHistory_.removeAll(id);
         break;
       }
     }
   }
-  other->rebuildTabs();
-  other->syncEmbedToActive();
-  other->showEmptyState(other->tabs_.isEmpty());
-  rebuildTabs();
-  if (!tabs_.isEmpty()) {
-    setActiveTab(tabs_.last().tabId);
+  if (!other->findTab(other->activeTabId_)) {
+    other->setActiveTab(other->previousActivationTarget(0));
+  } else {
+    other->rebuildTabs();
+    other->syncWorkspace();
   }
-  showEmptyState(tabs_.isEmpty());
+  rebuildTabs();
+  if (clientTabCount() > 0) {
+    setActiveTab(tabs_.last().tabId);
+  } else {
+    setActiveTab(kHomeTabId);
+  }
 }
 
 void ShellWindow::closeEvent(QCloseEvent* event) {
   const auto copy = tabs_;
   for (const auto& t : copy) {
-    emit tabCloseRequested(t.tabId);
+    if (!t.isHome) {
+      emit tabCloseRequested(t.tabId);
+    }
   }
   QMainWindow::closeEvent(event);
 }

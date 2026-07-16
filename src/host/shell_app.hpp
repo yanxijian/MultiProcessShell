@@ -46,7 +46,7 @@ private:
   qint64 nextTabId_ = 1;
   int nextClientIndex_ = 1;
   QHash<int, int> nextWindowIndex_;  // clientIndex -> next M
-  // Queued first CreateWindow per session after ready
+  // Queued first CreateSubWindow per session after ready
   QHash<ClientSession*, ShellWindow*> pendingFirstShell_;
 };
 

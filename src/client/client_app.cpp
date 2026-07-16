@@ -14,19 +14,22 @@
 namespace mps::client {
 
 PageWindow::PageWindow(qint64 tabId, QString title, QWidget* parent)
-    : QWidget(parent, Qt::Window), tabId_(tabId) {
+    : QWidget(parent, Qt::Window | Qt::FramelessWindowHint), tabId_(tabId) {
   setAttribute(Qt::WA_DeleteOnClose, false);
+  setAttribute(Qt::WA_NativeWindow);
   setWindowTitle(title);
-  setMinimumSize(400, 300);
+  setMinimumSize(0, 0);
   resize(640, 480);
 
   const QColor bg = (tabId % 2 == 0) ? QColor(255, 230, 230) : QColor(235, 230, 255);
   auto* root = new QWidget(this);
   auto* outer = new QVBoxLayout(this);
   outer->setContentsMargins(0, 0, 0, 0);
+  outer->setSpacing(0);
   outer->addWidget(root);
   root->setStyleSheet(QStringLiteral("background:%1;").arg(bg.name()));
   auto* lay = new QVBoxLayout(root);
+  lay->setContentsMargins(0, 0, 0, 0);
   auto* label = new QLabel(title, root);
   label->setAlignment(Qt::AlignCenter);
   QFont f = label->font();

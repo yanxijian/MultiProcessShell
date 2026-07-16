@@ -8,7 +8,8 @@
 > **平台**：Windows、macOS、Linux（X11；Wayland 见 §4.5 / 附录 B）  
 > **工程名**：`MultiProcessShell`  
 
-> **IPC**：控制面 = `shell.ipc.v1` Protobuf + Pipe/UDS + 长度前缀帧；嵌入面 = EmbedBackend / EmbedHelper；本期不含 gRPC / Thrift / Mojo / JSON 主协议。
+> **IPC**：控制面 = `shell.ipc.v1` Protobuf + Pipe/UDS + 长度前缀帧；嵌入面 = EmbedBackend / EmbedHelper；本期不含 gRPC / Thrift / Mojo / JSON 主协议。  
+> **Demo 落地**：形态见 [`demo-morphology.md`](demo-morphology.md)，精简 IPC 见 [`demo-ipc.md`](demo-ipc.md)；仓库权威 IDL 为 `proto/shell/ipc/v1/ipc.proto`（含 `CreateSubWindow` 等）。本文后续 IDL / 握手草图为产品全量愿景，若与 `.proto` 或 Demo 合约冲突，**以仓库 `.proto` + Demo 文档为准**。
 
 ---
 

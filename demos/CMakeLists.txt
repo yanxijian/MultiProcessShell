@@ -6,6 +6,11 @@ add_executable(mps_demo_client demo_client/main.cpp)
 target_link_libraries(mps_demo_client PRIVATE mps::client)
 set_target_properties(mps_demo_client PROPERTIES AUTOMOC ON)
 
+# GUI subsystem: no extra console window on double-click (Windows).
+if(WIN32)
+  set_target_properties(mps_demo_host mps_demo_client PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
+
 # Resolve windeployqt from Qt prefix (QTDIR / CMAKE_PREFIX_PATH).
 if(NOT WINDEPLOYQT_EXECUTABLE)
   find_program(WINDEPLOYQT_EXECUTABLE
@@ -31,11 +36,11 @@ if(WIN32 AND WINDEPLOYQT_EXECUTABLE)
             --release
             --no-translations
             --compiler-runtime
-            \"$<TARGET_FILE:mps_demo_host>\"
+            $<TARGET_FILE:mps_demo_host>
     COMMAND "${WINDEPLOYQT_EXECUTABLE}"
             --release
             --no-translations
-            \"$<TARGET_FILE_DIR:mps_demo_host>/$<TARGET_FILE_NAME:mps_demo_client>\"
+            $<TARGET_FILE:mps_demo_client>
     COMMENT "windeployqt: deploy Qt runtime beside demo executables"
     VERBATIM
   )

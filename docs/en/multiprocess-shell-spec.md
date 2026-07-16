@@ -8,7 +8,8 @@
 > **Status**: Spec v2  
 > **Project**: `MultiProcessShell`  
 > **Platforms**: Windows, macOS, Linux (X11; Wayland — see Chinese appendix B)  
-> **IPC**: Control plane = `shell.ipc.v1` Protobuf + Pipe/UDS + length-prefixed frames; embed plane = EmbedBackend / EmbedHelper. Out of scope for this phase: gRPC, Thrift, Mojo, JSON as the primary control protocol.
+> **IPC**: Control plane = `shell.ipc.v1` Protobuf + Pipe/UDS + length-prefixed frames; embed plane = EmbedBackend / EmbedHelper. Out of scope for this phase: gRPC, Thrift, Mojo, JSON as the primary control protocol.  
+> **Demo**: See [`demo-morphology.md`](demo-morphology.md) and [`demo-ipc.md`](demo-ipc.md). Checked-in IDL is `proto/shell/ipc/v1/ipc.proto`. Prefer `.proto` + Demo IPC over any older sketches in this document when they diverge.
 
 ---
 
@@ -99,7 +100,7 @@ See root `README.md`. Phase-1 implements Windows paths under `src/host/embed/win
 
 ## 9. Demos vs milestones
 
-- **`demos/`:** *minimum window-embed* Demo (prove Host container + Client HWND reparent + basic IPC). Morphology is under discussion — see [`demo-morphology.md`](demo-morphology.md) / [`../zh/demo-morphology.md`](../zh/demo-morphology.md).  
+- **`demos/`:** Chrome-like Demo (`mps_demo_host` / `mps_demo_client`). Morphology finalized — see [`demo-morphology.md`](demo-morphology.md) / [`../zh/demo-morphology.md`](../zh/demo-morphology.md).  
 - **Full milestone suite** (tabs, tear-out, multi-type, crash): later acceptance apps, not necessarily the first Demo.
 
 ## 10. Milestones (summary)

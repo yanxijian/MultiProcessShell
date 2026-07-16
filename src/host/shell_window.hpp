@@ -8,6 +8,7 @@
 #include <QLabel>
 #include <QMainWindow>
 #include <QPushButton>
+#include <QStackedWidget>
 #include <QVector>
 #include <memory>
 
@@ -51,6 +52,7 @@ public:
   void setActiveTab(qint64 tabId);
   [[nodiscard]] QVector<TabInfo> tabs() const { return tabs_; }
   [[nodiscard]] qint64 activeTabId() const { return activeTabId_; }
+  [[nodiscard]] int clientTabCount() const;
   [[nodiscard]] EmbedContainer* embed() { return embed_; }
   void showEmptyState(bool empty);
   void takeTabsFrom(ShellWindow* other, const QList<qint64>& tabIds);
@@ -69,17 +71,23 @@ protected:
 private:
   void rebuildTabs();
   void syncEmbedToActive();
+  void syncWorkspace();
+  void pushActivationHistory(qint64 tabId);
+  [[nodiscard]] qint64 previousActivationTarget(qint64 closingTabId) const;
   TabInfo* findTab(qint64 tabId);
+  [[nodiscard]] const TabInfo* findTab(qint64 tabId) const;
 
   ShellApp* app_ = nullptr;
   qint64 shellId_ = 0;
   QWidget* titleBar_ = nullptr;
   QHBoxLayout* tabRow_ = nullptr;
+  QStackedWidget* stack_ = nullptr;
   QWidget* emptyPage_ = nullptr;
   QPushButton* createClientBtn_ = nullptr;
   EmbedContainer* embed_ = nullptr;
   QVector<TabInfo> tabs_;
-  qint64 activeTabId_ = 0;
+  qint64 activeTabId_ = kHomeTabId;
+  QList<qint64> activationHistory_;  // MRU: most recently activated first
   QList<TabButton*> tabButtons_;
 };
 

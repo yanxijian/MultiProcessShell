@@ -2,11 +2,11 @@
 
 | Path | Status |
 |------|--------|
-| `common/` | **M0 done** — framing + generated `shell.ipc.v1` (`mps::ipc`) |
-| `embed_helper/` | TBD |
-| `host/` | TBD (Win embed first) |
-| `client/` | TBD |
+| `common/` | Framing + generated `shell.ipc.v1` (`mps::ipc`) |
+| `ipc_qt/` | `EnvelopeChannel` over `QIODevice` / `QLocalSocket` |
+| `host/` | Shell UI, tab model, client sessions, Win `EmbedContainer` |
+| `client/` | Demo Client process glue (`ClientApp` / pages) |
 
-Placeholders: `host/embed/win`, `x11`, `inproc` (see READMEs there).
+CMake: built when `MPS_BUILD_SRC` or `MPS_BUILD_DEMOS` is ON (both default ON; `--no-demos` turns both off).
 
-Host/Client app targets: `-DMPS_BUILD_SRC=ON` (not wired yet).
+Platform embed notes: `host/embed/win`, `x11`, `inproc`.

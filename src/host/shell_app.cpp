@@ -109,7 +109,7 @@ void ShellApp::createClientOn(ShellWindow* shell) {
     if (shell) {
       pendingFirstShell_.insert(session, shell);
     }
-    session->requestCreateWindow(tabId, title);
+    session->requestCreateSubWindow(tabId, title);
   });
   raw->startClientProcess(clientExe_, token_);
   sessions_.push_back(std::move(session));
@@ -143,7 +143,7 @@ void ShellApp::onSessionReady(ClientSession* session) {
   const int m = nextWindowIndex_[session->clientIndex()]++;
   const qint64 tabId = nextTabId_++;
   const QString title = makeTitle(session->clientIndex(), m);
-  session->requestCreateWindow(tabId, title);
+  session->requestCreateSubWindow(tabId, title);
 }
 
 void ShellApp::onSubWindowAdded(ClientSession* session, qint64 tabId, QString title,
@@ -222,13 +222,12 @@ void ShellApp::onSessionDead(ClientSession* session) {
 }
 
 void ShellApp::closeTab(qint64 tabId) {
+  if (tabId == kHomeTabId) {
+    return;
+  }
   auto* shell = tabToShell_.value(tabId, nullptr);
   if (!shell) {
     return;
-  }
-  TabInfo* info = nullptr;
-  for (auto& t : shell->tabs()) {
-    // tabs() returns by value - need another way
   }
   ClientSession* session = nullptr;
   for (const auto& t : shell->tabs()) {
@@ -239,6 +238,11 @@ void ShellApp::closeTab(qint64 tabId) {
   }
   if (session) {
     session->requestClose(tabId);
+  } else {
+    // Orphan tab (no session): drop locally.
+    tabToShell_.remove(tabId);
+    shell->removeTab(tabId);
+    destroyShellIfEmpty(shell);
   }
 }
 
@@ -247,7 +251,7 @@ void ShellApp::activateTab(ShellWindow* shell, qint64 tabId) {
 }
 
 void ShellApp::tearOutTab(ShellWindow* source, qint64 tabId, QPoint globalPos) {
-  if (!source || source->tabs().size() == 0) {
+  if (!source || tabId == kHomeTabId) {
     return;
   }
   TabInfo moved;
@@ -259,7 +263,7 @@ void ShellApp::tearOutTab(ShellWindow* source, qint64 tabId, QPoint globalPos) {
       break;
     }
   }
-  if (!found) {
+  if (!found || moved.isHome) {
     return;
   }
   source->removeTab(tabId);
@@ -275,6 +279,9 @@ void ShellApp::tearOutTab(ShellWindow* source, qint64 tabId, QPoint globalPos) {
 }
 
 void ShellApp::mergeTab(qint64 tabId, ShellWindow* target) {
+  if (tabId == kHomeTabId) {
+    return;
+  }
   auto* source = tabToShell_.value(tabId, nullptr);
   if (!source || source == target) {
     return;
@@ -286,7 +293,7 @@ void ShellApp::mergeTab(qint64 tabId, ShellWindow* target) {
       break;
     }
   }
-  if (!moved.tabId) {
+  if (!moved.tabId || moved.isHome) {
     return;
   }
   source->removeTab(tabId);
@@ -303,11 +310,11 @@ ShellWindow* ShellApp::shellForTab(qint64 tabId) const {
 }
 
 void ShellApp::destroyShellIfEmpty(ShellWindow* shell) {
-  if (!shell || !shell->tabs().isEmpty()) {
+  if (!shell || shell->clientTabCount() > 0) {
     return;
   }
+  shell->setActiveTab(kHomeTabId);
   if (shells_.size() <= 1) {
-    shell->showEmptyState(true);
     return;
   }
   for (auto it = shells_.begin(); it != shells_.end(); ++it) {

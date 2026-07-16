@@ -26,7 +26,7 @@ public:
 
   void startClientProcess(const QString& clientExe, const QString& token);
   void attachSocket(QLocalSocket* socket);
-  void requestCreateWindow(qint64 tabId, const QString& title);
+  void requestCreateSubWindow(qint64 tabId, const QString& title);
   void requestActivate(qint64 tabId);
   void requestClose(qint64 tabId);
   void notifyReattachment(qint64 shellId);
@@ -52,7 +52,7 @@ private:
   QProcess* process_ = nullptr;
   QLocalSocket* socket_ = nullptr;
   std::unique_ptr<mps::ipc::EnvelopeChannel> channel_;
-  // pending CreateWindow tab ids awaiting SubWindowAdded (same order)
+  // pending CreateSubWindow tab ids awaiting SubWindowAdded (same order)
   QList<qint64> pendingTabs_;
   QHash<qint64, quintptr> tabWids_;
   quintptr mainWid_ = 0;

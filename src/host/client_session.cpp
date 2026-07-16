@@ -68,7 +68,7 @@ void ClientSession::sendHelloAck() {
   channel_->send(env);
 }
 
-void ClientSession::requestCreateWindow(qint64 tabId, const QString& title) {
+void ClientSession::requestCreateSubWindow(qint64 tabId, const QString& title) {
   pendingTabs_.push_back(tabId);
   shell::ipc::v1::Envelope env;
   env.set_protocol(1);
@@ -163,7 +163,12 @@ void ClientSession::onEnvelope(shell::ipc::v1::Envelope env) {
     return;
   }
   if (env.has_query_close_sub_window_result()) {
-    // Demo client closes immediately and emits SubWindowRemoved.
+    // Accept → tear down Host tab immediately; SubWindowRemoved is idempotent backup.
+    if (env.query_close_sub_window_result().accept()) {
+      const qint64 tabId = env.tab_id();
+      tabWids_.remove(tabId);
+      emit subWindowRemoved(this, tabId);
+    }
     return;
   }
   if (env.has_invoke()) {

@@ -1,1 +1,9 @@
-# Placeholder — Windows HWND SetParent backend (phase-1 target; code TBD).
+# Windows embed (form A)
+
+`EmbedContainer` hosts a foreign HWND via `SetParent` / `SetWindowPos`.
+
+| File | Role |
+|------|------|
+| `embed_container.hpp` / `.cpp` | Native host widget used by `ShellWindow` |
+
+Used by the Demo Host on Windows. X11 / in-proc backends remain placeholders under sibling dirs.

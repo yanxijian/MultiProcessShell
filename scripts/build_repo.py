@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Configure and build MultiProcessShell (out-of-source)."""
+"""Configure and build MultiProcessShell (out-of-source).
+
+On Windows with demos enabled, runs scripts/deploy_demo.py after a successful
+build so dist/Demo/mps_demo_host.exe is double-clickable.
+"""
 
 from __future__ import annotations
 
@@ -40,9 +44,10 @@ def _default_ninja() -> str | None:
 
 
 def _find_cl() -> str | None:
+    # Prefer vcvars PATH entry so CMake does not thrash on Hostx64 vs HostX64 paths.
     cl = shutil.which("cl") or shutil.which("cl.exe")
     if cl:
-        return cl
+        return str(Path(cl).resolve())
     vswhere = (
         Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
         / "Microsoft Visual Studio/Installer/vswhere.exe"
@@ -74,7 +79,7 @@ def _find_cl() -> str | None:
     for ver in versions:
         candidate = ver / "bin" / "Hostx64" / "x64" / "cl.exe"
         if candidate.is_file():
-            return str(candidate)
+            return str(candidate.resolve())
     return None
 
 
@@ -112,7 +117,7 @@ def main() -> int:
     parser.add_argument(
         "--no-demos",
         action="store_true",
-        help="Configure with MPS_BUILD_DEMOS=OFF",
+        help="Disable MPS_BUILD_DEMOS and MPS_BUILD_SRC (protocol tests only; no QTDIR)",
     )
     parser.add_argument(
         "--configure-only",
@@ -159,12 +164,20 @@ def main() -> int:
             raise SystemExit(
                 "error: MSVC cl.exe not found. Run from an x64 Native Tools / vcvars shell."
             )
+        # CMake cache files treat backslashes as escapes; prefer forward slashes.
+        cl_cmake = Path(cl).as_posix()
         cmake_cmd.extend(
             [
-                f"-DCMAKE_C_COMPILER={cl}",
-                f"-DCMAKE_CXX_COMPILER={cl}",
+                f"-DCMAKE_C_COMPILER={cl_cmake}",
+                f"-DCMAKE_CXX_COMPILER={cl_cmake}",
             ]
         )
+        rc = shutil.which("rc") or shutil.which("rc.exe")
+        mt = shutil.which("mt") or shutil.which("mt.exe")
+        if rc:
+            cmake_cmd.append(f"-DCMAKE_RC_COMPILER={Path(rc).as_posix()}")
+        if mt:
+            cmake_cmd.append(f"-DCMAKE_MT={Path(mt).as_posix()}")
         # Ensure Ninja/CMake compile tests see the same toolchain env.
         cl_dir = str(Path(cl).parent)
         os.environ["PATH"] = cl_dir + os.pathsep + os.environ.get("PATH", "")
