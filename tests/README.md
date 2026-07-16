@@ -1,5 +1,11 @@
 # tests/
 
-Protocol / unit tests (M0 framing tests first).
+M0: framing + `Envelope` protobuf round-trip (`mps_ipc_tests`).
 
-**Status:** placeholder — enable with `-DMPS_BUILD_TESTS=ON` when targets exist.
+```bash
+cmake -S . -B build -G Ninja -DMPS_BUILD_TESTS=ON -DMPS_FETCH_PROTOBUF=ON
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+First configure downloads protobuf + GoogleTest via FetchContent (needs network).

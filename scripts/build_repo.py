@@ -26,6 +26,58 @@ def run(cmd: list[str], cwd: Path | None = None) -> None:
     subprocess.check_call(cmd, cwd=cwd)
 
 
+def _default_ninja() -> str | None:
+    candidates = [
+        Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
+        / "Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe",
+        Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
+        / "Microsoft Visual Studio/2022/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe",
+    ]
+    for c in candidates:
+        if c.is_file():
+            return str(c)
+    return shutil.which("ninja")
+
+
+def _find_cl() -> str | None:
+    cl = shutil.which("cl") or shutil.which("cl.exe")
+    if cl:
+        return cl
+    vswhere = (
+        Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
+        / "Microsoft Visual Studio/Installer/vswhere.exe"
+    )
+    if not vswhere.is_file():
+        return None
+    try:
+        root = subprocess.check_output(
+            [
+                str(vswhere),
+                "-latest",
+                "-products",
+                "*",
+                "-requires",
+                "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+                "-property",
+                "installationPath",
+            ],
+            text=True,
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    if not root:
+        return None
+    msvc = Path(root) / "VC" / "Tools" / "MSVC"
+    if not msvc.is_dir():
+        return None
+    versions = sorted([p for p in msvc.iterdir() if p.is_dir()], reverse=True)
+    for ver in versions:
+        candidate = ver / "bin" / "Hostx64" / "x64" / "cl.exe"
+        if candidate.is_file():
+            return str(candidate)
+    return None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -53,18 +105,24 @@ def main() -> int:
         help="Extra -D CMake definitions (repeatable)",
     )
     parser.add_argument(
+        "--no-tests",
+        action="store_true",
+        help="Configure with MPS_BUILD_TESTS=OFF",
+    )
+    parser.add_argument(
         "--configure-only",
         action="store_true",
         help="Only run cmake configure",
+    )
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Run ctest after build",
     )
     args = parser.parse_args()
 
     which_or_die("cmake")
     qtdir = os.environ.get("QTDIR")
-    if not qtdir:
-        raise SystemExit("error: QTDIR is not set")
-    if not Path(qtdir).is_dir():
-        raise SystemExit(f"error: QTDIR does not exist: {qtdir}")
 
     build_dir: Path = args.build_dir
     build_dir.mkdir(parents=True, exist_ok=True)
@@ -78,8 +136,36 @@ def main() -> int:
         "-G",
         args.generator,
         f"-DCMAKE_BUILD_TYPE={args.config}",
-        f"-DCMAKE_PREFIX_PATH={qtdir}",
+        "-DMPS_FETCH_PROTOBUF=ON",
+        f"-DMPS_BUILD_TESTS={'OFF' if args.no_tests else 'ON'}",
     ]
+
+    if args.generator.lower() == "ninja":
+        ninja = _default_ninja()
+        if not ninja:
+            raise SystemExit("error: ninja not found (required for -G Ninja)")
+        cmake_cmd.append(f"-DCMAKE_MAKE_PROGRAM={ninja}")
+
+    if os.name == "nt":
+        cl = _find_cl()
+        if not cl:
+            raise SystemExit(
+                "error: MSVC cl.exe not found. Run from an x64 Native Tools / vcvars shell."
+            )
+        cmake_cmd.extend(
+            [
+                f"-DCMAKE_C_COMPILER={cl}",
+                f"-DCMAKE_CXX_COMPILER={cl}",
+            ]
+        )
+        # Ensure Ninja/CMake compile tests see the same toolchain env.
+        cl_dir = str(Path(cl).parent)
+        os.environ["PATH"] = cl_dir + os.pathsep + os.environ.get("PATH", "")
+        os.environ["CC"] = cl
+        os.environ["CXX"] = cl
+
+    if qtdir:
+        cmake_cmd.append(f"-DCMAKE_PREFIX_PATH={qtdir}")
     if args.fresh:
         cmake_cmd.append("--fresh")
     for d in args.defs:
@@ -91,6 +177,20 @@ def main() -> int:
 
     build_cmd = ["cmake", "--build", str(build_dir), "--config", args.config]
     run(build_cmd)
+
+    if args.test and not args.no_tests:
+        which_or_die("ctest")
+        run(
+            [
+                "ctest",
+                "--test-dir",
+                str(build_dir),
+                "--output-on-failure",
+                "-C",
+                args.config,
+            ]
+        )
+
     print("OK: build finished", flush=True)
     return 0
 

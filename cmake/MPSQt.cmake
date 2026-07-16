@@ -1,4 +1,4 @@
-# Find Qt 6.8+ via CMAKE_PREFIX_PATH / QTDIR.
+# Find Qt 6.8+ via CMAKE_PREFIX_PATH / QTDIR (optional for protocol-only builds).
 
 function(mps_find_qt)
   if(DEFINED ENV{QTDIR} AND NOT CMAKE_PREFIX_PATH)

@@ -4,18 +4,30 @@
 
 ### 依赖
 
-- Windows：MSVC（x64）、CMake ≥ 3.21、Ninja（推荐）、Python 3.10+
-- Qt：开源 **6.8+**（兼容基线 6.8 LTS），通过环境变量 **`QTDIR`** 引用
-- Protobuf：由 CMake **FetchContent** 拉取（开启 `-DMPS_FETCH_PROTOBUF=ON`；M0 起默认建议开启）
+- Windows：MSVC（x64）、CMake ≥ 3.21、Ninja（推荐）、Python 3.10+、Git（FetchContent）
+- Qt：开源 **6.8+**（Host/Client/Demo 需要；**M0 协议单测可不装 Qt**）
+- Protobuf / GoogleTest：CMake **FetchContent**（`-DMPS_FETCH_PROTOBUF=ON`，测试默认开启）
 
 ### 环境变量
 
 | 变量 | 用途 |
 |------|------|
-| `QTDIR` | Qt 安装前缀 |
+| `QTDIR` | Qt 安装前缀（做壳/Demo 时需要） |
 | `PATH` | 应包含 `%QTDIR%\bin` |
 
 工程引用：`%QTDIR%` / `$env:QTDIR`。
+
+### M0（拼帧 + proto 单测）
+
+```bash
+python scripts/build_repo.py --test
+# 或
+cmake -S . -B build -G Ninja -DMPS_BUILD_TESTS=ON -DMPS_FETCH_PROTOBUF=ON
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+首次配置会下载 protobuf 与 GoogleTest，需要网络。
 
 ### 辅助脚本（Python）
 
@@ -44,9 +56,17 @@ cmake --build build
 
 ### Dependencies
 
-- Windows: MSVC (x64), CMake ≥ 3.21, Ninja (recommended), Python 3.10+
-- Qt: open-source **6.8+** (compat baseline 6.8 LTS) via **`QTDIR`**
-- Protobuf: CMake **FetchContent** (no system install required)
+- Windows: MSVC (x64), CMake ≥ 3.21, Ninja (recommended), Python 3.10+, Git (FetchContent)
+- Qt: open-source **6.8+** (required for Host/Client/Demo; **optional for M0 protocol tests**)
+- Protobuf / GoogleTest: CMake **FetchContent**
+
+### M0 (framing + proto tests)
+
+```bash
+python scripts/build_repo.py --test
+```
+
+First configure downloads dependencies (network required).
 
 ### Environment
 

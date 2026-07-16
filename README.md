@@ -40,8 +40,9 @@ cmake --build build
 
 ## Status
 
-- Specs and scripts are in-tree.
-- **`src/` and `demos/` implementation intentionally deferred** until Demo morphology is agreed.
+- Specs, Demo morphology/IPC contract, and scripts are in-tree.
+- **M0 done**: `mps::ipc` framing + generated `shell.ipc.v1` + `mps_ipc_tests`.
+- Host/Client/`demos/` application code not started yet.
 
 ## License
 

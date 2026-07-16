@@ -1,21 +1,12 @@
 # src/
 
-C++/Qt implementation (Host, Client, common, embed backends).
+| Path | Status |
+|------|--------|
+| `common/` | **M0 done** — framing + generated `shell.ipc.v1` (`mps::ipc`) |
+| `embed_helper/` | TBD |
+| `host/` | TBD (Win embed first) |
+| `client/` | TBD |
 
-**Status:** placeholder only — no implementation until Demo morphology is agreed  
-(see `docs/zh/demo-morphology.md` / `docs/en/demo-morphology.md`).
+Placeholders: `host/embed/win`, `x11`, `inproc` (see READMEs there).
 
-## Planned layout
-
-| Path | Role |
-|------|------|
-| `common/` | Framing, IDs, shared types |
-| `embed_helper/` | Optional C ABI for multi-language embed |
-| `host/` | Shell process |
-| `host/embed/win/` | Windows `SetParent` backend (phase-1) |
-| `host/embed/x11/` | Linux/X11 placeholder |
-| `host/embed/inproc/` | macOS in-process placeholder |
-| `client/runtime/` | Client IPC + embed hooks |
-| `client/alpha`, `client/beta` | Sample business processes (later) |
-
-Enable with CMake `-DMPS_BUILD_SRC=ON` once targets exist.
+Host/Client app targets: `-DMPS_BUILD_SRC=ON` (not wired yet).
