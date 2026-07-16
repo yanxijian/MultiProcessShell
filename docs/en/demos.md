@@ -1,0 +1,25 @@
+# demos/
+
+> **Chinese (primary)**: [`../demos/README.md`](../demos/README.md)
+
+| Target | Role |
+|--------|------|
+| `mps_demo_host` | Chrome-like shell (Home, Create Client, tabs, embed) |
+| `mps_demo_client` | Client process (spawned by Host; New Window) |
+
+Morphology / IPC: [demo-morphology.md](demo-morphology.md), [demo-ipc.md](demo-ipc.md) (Chinese primaries under `docs/zh/`).
+
+```bat
+:: vcvars x64 shell, QTDIR set
+python scripts\build_repo.py
+:: double-click (GUI subsystem, no console):
+dist\Demo\mps_demo_host.exe
+```
+
+On Windows, `build_repo.py` auto-runs `scripts/deploy_demo.py` (`windeployqt`) and syncs `dist/Demo/`.
+
+## Current UX
+
+- Permanent **Home** tab (not closable / not tear-out); **Create Client** on Home.  
+- Client tabs: close via ×; MRU activation history (not forced to Home).  
+- Same-Client New Window: `Invoke("demo.request_new_window")` → Host `CreateSubWindow`.

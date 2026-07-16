@@ -1,15 +1,14 @@
 # MultiProcessShell — Technical Specification (v2)
 
-> **Purpose**  
-> Authoritative English counterpart to [`docs/zh/multiprocess-shell-spec.md`](../zh/multiprocess-shell-spec.md).  
-> When wording differs, treat both languages as aligned goals; prefer the Chinese doc for the longest defect matrices until both are fully synced line-by-line.
+> **Chinese (primary)**: [`../zh/multiprocess-shell-spec.md`](../zh/multiprocess-shell-spec.md)  
+> This English file is a **summary companion**. For full defect matrices, state machines, and appendices, read the Chinese document.  
 >
 > **Date**: 2026-07-16  
 > **Status**: Spec v2  
 > **Project**: `MultiProcessShell`  
 > **Platforms**: Windows, macOS, Linux (X11; Wayland — see Chinese appendix B)  
 > **IPC**: Control plane = `shell.ipc.v1` Protobuf + Pipe/UDS + length-prefixed frames; embed plane = EmbedBackend / EmbedHelper. Out of scope for this phase: gRPC, Thrift, Mojo, JSON as the primary control protocol.  
-> **Demo**: See [`demo-morphology.md`](demo-morphology.md) and [`demo-ipc.md`](demo-ipc.md). Checked-in IDL is `proto/shell/ipc/v1/ipc.proto`. Prefer `.proto` + Demo IPC over any older sketches in this document when they diverge.
+> **Demo**: See [demo-morphology.md](demo-morphology.md) and [demo-ipc.md](demo-ipc.md). Checked-in IDL is `proto/shell/ipc/v1/ipc.proto`. Prefer `.proto` + Demo IPC over any older sketches in the Chinese long-form IDL sections when they diverge.
 
 ---
 

@@ -1,7 +1,7 @@
 # Demo Morphology (Final)
 
-> **Status**: Finalized (matches the in-repo Demo)  
-> **Chinese**: [`../zh/demo-morphology.md`](../zh/demo-morphology.md)
+> **Chinese (primary)**: [`../zh/demo-morphology.md`](../zh/demo-morphology.md)  
+> **Status**: Finalized (matches the in-repo Demo)
 
 ## 1. Product intuition
 
@@ -10,10 +10,10 @@ Chrome-like multi-window / multi-tab behavior:
 | Capability | Behavior |
 |------------|----------|
 | Side-by-side | Windows from different Client processes appear as **tabs** in one shell |
-| Close | Close a Client tab; activate the previous tab via **MRU history** |
-| Tear-out | Drag a Client tab **out** to create a **new** top-level shell |
+| Close | Close a Client tab; switch via **MRU activation history** |
+| Tear-out | Drag a Client tab **out** into a **new** top-level shell |
 | Merge | Drag a tab **into** another shell’s tab bar |
-| Destroy empty | If a shell has **no Client tabs** left (Home only) and is not the last shell → **destroy** it |
+| Destroy empty | If a shell has **no Client tabs** left (Home only) and is not the sole shell → **destroy** it |
 
 Phase-1 platform: **Windows (form A)**.
 
@@ -21,26 +21,26 @@ Phase-1 platform: **Windows (form A)**.
 
 ### 2.1 Startup
 
-- Exactly one top-level shell.  
+- Demo starts with **exactly one** top-level shell.  
 - Permanent **Home** tab (not closable, not tear-out).  
-- **Create Client** lives on Home content; no Client auto-start.
+- Home content center shows **Create Client**; no Client process starts automatically.
 
-### 2.2 Create Client
+### 2.2 Create Client (new process / pageType session)
 
-- On Home, click **Create Client** → start a Client process and add a Client tab.  
+- On **Home**, click **Create Client** → start a Client process and add a Client tab.  
 - First child title: `Client1-Window1`.  
-- Switch back to **Home** to create another Client.
+- To create another Client, switch back to **Home** and click **Create Client** again.
 
 ### 2.3 Same Client, new child window
 
-- Inside the Client page: **New Window** / 「新建窗口」.  
-- Client sends `Invoke("demo.request_new_window")`; Host replies with another `CreateSubWindow`.  
-- Titles: `Client1-Window2`, …
+- Client page content has **新建窗口** / New Window.  
+- Click → IPC `Invoke("demo.request_new_window")` → Host sends another `CreateSubWindow` in the **same Client process** and adds a tab.  
+- Titles: `Client1-Window2`, `Client1-Window3`, …
 
 ### 2.4 Multiple Clients
 
 - Create Client again from Home → `Client2-Window1`, …  
-- Different Clients = different processes; tabs may share one shell.
+- Different Clients = different processes (form A); tabs may share one shell (optional accent colors).
 
 ## 3. Tab title rules
 
@@ -50,49 +50,76 @@ Client{N}-Window{M}
 
 | Field | Meaning | Increment |
 |-------|---------|-----------|
-| `N` | Client instance index | +1 per new Client process |
-| `M` | Child window index within that Client | +1 per new child |
+| `N` | Client instance index | +1 per new Client process (per Demo session) |
+| `M` | Child window index within that Client | +1 per new child in that Client |
 
-**Home** title is fixed (`Home`) and is outside this scheme.
+Examples: `Client1-Window1`, `Client1-Window2`, `Client2-Window1`.  
+**Home** title is fixed (`Home`) and outside this scheme.
 
 ## 4. Window structure
 
 ```text
-[Home] [Client1-Window1 ×] [Client2-Window1 ×]   _ □ ×
-────────────────────────────────────────────────────
- Home active → Create Client
- Client tab active → embedded Client HWND (New Window button inside)
+┌─ Shell (custom title bar) ─────────────────────────────┐
+│  [Home] [Client1-Window1 ×] [Client2-Window1 ×]  _ □ × │
+├────────────────────────────────────────────────────────┤
+│  Home active → center “Create Client”                  │
+│  Client tab active → embedded Client HWND (“新建窗口”) │
+└────────────────────────────────────────────────────────┘
 ```
 
-## 5. Tear-out / merge
+- **Title bar**: Home + Client tabs + min / max / close.  
+- **Workspace**: Home page or current Client embed (should fill the client area).
 
-1. Drag a **Client** tab outside → new shell (with Home + that tab).  
-2. Source shell with no Client tabs left (Home only), if not the sole shell → **destroy**.  
+## 5. Tear-out / merge (Chrome-like)
+
+1. Drag a **Client** tab outside → release creates a **new** shell (with Home + that tab).  
+2. If the source then has **no Client tabs** (Home only) and is not the sole shell → **destroy** the source.  
 3. Drop on another shell’s tab bar → merge.  
-4. Host model only; no HWND in mime; then reattach.  
+4. DnD updates **Host model only**; never put HWND in mime; then reattach.  
 5. **Home** cannot tear out / merge.
 
-## 6. Close + activation history
+## 6. Close tab + activation history
 
-MRU history includes Home and Client tabs. Closing the active tab selects the previous still-present tab (not forced to Home).
+- Close Client tab → Host `QueryCloseSubWindow` → Client accepts and emits `SubWindowRemoved` (Host may remove the tab on accept).  
+- MRU history includes **Home and Client tabs**; closing the active tab selects the previous still-present tab (not forced to Home).
 
-## 7. In scope / deferred
+## 7. Scope
 
-**In scope (implemented):** Home + Create Client; multi-Client; same-Client New Window; titles; close with history; tear-out/merge; destroy spare empty shells; Windows embed + Demo Protobuf.
+### 7.1 In this Demo (implemented)
 
-**Deferred:** polished drag animation; heartbeat timer/UI; macOS/Linux embed; multi-language EmbedHelper.
+- One shell at start → **Home** + Create Client  
+- Multi-Client processes + same-Client multi-window + title increments  
+- Close tab (history), tear-out, merge, destroy spare shells with no Client tabs  
+- Windows `SetParent` embed + minimal Protobuf contract  
 
-## 8. Decisions
+### 7.2 Deferred / simplified
+
+- Polished drag animation  
+- Heartbeat timer / unhealthy UI (protocol reserved)  
+- macOS / Linux embed  
+- Full multi-language EmbedHelper  
+
+## 8. Repo paths
+
+| Path | Role |
+|------|------|
+| `demos/` | `mps_demo_host` / `mps_demo_client` |
+| `src/host/` | Shell, tabs, sessions, Win embed |
+| `src/client/` | Client process and pages |
+| `src/common/` + `proto/` | Framing and IDL |
+| `dist/Demo/` | Windows double-click bundle (generated) |
+
+## 9. Decisions
 
 | # | Decision |
 |---|----------|
-| 1 | Chrome-like tabs / tear-out / merge |
-| 2 | No Client tabs left on a spare shell → destroy |
-| 3 | Start with one shell + permanent **Home**; Create Client on Home |
-| 4 | Client page New Window (same Client) via Invoke |
-| 5 | Titles: `Client{N}-Window{M}` |
-| 6 | Close uses activation history (includes Home) |
+| 1 | Chrome-like tabs / close / tear-out / merge |
+| 2 | Spare shell with no Client tabs → destroy |
+| 3 | One shell + permanent **Home**; Create Client on Home |
+| 4 | Client page New Window → same-Client child |
+| 5 | Titles: `Client{N}-Window{M}`; Home excluded |
+| 6 | Close uses activation history (includes Home); not forced to Home |
 
-## 9. IPC
+## 10. IPC
 
-See [`demo-ipc.md`](demo-ipc.md).
+See [demo-ipc.md](demo-ipc.md).

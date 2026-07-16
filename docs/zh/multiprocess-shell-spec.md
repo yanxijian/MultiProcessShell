@@ -1,5 +1,7 @@
 # 多进程共窗口（壳托管）技术说明与最小 Demo 蓝图（改进版）
 
+> **英文文档**：[../en/multiprocess-shell-spec.md](../en/multiprocess-shell-spec.md)（摘要译本；细节与缺陷矩阵以本文为准）  
+>  
 > **用途**  
 > 在《多进程共窗口-技术规格与最小 Demo 蓝图》基础上，补齐架构抽象、协议契约、生命周期状态机、安全与可观测性，并明确三平台降级策略与 Demo 验收边界。  
 >  
@@ -7,9 +9,9 @@
 > **状态**：规格 v2  
 > **平台**：Windows、macOS、Linux（X11；Wayland 见 §4.5 / 附录 B）  
 > **工程名**：`MultiProcessShell`  
-
+>
 > **IPC**：控制面 = `shell.ipc.v1` Protobuf + Pipe/UDS + 长度前缀帧；嵌入面 = EmbedBackend / EmbedHelper；本期不含 gRPC / Thrift / Mojo / JSON 主协议。  
-> **Demo 落地**：形态见 [`demo-morphology.md`](demo-morphology.md)，精简 IPC 见 [`demo-ipc.md`](demo-ipc.md)；仓库权威 IDL 为 `proto/shell/ipc/v1/ipc.proto`（含 `CreateSubWindow` 等）。本文后续 IDL / 握手草图为产品全量愿景，若与 `.proto` 或 Demo 合约冲突，**以仓库 `.proto` + Demo 文档为准**。
+> **Demo 落地**：形态见 [demo-morphology.md](demo-morphology.md)，精简 IPC 见 [demo-ipc.md](demo-ipc.md)；仓库权威 IDL 为 `proto/shell/ipc/v1/ipc.proto`（含 `CreateSubWindow` 等）。本文后续 IDL / 握手草图为产品全量愿景，若与 `.proto` 或 Demo 合约冲突，**以仓库 `.proto` + Demo 文档为准**。
 
 ---
 

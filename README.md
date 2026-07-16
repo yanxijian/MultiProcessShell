@@ -1,65 +1,67 @@
 # MultiProcessShell
 
-MIT-licensed C++/Qt multi-process shell: Host chrome + Client native-window embed + Protobuf IPC.
+> **英文文档**：[docs/en/README.md](docs/en/README.md)
+
+MIT 许可的 C++/Qt 多进程壳：Host 壳框 + Client 原生窗嵌入 + Protobuf IPC。
 
 首期平台：**Windows（形态 A）**；macOS / Linux 目录占位。
 
-## Documentation
+## 文档
 
-| Doc | 中文 | English |
-|-----|------|---------|
-| Technical spec (authoritative product vision) | [`docs/zh/multiprocess-shell-spec.md`](docs/zh/multiprocess-shell-spec.md) | [`docs/en/multiprocess-shell-spec.md`](docs/en/multiprocess-shell-spec.md) |
-| Demo morphology (final) | [`docs/zh/demo-morphology.md`](docs/zh/demo-morphology.md) | [`docs/en/demo-morphology.md`](docs/en/demo-morphology.md) |
-| Demo IPC contract (final) | [`docs/zh/demo-ipc.md`](docs/zh/demo-ipc.md) | [`docs/en/demo-ipc.md`](docs/en/demo-ipc.md) |
-| Build guide | [`docs/build.md`](docs/build.md) | same file (bilingual) |
+| 内容 | 中文（主） | 英文 |
+|------|------------|------|
+| 产品技术规格 | [docs/zh/multiprocess-shell-spec.md](docs/zh/multiprocess-shell-spec.md) | [docs/en/multiprocess-shell-spec.md](docs/en/multiprocess-shell-spec.md) |
+| Demo 形态 | [docs/zh/demo-morphology.md](docs/zh/demo-morphology.md) | [docs/en/demo-morphology.md](docs/en/demo-morphology.md) |
+| Demo IPC 合约 | [docs/zh/demo-ipc.md](docs/zh/demo-ipc.md) | [docs/en/demo-ipc.md](docs/en/demo-ipc.md) |
+| 构建说明 | [docs/zh/build.md](docs/zh/build.md) | [docs/en/build.md](docs/en/build.md) |
 
-**Demo IDL:** `proto/shell/ipc/v1/ipc.proto` + [`docs/zh/demo-ipc.md`](docs/zh/demo-ipc.md). If the long-form product spec sketches differ from the checked-in `.proto`, prefer `.proto` / Demo IPC for what ships today.
+**约定**：日常以中文文档为准；英文为同步译本。Demo 权威 IDL 为 `proto/shell/ipc/v1/ipc.proto` + [Demo IPC](docs/zh/demo-ipc.md)。若长文规格草图与 `.proto` 冲突，以 `.proto` / Demo 合约为准。
 
-## Layout
+## 目录
 
 ```text
 MultiProcessShell/
-  cmake/           Qt / Protobuf helpers
+  cmake/           Qt / Protobuf 辅助
   proto/           shell.ipc.v1 IDL
   src/             Host / Client / common / ipc_qt
-  demos/           Chrome-like Demo (mps_demo_host / mps_demo_client)
-  tests/           Unit / protocol tests (M0)
-  clients/python/  M4b smoke (later)
-  docs/            Specs & guides (zh + en)
+  demos/           Demo（mps_demo_host / mps_demo_client）
+  tests/           M0 协议单测
+  clients/python/  M4b 烟测（后续）
+  docs/zh|en/      中英文文档
   scripts/         build_repo / build_qt / deploy_demo
-  dist/Demo/       Self-contained Windows bundle (generated; gitignored)
+  dist/Demo/       Windows 可双击包（生成物，不入库）
 ```
 
-## Quick start (Windows)
+## 快速开始（Windows）
 
-1. Open an **x64 Native Tools / vcvars** shell.
-2. Set `QTDIR` to a Qt **6.8+** prefix; put `%QTDIR%\bin` on `PATH`.
-3. Build and deploy:
+1. 打开 **x64 Native Tools / vcvars** 环境。  
+2. 设置 `QTDIR` 为 Qt **6.8+** 前缀，并把 `%QTDIR%\bin` 加入 `PATH`。  
+3. 编译并部署：
 
 ```bat
 python scripts\build_repo.py
 ```
 
-4. Double-click (no console window):
+4. 双击运行（无额外控制台）：
 
 ```text
 dist\Demo\mps_demo_host.exe
 ```
 
-`build_repo.py` builds Host/Client Demo by default and on Windows runs `scripts/deploy_demo.py` (`windeployqt`) so Qt/CRT sit beside the exes.
+默认会编 Host/Client Demo；Windows 上会自动跑 `scripts/deploy_demo.py`（`windeployqt`），把 Qt/CRT 拷到 exe 旁。
 
-M0 tests only (no Qt):
+仅跑 M0 单测（可不装 Qt）：
 
 ```bat
 python scripts\build_repo.py --no-demos --test
 ```
 
-## Status
+## 现状
 
-- Specs, Demo morphology/IPC, and scripts are in-tree.
-- **M0 done**: `mps::ipc` framing + generated `shell.ipc.v1` + `mps_ipc_tests`.
-- **Demo done (Windows)**: Home tab, Create Client, same-Client New Window, tab close with activation history, tear-out/merge hooks, `SetParent` embed, GUI subsystem (no console).
+- 规格、Demo 形态/IPC、脚本已入库。  
+- **M0 完成**：拼帧 + `shell.ipc.v1` 生成 + `mps_ipc_tests`。  
+- **Windows Demo 完成**：Home Tab、创建 Client、同 Client 新建窗口、关 Tab 激活历史、拖出/合入钩子、`SetParent` 嵌入、GUI 子系统（无控制台）。
 
-## License
+## 许可
 
 [MIT](LICENSE)

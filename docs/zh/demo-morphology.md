@@ -1,8 +1,7 @@
 # Demo 形态（定稿）
 
-> **状态**：已定稿（与当前仓库 Demo 实现一致）  
-> **English**: [`../en/demo-morphology.md`](../en/demo-morphology.md)  
-> **示意图**：产品侧 Chrome 式多进程 Tab 壳（自定义顶栏 + 客户区嵌入）
+> **英文文档**：[../en/demo-morphology.md](../en/demo-morphology.md)  
+> **状态**：已定稿（与当前仓库 Demo 实现一致）
 
 ## 1. 产品直觉
 
@@ -125,4 +124,4 @@ Client{N}-Window{M}
 
 ## 10. IPC
 
-见 [`demo-ipc.md`](demo-ipc.md)。
+见 [demo-ipc.md](demo-ipc.md)。

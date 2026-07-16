@@ -1,23 +1,25 @@
 # demos/
 
-| Target | Role |
-|--------|------|
-| `mps_demo_host` | Chrome-like shell (Home tab, Create Client, tabs, embed) |
-| `mps_demo_client` | Client process (spawned by Host; 「新建窗口」) |
+> **英文文档**：[../docs/en/demos.md](../docs/en/demos.md)
 
-Morphology / IPC: `docs/zh/demo-morphology.md`, `docs/zh/demo-ipc.md` (EN twins under `docs/en/`).
+| 目标 | 作用 |
+|------|------|
+| `mps_demo_host` | Chrome 式壳（Home、Create Client、Tab、嵌入） |
+| `mps_demo_client` | Client 进程（由 Host 拉起；「新建窗口」） |
+
+形态 / IPC：[docs/zh/demo-morphology.md](../docs/zh/demo-morphology.md)、[docs/zh/demo-ipc.md](../docs/zh/demo-ipc.md)。
 
 ```bat
-:: from vcvars x64 shell, with QTDIR set
+:: 在 vcvars x64 环境，并设置 QTDIR
 python scripts\build_repo.py
-:: then double-click (GUI subsystem — no console):
+:: 双击（GUI 子系统，无控制台）：
 dist\Demo\mps_demo_host.exe
 ```
 
-`build_repo.py` on Windows auto-runs `scripts/deploy_demo.py` (`windeployqt`), copies Qt/CRT next to the exes, and syncs `dist/Demo/`.
+Windows 上 `build_repo.py` 会自动跑 `scripts/deploy_demo.py`（`windeployqt`），把 Qt/CRT 拷到 exe 旁并同步到 `dist/Demo/`。
 
-## Demo UX (current)
+## 当前体验
 
-- Permanent **Home** tab (not closable / not tear-out); **Create Client** on Home content.
-- Client tabs: close via ×; activation follows MRU history (not forced back to Home).
-- Same-Client **新建窗口** via `Invoke("demo.request_new_window")` → Host `CreateSubWindow`.
+- 固定 **Home** Tab（不可关、不可拖出）；「创建 Client」在 Home 页。  
+- Client Tab：点 × 关闭；激活走 MRU 历史（不强制回 Home）。  
+- 同 Client「新建窗口」：`Invoke("demo.request_new_window")` → Host `CreateSubWindow`。
