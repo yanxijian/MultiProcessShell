@@ -1,6 +1,6 @@
 # proto/shell/ipc/v1
 
-> **Chinese (primary)**: [`../../proto/shell/ipc/v1/README.md`](../../proto/shell/ipc/v1/README.md)
+> **中文主文档**: [`../../proto/shell/ipc/v1/README.md`](../../proto/shell/ipc/v1/README.md)
 
 Authoritative IDL for `shell.ipc.v1`.
 

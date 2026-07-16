@@ -1,6 +1,6 @@
 # demos/
 
-> **英文文档**：[../docs/en/demos.md](../docs/en/demos.md)
+> **English**：[../docs/en/demos.md](../docs/en/demos.md)
 
 | 目标 | 作用 |
 |------|------|

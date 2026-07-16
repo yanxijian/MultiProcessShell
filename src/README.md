@@ -1,6 +1,6 @@
 # src/
 
-> **英文文档**：[../docs/en/src.md](../docs/en/src.md)
+> **English**：[../docs/en/src.md](../docs/en/src.md)
 
 | 路径 | 状态 |
 |------|------|

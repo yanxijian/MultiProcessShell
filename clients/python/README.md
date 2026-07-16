@@ -1,6 +1,6 @@
 # clients/python
 
-> **英文文档**：[../docs/en/clients-python.md](../docs/en/clients-python.md)
+> **English**：[../docs/en/clients-python.md](../docs/en/clients-python.md)
 
 里程碑 **M4b** 用的 Python 烟测客户端（`Hello` / `HelloAck`）。
 

@@ -1,6 +1,6 @@
 # scripts/ (Python)
 
-> **Chinese (primary)**: [`../scripts/README.md`](../scripts/README.md)
+> **中文主文档**: [`../scripts/README.md`](../scripts/README.md)
 
 | Script | Purpose |
 |--------|---------|

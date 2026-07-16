@@ -1,6 +1,6 @@
 # MultiProcessShell — Technical Specification (v2)
 
-> **Chinese (primary)**: [`../zh/multiprocess-shell-spec.md`](../zh/multiprocess-shell-spec.md)  
+> **中文主文档**: [`../zh/multiprocess-shell-spec.md`](../zh/multiprocess-shell-spec.md)  
 > This English file is a **summary companion**. For full defect matrices, state machines, and appendices, read the Chinese document.  
 >
 > **Date**: 2026-07-16  

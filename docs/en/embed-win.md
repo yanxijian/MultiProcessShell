@@ -1,6 +1,6 @@
 # Windows embed (form A)
 
-> **Chinese (primary)**: [`../../src/host/embed/win/README.md`](../../src/host/embed/win/README.md)
+> **中文主文档**: [`../../src/host/embed/win/README.md`](../../src/host/embed/win/README.md)
 
 `EmbedContainer` hosts a foreign HWND via `SetParent` / `SetWindowPos`.
 

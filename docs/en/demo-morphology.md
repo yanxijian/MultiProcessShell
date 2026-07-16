@@ -1,6 +1,6 @@
 # Demo Morphology (Final)
 
-> **Chinese (primary)**: [`../zh/demo-morphology.md`](../zh/demo-morphology.md)  
+> **中文主文档**: [`../zh/demo-morphology.md`](../zh/demo-morphology.md)  
 > **Status**: Finalized (matches the in-repo Demo)
 
 ## 1. Product intuition

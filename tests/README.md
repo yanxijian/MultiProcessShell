@@ -1,6 +1,6 @@
 # tests/
 
-> **英文文档**：[../docs/en/tests.md](../docs/en/tests.md)
+> **English**：[../docs/en/tests.md](../docs/en/tests.md)
 
 M0：拼帧 + `Envelope` protobuf 往返（`mps_ipc_tests`）。
 

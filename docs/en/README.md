@@ -1,6 +1,6 @@
 # MultiProcessShell
 
-> **Chinese (primary)**: [`../../README.md`](../../README.md)
+> **中文主文档**: [`../../README.md`](../../README.md)
 
 MIT-licensed C++/Qt multi-process shell: Host chrome + Client native-window embed + Protobuf IPC.
 
@@ -8,13 +8,13 @@ Phase-1 platform: **Windows (form A)**; macOS / Linux directories are placeholde
 
 ## Documentation
 
-| Topic | Chinese (primary) | English |
-|-------|-------------------|---------|
+| Topic | 中文主文档 | English |
+|-------|-------------|---------|
 | Product spec | [../zh/multiprocess-shell-spec.md](../zh/multiprocess-shell-spec.md) | [multiprocess-shell-spec.md](multiprocess-shell-spec.md) |
 | Demo morphology | [../zh/demo-morphology.md](../zh/demo-morphology.md) | [demo-morphology.md](demo-morphology.md) |
 | Demo IPC | [../zh/demo-ipc.md](../zh/demo-ipc.md) | [demo-ipc.md](demo-ipc.md) |
 | Build | [../zh/build.md](../zh/build.md) | [build.md](build.md) |
-| demos / scripts / src / … | folder `README.md` (Chinese) | [demos.md](demos.md), [scripts.md](scripts.md), [src.md](src.md), … |
+| demos / scripts / src / … | folder `README.md`（中文） | [demos.md](demos.md), [scripts.md](scripts.md), [src.md](src.md), … |
 
 **Policy:** Prefer Chinese docs day-to-day; English is a synced mirror. Demo IDL authority is `proto/shell/ipc/v1/ipc.proto` + Demo IPC. If the long-form product sketch disagrees with `.proto`, prefer `.proto` / Demo IPC.
 

@@ -1,6 +1,6 @@
 # 多进程共窗口（壳托管）技术说明与最小 Demo 蓝图（改进版）
 
-> **英文文档**：[../en/multiprocess-shell-spec.md](../en/multiprocess-shell-spec.md)（摘要译本；细节与缺陷矩阵以本文为准）  
+> **English**：[../en/multiprocess-shell-spec.md](../en/multiprocess-shell-spec.md)（摘要译本；细节与缺陷矩阵以本文为准）  
 >  
 > **用途**  
 > 在《多进程共窗口-技术规格与最小 Demo 蓝图》基础上，补齐架构抽象、协议契约、生命周期状态机、安全与可观测性，并明确三平台降级策略与 Demo 验收边界。  

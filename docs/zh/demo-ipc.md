@@ -1,6 +1,6 @@
 # Demo IPC 合约（定稿）
 
-> **英文文档**：[../en/demo-ipc.md](../en/demo-ipc.md)  
+> **English**：[../en/demo-ipc.md](../en/demo-ipc.md)  
 > 与 [demo-morphology.md](demo-morphology.md) 配套。控制面：`shell.ipc.v1` + 长度前缀 `Envelope`。  
 > **权威 IDL**：仓库 `proto/shell/ipc/v1/ipc.proto`（与产品长文规格中的 IDL 草图冲突时，以本文件 + `.proto` 为准）。
 

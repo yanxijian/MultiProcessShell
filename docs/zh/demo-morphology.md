@@ -1,6 +1,6 @@
 # Demo 形态（定稿）
 
-> **英文文档**：[../en/demo-morphology.md](../en/demo-morphology.md)  
+> **English**：[../en/demo-morphology.md](../en/demo-morphology.md)  
 > **状态**：已定稿（与当前仓库 Demo 实现一致）
 
 ## 1. 产品直觉

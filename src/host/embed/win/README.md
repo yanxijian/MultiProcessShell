@@ -1,6 +1,6 @@
 # Windows 嵌入（形态 A）
 
-> **英文文档**：[../../../../docs/en/embed-win.md](../../../../docs/en/embed-win.md)
+> **English**：[../../../../docs/en/embed-win.md](../../../../docs/en/embed-win.md)
 
 `EmbedContainer` 通过 `SetParent` / `SetWindowPos` 托管外部 HWND。
 

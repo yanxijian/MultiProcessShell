@@ -1,6 +1,6 @@
 # proto/shell/ipc/v1
 
-> **英文文档**：[../../../docs/en/proto-ipc.md](../../../docs/en/proto-ipc.md)
+> **English**：[../../../docs/en/proto-ipc.md](../../../docs/en/proto-ipc.md)
 
 `shell.ipc.v1` 的权威 IDL。
 

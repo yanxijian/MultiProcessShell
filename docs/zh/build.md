@@ -1,6 +1,6 @@
 # 构建说明
 
-> **英文文档**：[../en/build.md](../en/build.md)
+> **English**：[../en/build.md](../en/build.md)
 
 ## 依赖
 

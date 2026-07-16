@@ -1,6 +1,6 @@
 # scripts/（Python）
 
-> **英文文档**：[../docs/en/scripts.md](../docs/en/scripts.md)
+> **English**：[../docs/en/scripts.md](../docs/en/scripts.md)
 
 | 脚本 | 作用 |
 |------|------|

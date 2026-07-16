@@ -1,6 +1,6 @@
 # tests/
 
-> **Chinese (primary)**: [`../tests/README.md`](../tests/README.md)
+> **中文主文档**: [`../tests/README.md`](../tests/README.md)
 
 M0: framing + `Envelope` protobuf round-trip (`mps_ipc_tests`).
 

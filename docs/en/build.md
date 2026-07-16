@@ -1,6 +1,6 @@
 # Build guide
 
-> **Chinese (primary)**: [`../zh/build.md`](../zh/build.md)
+> **中文主文档**: [`../zh/build.md`](../zh/build.md)
 
 ## Dependencies
 
