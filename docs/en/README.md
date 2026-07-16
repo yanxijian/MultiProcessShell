@@ -16,7 +16,7 @@ Phase-1 platform: **Windows (form A)**; macOS / Linux directories are placeholde
 | Build | [../zh/build.md](../zh/build.md) | [build.md](build.md) |
 | demos / scripts / src / … | folder `README.md`（中文） | [demos.md](demos.md), [scripts.md](scripts.md), [src.md](src.md), … |
 
-**Policy:** Prefer Chinese docs day-to-day; English is a synced mirror. Demo IDL authority is `proto/shell/ipc/v1/ipc.proto` + Demo IPC. If the long-form product sketch disagrees with `.proto`, prefer `.proto` / Demo IPC.
+**Policy:** Prefer Chinese docs day-to-day; English is a synced mirror. Cross-link labels use the **target** language (**English** / **中文主文档**). Demo IDL authority is `proto/shell/ipc/v1/ipc.proto` + Demo IPC. If the long-form product sketch disagrees with `.proto`, prefer `.proto` / Demo IPC.
 
 ## Layout
 
