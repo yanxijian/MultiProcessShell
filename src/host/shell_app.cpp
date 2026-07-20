@@ -60,19 +60,47 @@ bool ShellApp::eventFilter(QObject* watched, QEvent* event) {
   if (!shell) {
     return QObject::eventFilter(watched, event);
   }
+
+  auto globalPosOf = [shell](QDropEvent* de) -> QPoint {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    return shell->mapToGlobal(de->position().toPoint());
+#else
+    return shell->mapToGlobal(de->pos());
+#endif
+  };
+
   if (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove) {
     auto* de = static_cast<QDragMoveEvent*>(event);
-    if (de->mimeData()->hasFormat(QString::fromUtf8(kTabMime))) {
-      de->acceptProposedAction();
-      return true;
+    if (!de->mimeData()->hasFormat(QString::fromUtf8(kTabMime))) {
+      return false;
     }
+    // Only the title/tab chrome is a merge target. Client content must NOT accept
+    // drops — otherwise release there becomes a no-op MoveAction and tear-out never runs.
+    if (shell->isOverChrome(globalPosOf(de))) {
+      de->acceptProposedAction();
+    } else {
+      de->setDropAction(Qt::IgnoreAction);
+      de->ignore();
+    }
+    return true;
   }
   if (event->type() == QEvent::Drop) {
     auto* de = static_cast<QDropEvent*>(event);
     if (!de->mimeData()->hasFormat(QString::fromUtf8(kTabMime))) {
       return false;
     }
+    if (!shell->isOverChrome(globalPosOf(de))) {
+      de->setDropAction(Qt::IgnoreAction);
+      de->ignore();
+      return true;
+    }
     const qint64 tabId = de->mimeData()->data(QString::fromUtf8(kTabMime)).toLongLong();
+    auto* source = shellForTab(tabId);
+    if (source == shell) {
+      // Put back on the same chrome: stay; do not tear out.
+      de->acceptProposedAction();
+      return true;
+    }
     mergeTab(tabId, shell);
     de->acceptProposedAction();
     return true;
@@ -276,6 +304,8 @@ void ShellApp::tearOutTab(ShellWindow* source, qint64 tabId, QPoint globalPos) {
   if (moved.session) {
     moved.session->notifyReattachment(neu->shellId());
   }
+  neu->raise();
+  neu->activateWindow();
   destroyShellIfEmpty(source);
 }
 

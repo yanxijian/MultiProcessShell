@@ -56,6 +56,7 @@ public:
   [[nodiscard]] qint64 activeTabId() const { return activeTabId_; }
   [[nodiscard]] int clientTabCount() const;
   [[nodiscard]] EmbedContainer* embed() { return embed_; }
+  [[nodiscard]] bool isOverChrome(QPoint globalPos) const;
   void showEmptyState(bool empty);
   void takeTabsFrom(ShellWindow* other, const QList<qint64>& tabIds);
 

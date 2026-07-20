@@ -209,6 +209,14 @@ int ShellWindow::clientTabCount() const {
   return n;
 }
 
+bool ShellWindow::isOverChrome(QPoint globalPos) const {
+  if (!titleBar_) {
+    return false;
+  }
+  const QRect r(titleBar_->mapToGlobal(QPoint(0, 0)), titleBar_->size());
+  return r.contains(globalPos);
+}
+
 void ShellWindow::addTab(const TabInfo& info) {
   if (info.isHome) {
     return;
@@ -327,8 +335,9 @@ void ShellWindow::rebuildTabs() {
         if (auto* info = findTab(tabId); info && info->session) {
           info->session->setDragSuppress(false);
         }
-        // Tear out only when released outside every shell (not when cancelled on self).
-        if (drop == Qt::IgnoreAction && app_ && !app_->shellAtGlobal(QCursor::pos())) {
+        // Drop accepted on a shell chrome → merge/stay already handled.
+        // IgnoreAction: released outside, or over client content (not chrome) → tear out.
+        if (drop == Qt::IgnoreAction) {
           emit tabTearOutRequested(tabId, QCursor::pos());
         }
       });
