@@ -1,3 +1,8 @@
+# Pure tab-strip rules (no Qt / protobuf) — shared by Host + unit tests.
+add_library(mps_tab_strip INTERFACE)
+add_library(mps::tab_strip ALIAS mps_tab_strip)
+target_include_directories(mps_tab_strip INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}")
+
 # mps_ipc: generated shell.ipc.v1 + length-prefixed framing.
 
 set(MPS_PROTO_FILE "${CMAKE_SOURCE_DIR}/proto/shell/ipc/v1/ipc.proto")

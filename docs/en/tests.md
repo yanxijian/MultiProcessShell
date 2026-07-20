@@ -1,8 +1,9 @@
-# tests/
+﻿# tests/
 
 > **中文主文档**: [`../tests/README.md`](../tests/README.md)
 
-M0: framing + `Envelope` protobuf round-trip (`mps_ipc_tests`).
+- **M0** `mps_ipc_tests`: framing + `Envelope` protobuf round-trip.  
+- **Detachable tab strip** `mps_tab_strip_tests`: activate/MRU, strip yield + Home pin, tear-out hysteresis/slot claim, merge/empty-shell rules (pure logic, no Qt UI).
 
 ```bash
 python scripts/build_repo.py --no-demos --test
@@ -17,3 +18,5 @@ ctest --test-dir build --output-on-failure
 ```
 
 First configure downloads protobuf + GoogleTest via FetchContent (needs network).
+
+Rules live in `src/common/tab_strip.hpp` (shared by Host and tests). Prefer adding a failing test there before changing Widget/DnD code.

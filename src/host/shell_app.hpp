@@ -35,7 +35,7 @@ public:
   void endTabDrag(bool tearOrMerge);
   [[nodiscard]] ShellWindow* shellForTab(qint64 tabId) const;
   [[nodiscard]] ShellWindow* shellAtGlobal(QPoint globalPos) const;
-  [[nodiscard]] ShellWindow* shellFromChromeTarget(QObject* watched) const;
+  [[nodiscard]] ShellWindow* shellFromStripDropTarget(QObject* watched) const;
   [[nodiscard]] ShellWindow* tabDropZoneShellAtGlobal(QPoint globalPos) const;
   void destroyShellIfEmpty(ShellWindow* shell);
 
@@ -69,7 +69,7 @@ private:
   // Queued first CreateSubWindow per session after ready
   QHash<ClientSession*, ShellWindow*> pendingFirstShell_;
 
-  // Chrome-like tear-out drag session
+  // Detachable-tab tear-out drag session
   TearOutPreview* tearOutPreview_ = nullptr;
   TabDragGhost* tabDragGhost_ = nullptr;
   QTimer* dragVisualTimer_ = nullptr;
@@ -88,10 +88,7 @@ private:
   bool ghostSnapBackActive_ = false;
   bool dragForbiddenCursor_ = false;
   // Leave strip → tear-out; return requires getting closer (hysteresis).
-  static constexpr int kTearOutLeaveSlopV = 28;
-  static constexpr int kTearOutLeaveSlopH = 10;
-  static constexpr int kTearOutReturnSlopV = 10;
-  static constexpr int kTearOutReturnSlopH = 4;
+  // Slops live in mps::tab_strip (unit-tested).
 };
 
 }  // namespace mps::host

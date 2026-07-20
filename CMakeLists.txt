@@ -16,7 +16,7 @@ if(MSVC)
 endif()
 
 option(MPS_BUILD_TESTS "Build protocol/unit tests (M0)" ON)
-option(MPS_BUILD_DEMOS "Build Chrome-like shell Demo" ON)
+option(MPS_BUILD_DEMOS "Build browser-style detachable-tab Demo" ON)
 option(MPS_BUILD_SRC "Build Host/Client libraries used by demos" ON)
 option(MPS_FETCH_PROTOBUF "Fetch protobuf via FetchContent" ON)
 option(MPS_REQUIRE_QT "Require Qt (needed for Host/Client/Demo)" OFF)

@@ -4,7 +4,7 @@
 
 | 目标 | 作用 |
 |------|------|
-| `mps_demo_host` | Chrome 式壳（Home、Create Client、Tab、嵌入） |
+| `mps_demo_host` | 浏览器式可撕出 Tab 壳（Home、Create Client、Tab、嵌入） |
 | `mps_demo_client` | Client 进程（由 Host 拉起；「新建窗口」） |
 
 形态 / IPC：[docs/zh/demo-morphology.md](../docs/zh/demo-morphology.md)、[docs/zh/demo-ipc.md](../docs/zh/demo-ipc.md)。

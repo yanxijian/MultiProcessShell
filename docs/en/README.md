@@ -2,7 +2,7 @@
 
 > **中文主文档**: [`../../README.md`](../../README.md)
 
-MIT-licensed C++/Qt multi-process shell: Host chrome + Client native-window embed + Protobuf IPC.
+MIT-licensed C++/Qt multi-process shell: Host shell UI + Client native-window embed + Protobuf IPC.
 
 Phase-1 platform: **Windows (form A)**; macOS / Linux directories are placeholders.
 
@@ -28,7 +28,7 @@ MultiProcessShell/
   proto/           shell.ipc.v1 IDL
   src/             Host / Client / common / ipc_qt
   demos/           Demo (mps_demo_host / mps_demo_client)
-  tests/           M0 protocol tests
+  tests/           M0 protocol tests + detachable tab-strip rule tests
   clients/python/  M4b smoke (later)
   docs/zh|en/      Chinese + English docs
   scripts/         build_repo / build_qt / deploy_demo
@@ -63,6 +63,7 @@ python scripts\build_repo.py --no-demos --test
 
 - Specs, Demo morphology/IPC, and scripts are in-tree.  
 - **M0 done**: framing + `shell.ipc.v1` + `mps_ipc_tests`.  
+- **Detachable tab-strip rule tests**: `mps_tab_strip_tests` (MRU / yield / tear-out hysteresis / empty shell).
 - **Windows Demo done**: Home tab, Create Client, same-Client New Window, close-tab MRU history, tear-out/merge hooks, `SetParent` embed, GUI subsystem (no console).
 
 ## English mirror index

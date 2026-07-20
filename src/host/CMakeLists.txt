@@ -20,6 +20,7 @@ target_include_directories(mps_host
 target_link_libraries(mps_host
   PUBLIC
     mps::ipc_qt
+    mps::tab_strip
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets

@@ -4,7 +4,7 @@
 > **Status**: Alternatives list — **not** the current implementation.  
 > **Current path**: [demo-ipc.md](demo-ipc.md) and spec §5 — **Protobuf + length-prefixed Envelope + Named Pipe / UDS**.
 
-This note compares common C++ / cross-language IPC options against **MultiProcessShell** (chrome + embed) constraints, for future stack changes.  
+This note compares common C++ / cross-language IPC options against **MultiProcessShell** (shell UI + embed) constraints, for future stack changes.  
 **Do not treat this document as a replacement for the frozen Demo / `.proto` contract.**
 
 ---

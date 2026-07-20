@@ -5,13 +5,13 @@
 
 namespace mps::host {
 
-/// Small floating tab chrome that follows the cursor during same-shell reorder / merge.
+/// Small floating tab face that follows the cursor during same-shell reorder / merge.
 class TabDragGhost final : public QWidget {
   Q_OBJECT
 public:
   explicit TabDragGhost(QWidget* parent = nullptr);
 
-  /// Logical content size of the tab chrome (shadow padding added internally).
+  /// Logical content size of the tab face (shadow padding added internally).
   void setTabPixmap(const QPixmap& pm, QSize logicalContentSize);
   void setPixmap(const QPixmap& pm);
   /// Offset of content origin inside the widget (for hotspot adjustment).
@@ -30,7 +30,7 @@ private:
 };
 
 /// Frameless translucent stand-in window that follows the cursor during tear-out
-/// (Chrome-like drag preview). Not a real shell — no embed.
+/// (browser-style detachable-tab drag preview). Not a real shell — no embed.
 class TearOutPreview final : public QWidget {
   Q_OBJECT
 public:
@@ -44,7 +44,7 @@ public:
   [[nodiscard]] static QRect geometryForTabContent(const QRect& globalTabContent,
                                                      QSize previewSize);
 
-  /// Must match paintEvent chrome (and ShellWindow title-bar height).
+  /// Must match paintEvent title bar (and ShellWindow title-bar height).
   static constexpr int kFramePad = 4;
   static constexpr int kTitleBarHeight = 40;
   /// Approx. left inset: title margin + Home tab + spacing.

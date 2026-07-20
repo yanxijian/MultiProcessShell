@@ -1,5 +1,7 @@
 #include "shell_app.hpp"
 
+#include "tab_strip.hpp"
+
 #include <QApplication>
 #include <QLocalSocket>
 #include <QUuid>
@@ -85,7 +87,7 @@ void ShellApp::bindShell(ShellWindow* shell) {
   connect(shell, &ShellWindow::dropIndicatorsClearRequested, this,
           &ShellApp::clearAllDropIndicators);
 
-  shell->installChromeDropFilter(this);
+  shell->installStripDropFilter(this);
 }
 
 void ShellApp::clearAllDropIndicators() {
@@ -104,12 +106,12 @@ void ShellApp::clearAllTabYieldPreviews() {
   }
 }
 
-ShellWindow* ShellApp::shellFromChromeTarget(QObject* watched) const {
+ShellWindow* ShellApp::shellFromStripDropTarget(QObject* watched) const {
   if (auto* shell = qobject_cast<ShellWindow*>(watched)) {
     return shell;
   }
   for (const auto& shell : shells_) {
-    if (shell && shell->isChromeDropTarget(watched)) {
+    if (shell && shell->isStripDropTarget(watched)) {
       return shell.get();
     }
   }
@@ -117,7 +119,7 @@ ShellWindow* ShellApp::shellFromChromeTarget(QObject* watched) const {
 }
 
 bool ShellApp::eventFilter(QObject* watched, QEvent* event) {
-  // Esc during tab drag → cancel (Chrome-like), do not tear out.
+  // Esc during tab drag → cancel (browser-style), do not tear out.
   // Note: on Windows, OLE DnD often swallows KeyPress; see pollEscapeCancel_().
   if (dragActive_ &&
       (event->type() == QEvent::KeyPress || event->type() == QEvent::ShortcutOverride)) {
@@ -136,7 +138,7 @@ bool ShellApp::eventFilter(QObject* watched, QEvent* event) {
     return QObject::eventFilter(watched, event);
   }
 
-  auto* shell = shellFromChromeTarget(watched);
+  auto* shell = shellFromStripDropTarget(watched);
   if (!shell) {
     return QObject::eventFilter(watched, event);
   }
@@ -162,7 +164,7 @@ bool ShellApp::eventFilter(QObject* watched, QEvent* event) {
                            ? dragTabWidth_
                            : (tabDragGhost_ ? tabDragGhost_->contentSize().width() : 80);
 
-    // Only one shell shows chrome feedback at a time.
+    // Only one shell shows strip feedback at a time.
     for (auto& s : shells_) {
       if (!s || s.get() == shell) {
         continue;
@@ -179,7 +181,7 @@ bool ShellApp::eventFilter(QObject* watched, QEvent* event) {
       if (dragSource_ && dragSource_ != shell) {
         dragSource_->clearTabYieldPreview();
       }
-      // Merge target: live tab yield (Chrome), not only a blue bar.
+      // Merge target: live tab yield, not only a blue bar.
       shell->clearDropInsertIndicator();
       shell->previewTabYieldAtCursor(
           tabId, dropGlobal, guestW,
@@ -527,11 +529,12 @@ void ShellApp::tearOutTab(ShellWindow* source, qint64 tabId, QRect suggestedGeom
 }
 
 void ShellApp::mergeTab(qint64 tabId, ShellWindow* target, int insertIndex) {
-  if (tabId == kHomeTabId) {
+  if (!target) {
     return;
   }
   auto* source = tabToShell_.value(tabId, nullptr);
-  if (!source || source == target) {
+  if (!tab_strip::canMergeTab(tabId, tabId == kHomeTabId, source != nullptr,
+                               source == target)) {
     return;
   }
   TabInfo moved;
@@ -595,14 +598,12 @@ ShellWindow* ShellApp::tabDropZoneShellAtGlobal(QPoint globalPos) const {
 }
 
 bool ShellApp::shouldSuppressTearOutAt(QPoint globalPos) const {
-  if (tabDropZoneShellAtGlobal(globalPos)) {
-    return true;
-  }
-  if (dragSource_ &&
-      dragSource_->isNearTabDropZone(globalPos, kTearOutLeaveSlopV, kTearOutLeaveSlopH)) {
-    return true;
-  }
-  return false;
+  const bool overAny = tabDropZoneShellAtGlobal(globalPos) != nullptr;
+  const bool nearLeave =
+      dragSource_ &&
+      dragSource_->isNearTabDropZone(globalPos, tab_strip::kTearOutLeaveSlopV,
+                                     tab_strip::kTearOutLeaveSlopH);
+  return tab_strip::shouldSuppressTearOut(overAny, nearLeave);
 }
 
 void ShellApp::beginTabDrag(ShellWindow* source, qint64 tabId, QPoint localHotSpot) {
@@ -636,7 +637,7 @@ void ShellApp::beginTabDrag(ShellWindow* source, qint64 tabId, QPoint localHotSp
     }
   }
 
-  // Snapshot tab chrome + content BEFORE hiding / switching away.
+  // Snapshot tab face + content BEFORE hiding / switching away.
   const QSize tabLogicalSize = source->tabButtonSize(tabId);
   dragTabWidth_ = tabLogicalSize.width() > 0 ? tabLogicalSize.width() : 80;
   const QPixmap tabGhostPm = source->grabTabButton(tabId);
@@ -650,7 +651,7 @@ void ShellApp::beginTabDrag(ShellWindow* source, qint64 tabId, QPoint localHotSp
 
   source->setTabDragHidden(tabId, true);
 
-  // Chrome-like: while dragging, show the previous tab's content in the source shell.
+  // While dragging, show the previous tab's content in the source shell.
   if (source->activeTabId() == tabId) {
     dragResumeTabId_ = tabId;
     const qint64 next = source->previousActivationTarget(tabId);
@@ -663,7 +664,7 @@ void ShellApp::beginTabDrag(ShellWindow* source, qint64 tabId, QPoint localHotSp
     const QSize contentSz =
         tabLogicalSize.isValid() ? tabLogicalSize : QSize(dragTabWidth_, 28);
     tabDragGhost_->setTabPixmap(tabGhostPm, contentSz);
-    // Press-point hotspot (Chrome): keep grab point under the cursor while free-
+    // Press-point hotspot: keep grab point under the cursor while free-
     // following. Strip mode still pins content top to the tab row (see below).
     const QPoint origin = tabDragGhost_->contentOrigin();
     int hx = localHotSpot.x();
@@ -881,7 +882,7 @@ void ShellApp::updateTabDragVisuals() {
   // Forbidden cursor over window min/max/close (not a drop target).
   bool forbidden = false;
   for (auto& s : shells_) {
-    if (s && s->isOverWindowChromeButtons(g)) {
+    if (s && s->isOverWindowButtons(g)) {
       forbidden = true;
       break;
     }
@@ -897,26 +898,22 @@ void ShellApp::updateTabDragVisuals() {
   const bool overStrip = tabDropZoneShellAtGlobal(g) != nullptr;
   const bool nearLeave =
       dragSource_ &&
-      dragSource_->isNearTabDropZone(g, kTearOutLeaveSlopV, kTearOutLeaveSlopH);
+      dragSource_->isNearTabDropZone(g, tab_strip::kTearOutLeaveSlopV,
+                                     tab_strip::kTearOutLeaveSlopH);
   const bool nearReturn =
       dragSource_ &&
-      dragSource_->isNearTabDropZone(g, kTearOutReturnSlopV, kTearOutReturnSlopH);
+      dragSource_->isNearTabDropZone(g, tab_strip::kTearOutReturnSlopV,
+                                     tab_strip::kTearOutReturnSlopH);
 
   const bool wasDetached = tearOutDetached_;
-  // Hysteresis: once detached, require a closer approach to return to strip mode.
-  if (tearOutDetached_) {
-    if (overStrip || nearReturn) {
-      tearOutDetached_ = false;
-    }
-  } else if (!overStrip && !nearLeave) {
-    tearOutDetached_ = true;
-  }
+  tearOutDetached_ =
+      tab_strip::nextTearOutDetached(wasDetached, overStrip, nearLeave, nearReturn);
 
   const int contentHotX =
       tabGhostHotSpot_.x() -
       (tabDragGhost_ ? tabDragGhost_->contentOrigin().x() : 0);
 
-  // Chrome: the tab always stays under the cursor. Window preview is an extra layer
+  // The tab always stays under the cursor. Window preview is an extra layer
   // while detached — never replace/hide the tab ghost for it.
   auto positionTabGhost = [&](bool pinToStrip, ShellWindow* stripShell, bool bumpZ) {
     if (!tabDragGhost_) {
@@ -928,7 +925,7 @@ void ShellApp::updateTabDragVisuals() {
     // Free-follow: press point stays under the cursor (avoids downward bias).
     int top = g.y() - tabGhostHotSpot_.y();
     if (pinToStrip && stripShell) {
-      // On strip: lock content top to the tab row (Chrome); X still follows.
+      // On strip: lock content top to the tab row; X still follows.
       top = stripShell->tabRowTopGlobal() - origin.y();
       const QRect band = stripShell->tabStripGlobalRect();
       if (band.isValid()) {
@@ -992,7 +989,7 @@ void ShellApp::updateTabDragVisuals() {
   // title/tab bar wraps (vertically centers) that tab — not an independent hotspot.
   if (!wasDetached) {
     clearAllDropIndicators();
-    // Chrome: as soon as the tear-out window appears, siblings claim the old slot.
+    // As soon as the tear-out window appears, siblings claim the old slot.
     if (dragSource_ && dragTabId_ != 0) {
       dragSource_->collapseTornOutTabSlot(dragTabId_);
     }
@@ -1016,13 +1013,17 @@ void ShellApp::updateTabDragVisuals() {
 }
 
 void ShellApp::destroyShellIfEmpty(ShellWindow* shell) {
-  if (!shell || shell->clientTabCount() > 0) {
+  if (!shell) {
+    return;
+  }
+  if (!tab_strip::shouldDestroyEmptyShell(shell->clientTabCount(),
+                                           static_cast<int>(shells_.size()))) {
+    if (shell->clientTabCount() == 0) {
+      shell->setActiveTab(kHomeTabId);
+    }
     return;
   }
   shell->setActiveTab(kHomeTabId);
-  if (shells_.size() <= 1) {
-    return;
-  }
   for (auto it = shells_.begin(); it != shells_.end(); ++it) {
     if (it->get() == shell) {
       ShellWindow* raw = it->release();

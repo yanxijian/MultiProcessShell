@@ -5,7 +5,7 @@
 
 ## 1. Product intuition
 
-Chrome-like multi-window / multi-tab behavior:
+Browser-style detachable multi-window / multi-tab behavior:
 
 | Capability | Behavior |
 |------------|----------|
@@ -71,7 +71,7 @@ Examples: `Client1-Window1`, `Client1-Window2`, `Client2-Window1`.
 - **Title bar**: Home + Client tabs + min / max / close.  
 - **Workspace**: Home page or current Client embed (should fill the client area).
 
-## 5. Tear-out / merge (Chrome-like)
+## 5. Tear-out / merge (browser-style detachable tabs)
 
 ### 5.1 Drag visuals
 
@@ -98,7 +98,7 @@ Host notes: `TabDragGhost` + `TearOutPreview::alignToTabContent`; `previewTabYie
 
 ## 6. Close tab + activation history
 
-- Close a Client tab (× **or middle-click the tab**, Chrome-like) → Host `QueryCloseSubWindow` → Client accepts and emits `SubWindowRemoved` (Host may remove the tab on accept; the Client child window closes with it).  
+- Close a Client tab (× **or middle-click the tab**) → Host `QueryCloseSubWindow` → Client accepts and emits `SubWindowRemoved` (Host may remove the tab on accept; the Client child window closes with it).  
 - **Home** is not closable (middle-click ignored).  
 - MRU history includes **Home and Client tabs**; closing the active tab selects the previous still-present tab (not forced to Home).
 
@@ -135,7 +135,7 @@ Manual checklist: [demo-acceptance.md](demo-acceptance.md).
 
 | # | Decision |
 |---|----------|
-| 1 | Chrome-like tabs / close / tear-out / merge |
+| 1 | Browser-style detachable tabs / close / tear-out / merge |
 | 2 | Spare shell with no Client tabs → destroy |
 | 3 | One shell + permanent **Home**; Create Client on Home |
 | 4 | Client page New Window → same-Client child |

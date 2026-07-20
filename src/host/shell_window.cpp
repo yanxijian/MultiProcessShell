@@ -1,6 +1,7 @@
 #include "shell_window.hpp"
 
 #include "shell_app.hpp"
+#include "tab_strip.hpp"
 
 #include <QApplication>
 #include <QCloseEvent>
@@ -20,17 +21,13 @@
 #include <QVBoxLayout>
 #include <QWindow>
 
+#include <vector>
+
 namespace mps::host {
 namespace {
 qint64 g_nextShellId = 1;
-constexpr int kTabStripMargin = 8;
 constexpr int kTabStripTop = 4;
-constexpr int kTabSpacing = 6;
 constexpr int kTabSlideMs = 120;
-// Chromium GetDraggedX = dragged_bounds.x() + Tab::GetDragInset() (~16).
-// Compare that point to neighbor centers — NOT the ghost center — so yield
-// happens around ~50% overlap, not when left edges are flush.
-constexpr int kDragInset = 16;
 }  // namespace
 
 TabButton::TabButton(const TabInfo& info, QWidget* parent) : QFrame(parent), info_(info) {
@@ -80,7 +77,7 @@ void TabButton::setActive(bool on) {
 }
 
 void TabButton::mousePressEvent(QMouseEvent* event) {
-  // Chrome: middle-click closes a tab (Home is never closable).
+  // Middle-click closes a tab (Home is never closable).
   if (event->button() == Qt::MiddleButton) {
     if (!info_.isHome) {
       emit closeRequested(info_.tabId);
@@ -286,7 +283,7 @@ QSize ShellWindow::tabButtonSize(qint64 tabId) const {
 
 void ShellWindow::updateDropInsertIndicator(int insertIndex) {
   // Kept for optional debug; live yield (`previewTabYieldAtCursor`) is the
-  // Chrome-like merge/reorder cue — callers no longer show this blue bar.
+  // Legacy merge/reorder cue — callers no longer show this blue bar.
   if (!titleBar_ || tabButtons_.isEmpty()) {
     return;
   }
@@ -370,7 +367,7 @@ void ShellWindow::previewTabYieldAtCursor(qint64 dragTabId, QPoint globalPos, in
   const QPoint cur = QCursor::pos();
   const int minAmong = (!others.isEmpty() && others[0] == kHomeTabId) ? 1 : 0;
   const int dragW = qMax(1, localDrag ? widthOf(dragTabId) : guestWidth);
-  const int inset = qMin(kDragInset, qMax(1, dragW / 4));
+  const int inset = tab_strip::dragInsetForWidth(dragW);
   const int hsX = hotSpotX >= 0 ? hotSpotX : (dragW / 2);
 
   const int ghostLeft = cur.x() - hsX;
@@ -390,7 +387,6 @@ void ShellWindow::previewTabYieldAtCursor(qint64 dragTabId, QPoint globalPos, in
       }
     }
   }
-  insertAmong = qBound(minAmong, insertAmong, others.size());
 
   int originX = stripDragOriginX_;
   if (originX <= 0) {
@@ -402,45 +398,34 @@ void ShellWindow::previewTabYieldAtCursor(qint64 dragTabId, QPoint globalPos, in
     }
   }
   if (originX <= 0) {
-    originX = kTabStripMargin;
+    originX = tab_strip::kTabStripMargin;
   }
 
-  auto idealCenterGlobal = [&](int gapAmong, int otherIndex) -> int {
-    int x = originX;
-    for (int i = 0; i < others.size(); ++i) {
-      if (i == gapAmong) {
-        x += dragW + kTabSpacing;
-      }
-      const int w = widthOf(others[i]);
-      if (i == otherIndex) {
-        return titleBar_->mapToGlobal(QPoint(x + w / 2, 0)).x();
-      }
-      x += w + kTabSpacing;
-    }
-    return titleBar_->mapToGlobal(QPoint(x, 0)).x();
-  };
-
-  for (;;) {
-    if (insertAmong > minAmong) {
-      const int center = idealCenterGlobal(insertAmong, insertAmong - 1);
-      if (ghostLeft + inset < center) {
-        --insertAmong;
-        continue;
-      }
-    }
-    if (insertAmong < others.size()) {
-      const int center = idealCenterGlobal(insertAmong, insertAmong);
-      if (ghostRight - inset > center) {
-        ++insertAmong;
-        continue;
-      }
-    }
-    break;
+  std::vector<int> otherWidths;
+  otherWidths.reserve(static_cast<size_t>(others.size()));
+  for (qint64 id : others) {
+    otherWidths.push_back(widthOf(id));
   }
-  insertAmong = qBound(minAmong, insertAmong, others.size());
 
-  QVector<qint64> ids = others;
-  ids.insert(insertAmong, dragTabId);
+  // Map pure local centers (origin 0) into title-bar global X.
+  const int originGlobalX = titleBar_->mapToGlobal(QPoint(originX, 0)).x();
+  const int localGhostLeft = ghostLeft - originGlobalX;
+  const int localGhostRight = ghostRight - originGlobalX;
+
+  insertAmong = tab_strip::computeYieldInsertAmong(otherWidths, dragW, localGhostLeft,
+                                                    localGhostRight, inset, minAmong, insertAmong);
+
+  std::vector<int64_t> othersStd;
+  othersStd.reserve(static_cast<size_t>(others.size()));
+  for (qint64 id : others) {
+    othersStd.push_back(id);
+  }
+  const auto idsStd = tab_strip::buildYieldOrder(othersStd, insertAmong, dragTabId);
+  QVector<qint64> ids;
+  ids.reserve(static_cast<int>(idsStd.size()));
+  for (int64_t id : idsStd) {
+    ids.push_back(id);
+  }
 
   if (yieldDragTabId_ == dragTabId && yieldOrder_ == ids && stripDragLayoutActive_) {
     return;
@@ -451,11 +436,11 @@ void ShellWindow::previewTabYieldAtCursor(qint64 dragTabId, QPoint globalPos, in
   ensureStripDragLayout(localDrag ? dragTabId : 0, localDrag ? 0 : dragW);
   clearDropInsertIndicator();
 
-  int x = stripDragOriginX_ > 0 ? stripDragOriginX_ : kTabStripMargin;
+  int x = stripDragOriginX_ > 0 ? stripDragOriginX_ : tab_strip::kTabStripMargin;
   const int y = tabStripContentY();
   for (qint64 id : ids) {
     if (id == dragTabId && !localDrag) {
-      x += dragW + kTabSpacing;
+      x += dragW + tab_strip::kTabSpacing;
       continue;
     }
     auto* btn = byId.value(id, nullptr);
@@ -465,7 +450,7 @@ void ShellWindow::previewTabYieldAtCursor(qint64 dragTabId, QPoint globalPos, in
     const int w = (id == dragTabId) ? dragW : widthOf(id);
     const int h = btn->height();
     animateTabGeometry(btn, QRect(x, y, w, h));
-    x += w + kTabSpacing;
+    x += w + tab_strip::kTabSpacing;
   }
 }
 
@@ -493,7 +478,7 @@ QRect ShellWindow::tabDragSlotGlobalRect(qint64 tabId) const {
   };
 
   if (yieldDragTabId_ == tabId && !yieldOrder_.isEmpty()) {
-    int x = stripDragOriginX_ > 0 ? stripDragOriginX_ : kTabStripMargin;
+    int x = stripDragOriginX_ > 0 ? stripDragOriginX_ : tab_strip::kTabStripMargin;
     const int y = tabStripContentY();
     int h = 28;
     for (auto* b : tabButtons_) {
@@ -507,7 +492,7 @@ QRect ShellWindow::tabDragSlotGlobalRect(qint64 tabId) const {
       if (id == tabId) {
         return QRect(titleBar_->mapToGlobal(QPoint(x, y)), QSize(w, h));
       }
-      x += w + kTabSpacing;
+      x += w + tab_strip::kTabSpacing;
     }
   }
 
@@ -560,7 +545,7 @@ void ShellWindow::ensureStripDragLayout(qint64 hideTabId, int guestWidth) {
   }
   stripDragLayoutActive_ = true;
   QHash<qint64, QRect> geos;
-  stripDragOriginX_ = kTabStripMargin;
+  stripDragOriginX_ = tab_strip::kTabStripMargin;
   bool originSet = false;
   if (guestWidth > 0) {
     dragTabWidth_ = guestWidth;
@@ -595,8 +580,8 @@ void ShellWindow::ensureStripDragLayout(qint64 hideTabId, int guestWidth) {
   }
   // Catch drops in the open gap (no tab widget there during yield/merge).
   titleBar_->setAcceptDrops(true);
-  if (chromeDropFilter_) {
-    titleBar_->installEventFilter(chromeDropFilter_);
+  if (stripDropFilter_) {
+    titleBar_->installEventFilter(stripDropFilter_);
   }
 }
 
@@ -655,7 +640,7 @@ void ShellWindow::clearTabYieldPreview() {
 
 void ShellWindow::collapseTornOutTabSlot(qint64 dragTabId) {
   // Once the tear-out window preview is up, remaining tabs should close the gap
-  // immediately (Chrome) — do not keep an empty slot until mouse release.
+  // immediately — do not keep an empty slot until mouse release.
   if (dragTabId == 0 || dragTabId == kHomeTabId || !titleBar_) {
     return;
   }
@@ -674,17 +659,21 @@ void ShellWindow::collapseTornOutTabSlot(qint64 dragTabId) {
   setTabDragHidden(dragTabId, true);
   clearDropInsertIndicator();
 
-  QVector<qint64> packed;
-  packed.reserve(tabs_.size());
+  std::vector<int64_t> ids;
+  ids.reserve(static_cast<size_t>(tabs_.size()));
   for (const auto& t : tabs_) {
-    if (t.tabId != dragTabId) {
-      packed.push_back(t.tabId);
-    }
+    ids.push_back(t.tabId);
+  }
+  const auto packedStd = tab_strip::collapseSlotOrder(ids, dragTabId);
+  QVector<qint64> packed;
+  packed.reserve(static_cast<int>(packedStd.size()));
+  for (int64_t id : packedStd) {
+    packed.push_back(id);
   }
   yieldDragTabId_ = dragTabId;
   yieldOrder_ = packed;
 
-  int x = stripDragOriginX_ > 0 ? stripDragOriginX_ : kTabStripMargin;
+  int x = stripDragOriginX_ > 0 ? stripDragOriginX_ : tab_strip::kTabStripMargin;
   const int y = tabStripContentY();
   for (qint64 id : packed) {
     auto* btn = byId.value(id, nullptr);
@@ -692,7 +681,7 @@ void ShellWindow::collapseTornOutTabSlot(qint64 dragTabId) {
       continue;
     }
     animateTabGeometry(btn, QRect(x, y, btn->width(), btn->height()));
-    x += btn->width() + kTabSpacing;
+    x += btn->width() + tab_strip::kTabSpacing;
   }
   if (auto* dragBtn = byId.value(dragTabId, nullptr)) {
     animateTabGeometry(dragBtn, QRect(x, y, 0, dragBtn->height()));
@@ -713,7 +702,7 @@ QRect ShellWindow::tabStripGlobalRect() const {
       }
       return dragTabWidth_ > 0 ? dragTabWidth_ : 80;
     };
-    int x = stripDragOriginX_ > 0 ? stripDragOriginX_ : kTabStripMargin;
+    int x = stripDragOriginX_ > 0 ? stripDragOriginX_ : tab_strip::kTabStripMargin;
     int h = 28;
     for (auto* b : tabButtons_) {
       if (b) {
@@ -725,7 +714,7 @@ QRect ShellWindow::tabStripGlobalRect() const {
     for (int i = 0; i < yieldOrder_.size(); ++i) {
       total += widthOf(yieldOrder_[i]);
       if (i + 1 < yieldOrder_.size()) {
-        total += kTabSpacing;
+        total += tab_strip::kTabSpacing;
       }
     }
     QRect band(titleBar_->mapToGlobal(QPoint(x, tabStripContentY())), QSize(qMax(total, 1), h));
@@ -801,7 +790,7 @@ int ShellWindow::clientTabCount() const {
   return n;
 }
 
-bool ShellWindow::isOverWindowChromeButtons(QPoint globalPos) const {
+bool ShellWindow::isOverWindowButtons(QPoint globalPos) const {
   for (auto* b : {minBtn_, maxBtn_, closeBtn_}) {
     if (!b || !b->isVisible()) {
       continue;
@@ -812,10 +801,6 @@ bool ShellWindow::isOverWindowChromeButtons(QPoint globalPos) const {
     }
   }
   return false;
-}
-
-bool ShellWindow::isOverChrome(QPoint globalPos) const {
-  return isOverTabDropZone(globalPos);
 }
 
 bool ShellWindow::isOverTabDropZone(QPoint globalPos) const {
@@ -876,7 +861,7 @@ bool ShellWindow::isNearTabDropZone(QPoint globalPos, int verticalSlop,
       .contains(globalPos);
 }
 
-bool ShellWindow::isChromeDropTarget(const QObject* watched) const {
+bool ShellWindow::isStripDropTarget(const QObject* watched) const {
   if (!watched || !titleBar_) {
     return false;
   }
@@ -900,30 +885,30 @@ bool ShellWindow::isChromeDropTarget(const QObject* watched) const {
   return false;
 }
 
-void ShellWindow::installChromeDropFilter(QObject* filter) {
-  chromeDropFilter_ = filter;
+void ShellWindow::installStripDropFilter(QObject* filter) {
+  stripDropFilter_ = filter;
   setAcceptDrops(false);
   if (titleBar_) {
     titleBar_->setAcceptDrops(false);
   }
-  reinstallChromeDropTargets();
+  reinstallStripDropTargets();
 }
 
-void ShellWindow::reinstallChromeDropTargets() {
-  if (!chromeDropFilter_ || !titleBar_) {
+void ShellWindow::reinstallStripDropTargets() {
+  if (!stripDropFilter_ || !titleBar_) {
     return;
   }
-  // Narrow hot zone: tabs + trailing strip only (Chrome-like).
+  // Narrow hot zone: tabs + trailing strip only.
   if (tabDropTrail_) {
     tabDropTrail_->setAcceptDrops(true);
-    tabDropTrail_->installEventFilter(chromeDropFilter_);
+    tabDropTrail_->installEventFilter(stripDropFilter_);
   }
   for (auto* btn : tabButtons_) {
     if (!btn) {
       continue;
     }
     btn->setAcceptDrops(true);
-    btn->installEventFilter(chromeDropFilter_);
+    btn->installEventFilter(stripDropFilter_);
   }
 }
 
@@ -936,7 +921,7 @@ void ShellWindow::insertTab(const TabInfo& info, int insertIndex) {
     return;
   }
   // Home stays at index 0; client tabs occupy [1, size].
-  insertIndex = qBound(1, insertIndex, tabs_.size());
+  insertIndex = tab_strip::clampClientInsertIndex(insertIndex, tabs_.size());
   tabs_.insert(insertIndex, info);
   setActiveTab(info.tabId);
   rebuildTabs();
@@ -956,45 +941,36 @@ void ShellWindow::moveTab(qint64 tabId, int insertIndex) {
   if (from < 0 || tabs_[from].isHome) {
     return;
   }
-  insertIndex = qBound(1, insertIndex, tabs_.size());
-  if (insertIndex == from || insertIndex == from + 1) {
+  insertIndex = tab_strip::clampClientInsertIndex(insertIndex, tabs_.size());
+  if (tab_strip::isNoOpMove(from, insertIndex)) {
     return;  // same slot (before/after self)
   }
   const TabInfo moved = tabs_.takeAt(from);
-  if (insertIndex > from) {
-    --insertIndex;
-  }
-  insertIndex = qBound(1, insertIndex, tabs_.size());
+  insertIndex = tab_strip::adjustInsertAfterTake(from, insertIndex);
+  insertIndex = tab_strip::clampClientInsertIndex(insertIndex, tabs_.size());
   tabs_.insert(insertIndex, moved);
   rebuildTabs();
   setActiveTab(tabId);
 }
 
 int ShellWindow::tabInsertIndexAt(QPoint globalPos) const {
-  // Chrome midpoint insert: based on cursor X vs packed tab midpoints (not hit-tests).
+  // Midpoint insert: based on cursor X vs packed tab midpoints (not hit-tests).
   if (!titleBar_ || tabs_.isEmpty()) {
     return 1;
   }
-  QHash<qint64, int> widths;
+  std::vector<int> widths;
+  widths.reserve(static_cast<size_t>(tabs_.size()));
+  QHash<qint64, int> byId;
   for (auto* btn : tabButtons_) {
     if (btn) {
-      widths.insert(btn->info().tabId, btn->width());
+      byId.insert(btn->info().tabId, btn->width());
     }
+  }
+  for (const auto& t : tabs_) {
+    widths.push_back(byId.value(t.tabId, 80));
   }
   const int localX = titleBar_->mapFromGlobal(globalPos).x();
-  int insert = tabs_.size();
-  int run = kTabStripMargin;
-  for (int i = 0; i < tabs_.size(); ++i) {
-    const qint64 id = tabs_[i].tabId;
-    const int w = widths.value(id, 80);
-    if (localX < run + w / 2) {
-      insert = i;
-      break;
-    }
-    run += w + kTabSpacing;
-  }
-  // Never place a client tab before Home.
-  return qMax(1, insert);
+  return tab_strip::midpointInsertIndex(localX, widths);
 }
 
 void ShellWindow::removeTab(qint64 tabId) {
@@ -1037,25 +1013,30 @@ void ShellWindow::setActiveTab(qint64 tabId) {
 }
 
 void ShellWindow::pushActivationHistory(qint64 tabId) {
-  activationHistory_.removeAll(tabId);
-  activationHistory_.prepend(tabId);
+  std::vector<int64_t> hist;
+  hist.reserve(static_cast<size_t>(activationHistory_.size()));
+  for (qint64 id : activationHistory_) {
+    hist.push_back(id);
+  }
+  tab_strip::pushMru(hist, tabId);
+  activationHistory_.clear();
+  for (int64_t id : hist) {
+    activationHistory_.push_back(id);
+  }
 }
 
 qint64 ShellWindow::previousActivationTarget(qint64 closingTabId) const {
+  std::vector<int64_t> hist;
+  hist.reserve(static_cast<size_t>(activationHistory_.size()));
   for (qint64 id : activationHistory_) {
-    if (id == closingTabId) {
-      continue;
-    }
-    if (findTab(id)) {
-      return id;
-    }
+    hist.push_back(id);
   }
+  std::vector<int64_t> existing;
+  existing.reserve(static_cast<size_t>(tabs_.size()));
   for (const auto& t : tabs_) {
-    if (!t.isHome && t.tabId != closingTabId) {
-      return t.tabId;
-    }
+    existing.push_back(t.tabId);
   }
-  return kHomeTabId;
+  return tab_strip::previousActivationTarget(hist, existing, closingTabId);
 }
 
 TabInfo* ShellWindow::findTab(qint64 tabId) {
@@ -1107,7 +1088,7 @@ void ShellWindow::rebuildTabs() {
         empty.fill(Qt::transparent);
         drag->setPixmap(empty);
         drag->setHotSpot(QPoint(0, 0));
-        // Keep normal arrow cursor (Chrome-like); blank drag cursors + override.
+        // Keep normal arrow cursor; blank drag cursors + override.
         drag->setDragCursor(empty, Qt::MoveAction);
         drag->setDragCursor(empty, Qt::CopyAction);
         drag->setDragCursor(empty, Qt::IgnoreAction);
@@ -1167,7 +1148,7 @@ void ShellWindow::rebuildTabs() {
       });
     }
   }
-  reinstallChromeDropTargets();
+  reinstallStripDropTargets();
 }
 
 void ShellWindow::takeTabsFrom(ShellWindow* other, const QList<qint64>& tabIds) {

@@ -4,7 +4,7 @@
 
 | Target | Role |
 |--------|------|
-| `mps_demo_host` | Chrome-like shell (Home, Create Client, tabs, embed) |
+| `mps_demo_host` | Browser-style detachable-tab shell (Home, Create Client, tabs, embed) |
 | `mps_demo_client` | Client process (spawned by Host; New Window) |
 
 Morphology / IPC: [demo-morphology.md](demo-morphology.md), [demo-ipc.md](demo-ipc.md) (Chinese primaries under `docs/zh/`).

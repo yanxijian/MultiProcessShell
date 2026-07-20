@@ -17,7 +17,7 @@
 | Goal | Meaning |
 |------|---------|
 | Process isolation | Different business types must not crash each other (deployment form **A**) |
-| Unified chrome | Shared title bar / tabs / look |
+| Unified shell UI | Shared title bar / tabs / look |
 | Multi-window tabs | Browser-like switching of business windows |
 | Cross-type same shell | Different Client types share one shell window |
 | Tear-out / merge | Tabs tear out to a new shell; merge back or into another shell |
@@ -37,7 +37,7 @@
 
 ## 3. Roles
 
-- **Host (shell):** chrome, tabs, Client lifecycle, EmbedBackend, IPC server (C++/Qt).  
+- **Host (shell):** shell UI (title bar / tabs), Client lifecycle, EmbedBackend, IPC server (C++/Qt).  
 - **Client:** owns real content windows; one process (or module) per `pageType` by default.  
 - **Stable IDs:** `page_id` / `tab_id` assigned by Host; `wid` is an embed credential only.
 
@@ -101,7 +101,7 @@ See root `README.md`. Phase-1 implements Windows paths under `src/host/embed/win
 
 ## 9. Demos vs milestones
 
-- **`demos/`:** Chrome-like Demo (`mps_demo_host` / `mps_demo_client`). Morphology finalized — see [`demo-morphology.md`](demo-morphology.md) / [`../zh/demo-morphology.md`](../zh/demo-morphology.md).  
+- **`demos/`:** Browser-style detachable-tab Demo (`mps_demo_host` / `mps_demo_client`). Morphology finalized — see [`demo-morphology.md`](demo-morphology.md) / [`../zh/demo-morphology.md`](../zh/demo-morphology.md).  
 - **Full milestone suite** (tabs, tear-out, multi-type, crash): later acceptance apps, not necessarily the first Demo.
 
 ## 10. Milestones (summary)

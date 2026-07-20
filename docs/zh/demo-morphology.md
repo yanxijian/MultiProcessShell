@@ -5,7 +5,7 @@
 
 ## 1. 产品直觉
 
-交互对标 **Chrome 多窗口 / 多标签**：
+交互形态：**浏览器式可撕出多窗口 / 多标签**：
 
 | 能力 | 行为 |
 |------|------|
@@ -73,7 +73,7 @@ Client{N}-Window{M}
 - **标题栏**：Home + Client Tabs + 最小化 / 最大化 / 关闭。  
 - **工作区**：Home 页或当前 Client 嵌入区（应铺满客户区）。
 
-## 5. 拖出 / 合入（Chrome 式）
+## 5. 拖出 / 合入（浏览器式可撕出 Tab）
 
 ### 5.1 跟手视觉
 
@@ -100,7 +100,7 @@ Client{N}-Window{M}
 
 ## 6. 关 Tab 与激活链
 
-- 关闭 Client Tab（点 × **或中键点击 Tab**，对标 Chrome）→ Host `QueryCloseSubWindow` → Client 同意并 `SubWindowRemoved`（Host 在 accept 时即可拆 Tab；对应 Client 子窗一并关闭）。  
+- 关闭 Client Tab（点 × **或中键点击 Tab**）→ Host `QueryCloseSubWindow` → Client 同意并 `SubWindowRemoved`（Host 在 accept 时即可拆 Tab；对应 Client 子窗一并关闭）。  
 - **Home** 不可关（中键无效）。  
 - 激活链（MRU）包含 **Home 与 Client Tabs**；关当前 Tab 时切到历史上一个仍存在的 Tab（不强制回 Home）。
 
@@ -137,7 +137,7 @@ Client{N}-Window{M}
 
 | # | 决议 |
 |---|------|
-| 1 | 交互对标 Chrome：并列 Tab、关 Tab、拖出新壳、合入他壳 |
+| 1 | 浏览器式可撕出 Tab：并列 Tab、关 Tab、拖出新壳、合入他壳 |
 | 2 | 无剩余 Client Tab 的多余壳 → 销毁 |
 | 3 | 启动一壳 + 固定 **Home**；Create Client 在 Home |
 | 4 | Client page「新建窗口」→ 同 Client 子窗 |

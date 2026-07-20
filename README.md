@@ -27,7 +27,7 @@ MultiProcessShell/
   proto/           shell.ipc.v1 IDL
   src/             Host / Client / common / ipc_qt
   demos/           Demo（mps_demo_host / mps_demo_client）
-  tests/           M0 协议单测
+  tests/           M0 协议单测 + 可撕出 Tab 条规则单测
   clients/python/  M4b 烟测（后续）
   docs/zh|en/      中英文文档
   scripts/         build_repo / build_qt / deploy_demo
@@ -52,7 +52,7 @@ dist\Demo\mps_demo_host.exe
 
 默认会编 Host/Client Demo；Windows 上会自动跑 `scripts/deploy_demo.py`（`windeployqt`），把 Qt/CRT 拷到 exe 旁。
 
-仅跑 M0 单测（可不装 Qt）：
+仅跑单测（可不装 Qt）：
 
 ```bat
 python scripts\build_repo.py --no-demos --test
@@ -62,6 +62,7 @@ python scripts\build_repo.py --no-demos --test
 
 - 规格、Demo 形态/IPC、脚本已入库。  
 - **M0 完成**：拼帧 + `shell.ipc.v1` 生成 + `mps_ipc_tests`。  
+- **可撕出 Tab 条规则单测**：`mps_tab_strip_tests`（MRU / 让位 / 撕出迟滞 / 空壳）。
 - **Windows Demo 完成**：Home Tab、创建 Client、同 Client 新建窗口、关 Tab 激活历史、拖出/合入钩子、`SetParent` 嵌入、GUI 子系统（无控制台）。
 
 ## 许可

@@ -31,7 +31,7 @@ public:
 signals:
   void closeRequested(qint64 tabId);
   void activated(qint64 tabId);
-  /// localHotSpot: press position inside the tab (for Chrome-like grab offset).
+  /// localHotSpot: press position inside the tab (for grab offset).
   void dragStarted(qint64 tabId, QPoint localHotSpot);
 
 protected:
@@ -64,19 +64,18 @@ public:
   [[nodiscard]] int clientTabCount() const;
   [[nodiscard]] EmbedContainer* embed() { return embed_; }
   [[nodiscard]] QWidget* titleBarWidget() const { return titleBar_; }
-  [[nodiscard]] bool isOverChrome(QPoint globalPos) const;
   /// Tab buttons + trailing strip (merge/reorder hot zone); excludes window buttons.
   [[nodiscard]] bool isOverTabDropZone(QPoint globalPos) const;
   [[nodiscard]] bool isNearTabDropZone(QPoint globalPos, int verticalSlop,
                                        int horizontalSlop) const;
   /// Min/max/close — not a valid drop target during tab drag.
-  [[nodiscard]] bool isOverWindowChromeButtons(QPoint globalPos) const;
+  [[nodiscard]] bool isOverWindowButtons(QPoint globalPos) const;
   [[nodiscard]] QRect tabStripGlobalRect() const;
   /// Local Y of tab buttons inside the title bar (centered, not hard-coded top).
   [[nodiscard]] int tabStripContentY() const;
   /// Top Y of the tab row in global coords (for locking reorder ghost vertically).
   [[nodiscard]] int tabRowTopGlobal() const;
-  [[nodiscard]] bool isChromeDropTarget(const QObject* watched) const;
+  [[nodiscard]] bool isStripDropTarget(const QObject* watched) const;
   [[nodiscard]] int tabInsertIndexAt(QPoint globalPos) const;
   void updateDropInsertIndicator(int insertIndex);
   void clearDropInsertIndicator();
@@ -88,7 +87,7 @@ public:
   /// Apply yieldOrder_ to the tab model (same-shell drop). Returns true if applied.
   bool commitTabYieldPreview();
   void clearTabYieldPreview();
-  /// Chrome tear-out: siblings immediately claim the vacated strip slot (no gap).
+  /// Tear-out: siblings immediately claim the vacated strip slot (no gap).
   void collapseTornOutTabSlot(qint64 dragTabId);
   [[nodiscard]] bool hasTabYieldPreview() const { return yieldDragTabId_ != 0; }
   /// Insert index of the dragged tab in the live yield order (-1 if none).
@@ -97,13 +96,13 @@ public:
   [[nodiscard]] QRect tabDragSlotGlobalRect(qint64 tabId) const;
   /// Stop tracking active HWND without Hide (tear-out/merge handoff).
   void releaseEmbedOwnershipForTab(qint64 tabId);
-  /// Chrome-like: keep layout slot but make the dragged tab invisible.
+  /// Keep layout slot but make the dragged tab invisible.
   void setTabDragHidden(qint64 tabId, bool hidden);
   [[nodiscard]] qint64 previousActivationTarget(qint64 closingTabId) const;
   [[nodiscard]] QPixmap grabTabButton(qint64 tabId) const;
   /// Logical size of a tab button (for drag ghost hotspot on high-DPI).
   [[nodiscard]] QSize tabButtonSize(qint64 tabId) const;
-  void installChromeDropFilter(QObject* filter);
+  void installStripDropFilter(QObject* filter);
   void showEmptyState(bool empty);
   void takeTabsFrom(ShellWindow* other, const QList<qint64>& tabIds);
   /// Close without emitting shellCloseRequested (app-driven teardown).
@@ -127,7 +126,7 @@ private:
   void syncEmbedToActive();
   void syncWorkspace();
   void pushActivationHistory(qint64 tabId);
-  void reinstallChromeDropTargets();
+  void reinstallStripDropTargets();
   void scheduleEmbedResync();
   void ensureStripDragLayout(qint64 hideTabId, int guestWidth = 0);
   void animateTabGeometry(TabButton* btn, const QRect& target);
@@ -136,7 +135,7 @@ private:
   [[nodiscard]] const TabInfo* findTab(qint64 tabId) const;
 
   ShellApp* app_ = nullptr;
-  QObject* chromeDropFilter_ = nullptr;
+  QObject* stripDropFilter_ = nullptr;
   qint64 shellId_ = 0;
   QWidget* titleBar_ = nullptr;
   QWidget* tabDropTrail_ = nullptr;  // trailing strip: drop-to-append + system-move
