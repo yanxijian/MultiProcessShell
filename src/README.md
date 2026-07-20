@@ -6,7 +6,7 @@
 |------|------|
 | `common/` | 拼帧 + 生成的 `shell.ipc.v1`（`mps::ipc`） |
 | `ipc_qt/` | 基于 `QIODevice` / `QLocalSocket` 的 `EnvelopeChannel` |
-| `host/` | 壳 UI、Tab 模型、Client 会话、Win `EmbedContainer` |
+| `host/` | 壳 UI、Tab 模型、Client 会话、Win `EmbedContainer`、拖出预览（`tear_out_preview`） |
 | `client/` | Demo Client 进程（`ClientApp` / page） |
 
 CMake：`MPS_BUILD_SRC` 或 `MPS_BUILD_DEMOS` 为 ON 时编译（二者默认 ON；`--no-demos` 会一起关掉）。

@@ -75,16 +75,33 @@ Client{N}-Window{M}
 
 ## 5. 拖出 / 合入（Chrome 式）
 
-1. 按住 **Client** Tab 拖出壳外 → 释放后 **新建** 一个顶层壳（含 Home + 该 Tab）。  
-2. 若原壳因此 **没有剩余 Client Tab**（仅剩 Home）且不是唯一壳 → **销毁原顶层壳**。  
-3. 拖到另一壳的 Tab 栏 → 按插入指示合入。  
-4. 在同一壳内拖到其他 Tab 左/右侧 → **重排**（不撕出）。  
-5. DnD **只改 Host 侧模型**，禁止在 mime 中传 HWND；合入/拖出后再 reattach。  
-6. **Home** 不可拖出 / 合入 / 重排。
+### 5.1 跟手视觉
+
+| 层 | 何时出现 | 行为 |
+|----|----------|------|
+| **Tab 幽灵** | 一开始拖 Client Tab | 始终跟手；在 Tab 条上时 **Y 锁在 Tab 行**、X 跟光标；撕出后仍叠在窗口预览之上 |
+| **窗口预览** | 垂直离开 Tab 条超过 **离开空隙** 后 | 不以独立热区跟手；按 Tab 幽灵摆放，使预览 **标题/Tab 栏垂直居中包裹** 该按钮（左侧 Home 占位）；回到条附近需进入更紧的 **返回空隙**（迟滞）才切回条内模式 |
+
+拖动中：源 Tab 透明占位；同壳 / 合入目标壳其它 Tab **实时让位**（不是蓝色竖线）；源壳客户区切到上一激活 Tab。  
+**撕出后**：窗口预览一出现，源壳上原 Tab 空位即被相邻 Tab **立刻占住**（不必等松手）；拖回条上则重新让出空隙。  
+落在最小化 / 最大化 / 关闭上 → **禁止光标**（非合入热区）。
+
+### 5.2 落点规则
+
+1. **同壳水平拖** → 按让位顺序 **重排**（Home 始终最左，不可插到 Home 前）。  
+2. **拖离条外松开** → 按预览几何（与「包裹 Tab」同一套对齐）**新建顶层壳**；预览短暂盖住新壳直至嵌入首帧（减闪黑）。  
+3. **拖到他壳 Tab + 条末空白** → **合入**（实时让位指示落点；不含窗口按钮）。  
+4. **Esc** 或仍在条/返回迟滞内松开 → **取消**（幽灵弹回；不撕出）。Windows OLE 下 Esc 由 Host 轮询。  
+5. 若原壳因此 **无剩余 Client Tab**（仅剩 Home）且不是唯一壳 → **销毁原顶层壳**。  
+6. DnD **只改 Host 侧模型**，mime 只传 tabId（`application/x-mps-tab-id`），禁止传 HWND；合入/拖出后再 reattach。  
+7. **Home** 不可拖出 / 合入 / 重排。
+
+实现要点（Host）：`TabDragGhost` + `TearOutPreview::alignToTabContent`；`previewTabYieldAtCursor` / `collapseTornOutTabSlot` / `commitTabYieldPreview`；让位空隙无子控件时 OLE 可能 `IgnoreAction`，Host 仍提交重排/合入。
 
 ## 6. 关 Tab 与激活链
 
-- 关闭 Client Tab → Host `QueryCloseSubWindow` → Client 同意并 `SubWindowRemoved`（Host 在 accept 时即可拆 Tab）。  
+- 关闭 Client Tab（点 × **或中键点击 Tab**，对标 Chrome）→ Host `QueryCloseSubWindow` → Client 同意并 `SubWindowRemoved`（Host 在 accept 时即可拆 Tab；对应 Client 子窗一并关闭）。  
+- **Home** 不可关（中键无效）。  
 - 激活链（MRU）包含 **Home 与 Client Tabs**；关当前 Tab 时切到历史上一个仍存在的 Tab（不强制回 Home）。
 
 ## 7. 首期范围边界
@@ -101,7 +118,7 @@ Client{N}-Window{M}
 
 ### 7.2 可后置或简化
 
-- 精致拖出跟手动画  
+- Tab 幽灵 ↔ 窗口预览的连续形变、更强磁吸合入  
 - 心跳定时器 / 无响应 UI（协议已预留）  
 - macOS / Linux 嵌入  
 - 完整 `EmbedHelper` 多语言  
@@ -111,7 +128,7 @@ Client{N}-Window{M}
 | 路径 | 角色 |
 |------|------|
 | `demos/` | `mps_demo_host` / `mps_demo_client` |
-| `src/host/` | 壳、Tab、会话、Win embed |
+| `src/host/` | 壳、Tab、会话、Win embed；拖出：`tear_out_preview.*` |
 | `src/client/` | Client 进程与 page |
 | `src/common/` + `proto/` | 帧与 IDL |
 | `dist/Demo/` | Windows 可双击运行包（生成物） |

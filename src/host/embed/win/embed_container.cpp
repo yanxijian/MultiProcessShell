@@ -62,6 +62,16 @@ void EmbedContainer::setForeignWindow(quintptr wid) {
   applyEmbed();
 }
 
+#ifdef Q_OS_WIN
+static void ensureWindowShown(HWND hwnd) {
+  if (!hwnd || !IsWindow(hwnd)) {
+    return;
+  }
+  ShowWindow(hwnd, SW_SHOW);
+  EnableWindow(hwnd, TRUE);
+}
+#endif
+
 void EmbedContainer::resyncForeignWindow() {
   if (!foreignAlive()) {
     foreignWid_ = 0;
@@ -108,10 +118,11 @@ void EmbedContainer::applyEmbed() {
   SetParent(child, host);
   SetWindowPos(child, nullptr, 0, 0, 0, 0,
                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-  ShowWindow(child, SW_SHOW);
+  ensureWindowShown(child);
   syncForeignGeometry();
   InvalidateRect(child, nullptr, TRUE);
   UpdateWindow(child);
+  InvalidateRect(host, nullptr, TRUE);
 #else
   Q_UNUSED(foreignWid_);
 #endif

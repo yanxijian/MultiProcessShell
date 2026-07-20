@@ -5,6 +5,8 @@ add_library(mps_host STATIC
   shell_app.hpp
   shell_window.cpp
   shell_window.hpp
+  tear_out_preview.cpp
+  tear_out_preview.hpp
   tab_info.hpp
   embed/win/embed_container.cpp
   embed/win/embed_container.hpp
@@ -25,5 +27,5 @@ target_link_libraries(mps_host
 )
 set_target_properties(mps_host PROPERTIES AUTOMOC ON)
 if(WIN32)
-  target_link_libraries(mps_host PUBLIC user32)
+  target_link_libraries(mps_host PUBLIC user32 gdi32)
 endif()

@@ -73,16 +73,33 @@ Examples: `Client1-Window1`, `Client1-Window2`, `Client2-Window1`.
 
 ## 5. Tear-out / merge (Chrome-like)
 
-1. Drag a **Client** tab outside → release creates a **new** shell (with Home + that tab).  
-2. If the source then has **no Client tabs** (Home only) and is not the sole shell → **destroy** the source.  
-3. Drop on another shell’s tab bar → merge at the insert marker.  
-4. Drag within the same shell onto other tabs → **reorder** (no tear-out).  
-5. DnD updates **Host model only**; never put HWND in mime; then reattach.  
-6. **Home** cannot tear out / merge / reorder.
+### 5.1 Drag visuals
+
+| Layer | When | Behavior |
+|-------|------|----------|
+| **Tab ghost** | As soon as a Client tab drag starts | Always follows the cursor; on the strip, **Y locks to the tab row**, X follows; after tear-out it stays above the window preview |
+| **Window preview** | After leaving the strip past the **leave slop** | Not an independent hotspot follow; positioned from the tab ghost so the preview **title/tab bar vertically wraps** the button (Home stub on the left); returning needs the tighter **return slop** to re-enter strip mode |
+
+While dragging: source tab is a transparent placeholder; other tabs on the same / merge-target shell **live-yield** (not a blue insert bar); source shell shows the previous active tab.  
+**After tear-out**: as soon as the window preview appears, siblings on the source shell **immediately claim** the vacated slot (no wait for mouse-up); returning to the strip re-opens a yield gap.  
+Over min / max / close → **forbidden cursor** (not a merge target).
+
+### 5.2 Drop rules
+
+1. **Horizontal drag in the same shell** → **reorder** from live yield (Home stays leftmost; cannot insert before Home).  
+2. **Release outside the strip** → **new top-level shell** at preview geometry (same wrap-around-tab alignment); preview briefly covers the new shell until the first embed paint (less flash).  
+3. **Drop on another shell’s tabs + trailing strip** → **merge** (live yield shows the slot; not window buttons).  
+4. **Esc** or release still near the strip / return hysteresis → **cancel** (ghost snaps back; no tear-out). On Windows OLE, Esc is polled by the Host.  
+5. If the source then has **no Client tabs** (Home only) and is not the sole shell → **destroy** the source.  
+6. DnD updates **Host model only**; mime carries only tabId (`application/x-mps-tab-id`), never HWND; then reattach.  
+7. **Home** cannot tear out / merge / reorder.
+
+Host notes: `TabDragGhost` + `TearOutPreview::alignToTabContent`; `previewTabYieldAtCursor` / `collapseTornOutTabSlot` / `commitTabYieldPreview`; the yield gap has no child widget so OLE may return `IgnoreAction` — Host still commits reorder/merge.
 
 ## 6. Close tab + activation history
 
-- Close Client tab → Host `QueryCloseSubWindow` → Client accepts and emits `SubWindowRemoved` (Host may remove the tab on accept).  
+- Close a Client tab (× **or middle-click the tab**, Chrome-like) → Host `QueryCloseSubWindow` → Client accepts and emits `SubWindowRemoved` (Host may remove the tab on accept; the Client child window closes with it).  
+- **Home** is not closable (middle-click ignored).  
 - MRU history includes **Home and Client tabs**; closing the active tab selects the previous still-present tab (not forced to Home).
 
 ## 7. Scope
@@ -97,10 +114,9 @@ Examples: `Client1-Window1`, `Client1-Window2`, `Client2-Window1`.
 
 Manual checklist: [demo-acceptance.md](demo-acceptance.md).
 
-
 ### 7.2 Deferred / simplified
 
-- Polished drag animation  
+- Continuous tab-ghost ↔ window-preview morph, stronger magnetic merge  
 - Heartbeat timer / unhealthy UI (protocol reserved)  
 - macOS / Linux embed  
 - Full multi-language EmbedHelper  
@@ -110,7 +126,7 @@ Manual checklist: [demo-acceptance.md](demo-acceptance.md).
 | Path | Role |
 |------|------|
 | `demos/` | `mps_demo_host` / `mps_demo_client` |
-| `src/host/` | Shell, tabs, sessions, Win embed |
+| `src/host/` | Shell, tabs, sessions, Win embed; tear-out: `tear_out_preview.*` |
 | `src/client/` | Client process and pages |
 | `src/common/` + `proto/` | Framing and IDL |
 | `dist/Demo/` | Windows double-click bundle (generated) |

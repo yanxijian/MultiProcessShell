@@ -169,11 +169,8 @@ void ClientApp::activatePage(qint64 tabId) {
   if (!page) {
     return;
   }
-  for (auto* p : pages_) {
-    if (p != page) {
-      p->hide();
-    }
-  }
+  // Do NOT hide other pages: each may be SetParent'd into a different Host shell.
+  // Visibility of non-active embeds is owned by the Host (ShowWindow / clearForeignWindow).
   page->show();
   active_ = page;
 }

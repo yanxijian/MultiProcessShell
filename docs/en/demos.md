@@ -21,5 +21,6 @@ On Windows, `build_repo.py` auto-runs `scripts/deploy_demo.py` (`windeployqt`) a
 ## Current UX
 
 - Permanent **Home** tab (not closable / not tear-out); **Create Client** on Home.  
-- Client tabs: close via ×; MRU activation history (not forced to Home).  
-- Same-Client New Window: `Invoke("demo.request_new_window")` → Host `CreateSubWindow`.
+- Client tabs: close via × **or middle-click**; MRU activation history (not forced to Home).  
+- Same-Client New Window: `Invoke("demo.request_new_window")` → Host `CreateSubWindow`.  
+- Tab drag: tab ghost + live yield on strip; after leaving the strip the window preview **wraps** the tab and the source slot is claimed immediately; Esc cancel snaps back; merge hot zone excludes window buttons.

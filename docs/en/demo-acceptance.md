@@ -20,20 +20,28 @@ Manual regression. Finish this list before later polish (tab overflow, REQ timeo
 ## Close tab / MRU
 
 - [ ] Activate A→B→C, close C → returns to B (not forced Home)
+- [ ] Middle-click a Client tab → closes that tab and its Client child window (same as ×)
+- [ ] Middle-click Home → no effect
 - [ ] After closing all tabs of a Client, Home Create Client still works
 
 ## Same-shell reorder
 
-- [ ] Drag a Client tab within one shell; blue insert marker appears
+- [ ] Drag a Client tab within one shell: tab ghost follows; siblings **live-yield** (no blue insert bar)
 - [ ] Drop changes tab order; switching tabs still shows correct embeds
 - [ ] Home stays leftmost; cannot insert before Home
+- [ ] Esc cancel snaps the ghost back; order unchanged
 
 ## Tear-out / merge
 
-- [ ] Drag Client tab outside shell → new top-level shell with that tab
+- [ ] Leave the strip past leave slop → window preview appears; its tab bar vertically wraps the tab ghost (ghost on top)
+- [ ] Once the preview appears, siblings on the source shell immediately claim the vacated tab slot (before mouse-up)
+- [ ] Return near the strip (return hysteresis) → preview hides; strip yield resumes
+- [ ] Fast vertical drag keeps wrap alignment between preview and tab ghost
+- [ ] Drag Client tab outside → new top-level shell with that tab; no long black/empty flash
 - [ ] If source has no remaining Client tabs (Home only) and is not the last shell → source destroyed
-- [ ] Drop onto another shell’s title/tab strip → merge at insert marker; source rules as above
-- [ ] After tear-out/merge, embed fills area, shell focuses, no long black/empty flash
+- [ ] Drop onto another shell’s tabs / trailing strip → merge (yield shows slot); source rules as above
+- [ ] Over min / max / close → forbidden cursor; no merge
+- [ ] After tear-out/merge, embed fills area and shell focuses
 
 ## Close shell / kill process
 
