@@ -3,6 +3,7 @@
 #include <QLocalSocket>
 #include <QUuid>
 #include <QGuiApplication>
+#include <QCoreApplication>
 #include <QDragEnterEvent>
 #include <QDragMoveEvent>
 #include <QDropEvent>
@@ -50,8 +51,19 @@ void ShellApp::bindShell(ShellWindow* shell) {
   });
   connect(shell, &ShellWindow::tabTearOutRequested, this,
           [this, shell](qint64 tabId, QPoint pos) { tearOutTab(shell, tabId, pos); });
+  connect(shell, &ShellWindow::shellCloseRequested, this, &ShellApp::closeShell);
+  connect(shell, &ShellWindow::dropIndicatorsClearRequested, this,
+          &ShellApp::clearAllDropIndicators);
 
   shell->installChromeDropFilter(this);
+}
+
+void ShellApp::clearAllDropIndicators() {
+  for (auto& shell : shells_) {
+    if (shell) {
+      shell->clearDropInsertIndicator();
+    }
+  }
 }
 
 ShellWindow* ShellApp::shellFromChromeTarget(QObject* watched) const {
@@ -77,12 +89,27 @@ bool ShellApp::eventFilter(QObject* watched, QEvent* event) {
     return QObject::eventFilter(watched, event);
   }
 
+  if (event->type() == QEvent::DragLeave) {
+    shell->clearDropInsertIndicator();
+    return false;
+  }
+
   if (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove) {
     auto* de = static_cast<QDragMoveEvent*>(event);
     if (!de->mimeData()->hasFormat(QString::fromUtf8(kTabMime))) {
       return false;
     }
-    // Receiving widget is already chrome (see installChromeDropFilter).
+    QPoint dropGlobal = QCursor::pos();
+    if (auto* w = qobject_cast<QWidget*>(watched)) {
+      dropGlobal = w->mapToGlobal(de->position().toPoint());
+    }
+    // Only one shell shows an indicator at a time.
+    for (auto& s : shells_) {
+      if (s && s.get() != shell) {
+        s->clearDropInsertIndicator();
+      }
+    }
+    shell->updateDropInsertIndicator(shell->tabInsertIndexAt(dropGlobal));
     de->acceptProposedAction();
     return true;
   }
@@ -92,13 +119,24 @@ bool ShellApp::eventFilter(QObject* watched, QEvent* event) {
       return false;
     }
     const qint64 tabId = de->mimeData()->data(QString::fromUtf8(kTabMime)).toLongLong();
+    QPoint dropGlobal = QCursor::pos();
+    if (auto* w = qobject_cast<QWidget*>(watched)) {
+      dropGlobal = w->mapToGlobal(de->position().toPoint());
+    }
+    const int insertIndex = shell->tabInsertIndexAt(dropGlobal);
+    clearAllDropIndicators();
     auto* source = shellForTab(tabId);
-    if (!source || source == shell) {
-      // Same shell chrome: keep tab here (cancel tear-out).
+    if (!source) {
       de->acceptProposedAction();
       return true;
     }
-    mergeTab(tabId, shell);
+    if (source == shell) {
+      // Same top-level window: reorder tab + bound client.
+      shell->moveTab(tabId, insertIndex);
+      de->acceptProposedAction();
+      return true;
+    }
+    mergeTab(tabId, shell, insertIndex);
     de->acceptProposedAction();
     return true;
   }
@@ -115,28 +153,31 @@ void ShellApp::createClientOn(ShellWindow* shell) {
   connect(raw, &ClientSession::subWindowAdded, this, &ShellApp::onSubWindowAdded);
   connect(raw, &ClientSession::subWindowRemoved, this, &ShellApp::onSubWindowRemoved);
   connect(raw, &ClientSession::sessionDead, this, &ShellApp::onSessionDead);
-  connect(raw, &ClientSession::invokeNewWindow, this, [this](ClientSession* session) {
-    const int m = nextWindowIndex_[session->clientIndex()]++;
-    const qint64 tabId = nextTabId_++;
-    const QString title = makeTitle(session->clientIndex(), m);
-    // Place on shell that already hosts this session if any.
-    ShellWindow* shell = nullptr;
-    for (auto& s : shells_) {
-      for (const auto& t : s->tabs()) {
-        if (t.session == session) {
-          shell = s.get();
-          break;
-        }
-      }
-      if (shell) {
-        break;
-      }
-    }
-    if (shell) {
-      pendingFirstShell_.insert(session, shell);
-    }
-    session->requestCreateSubWindow(tabId, title);
-  });
+  connect(raw, &ClientSession::invokeNewWindow, this,
+          [this](ClientSession* session, qint64 sourceTabId) {
+            const int m = nextWindowIndex_[session->clientIndex()]++;
+            const qint64 tabId = nextTabId_++;
+            const QString title = makeTitle(session->clientIndex(), m);
+            // Prefer the shell that hosts the page where the user clicked.
+            ShellWindow* shell = shellForTab(sourceTabId);
+            if (!shell) {
+              // Fallback: any shell that already hosts this session (prefer last match).
+              for (auto& s : shells_) {
+                for (const auto& t : s->tabs()) {
+                  if (t.session == session) {
+                    shell = s.get();
+                  }
+                }
+              }
+            }
+            if (!shell && !shells_.empty()) {
+              shell = shells_.back().get();
+            }
+            if (shell) {
+              pendingFirstShell_.insert(session, shell);
+            }
+            session->requestCreateSubWindow(tabId, title);
+          });
   raw->startClientProcess(clientExe_, token_);
   sessions_.push_back(std::move(session));
 }
@@ -176,21 +217,18 @@ void ShellApp::onSubWindowAdded(ClientSession* session, qint64 tabId, QString ti
                                 quintptr wid) {
   ShellWindow* shell = pendingFirstShell_.take(session);
   if (!shell) {
-    // Additional window: put on shell that currently has a tab of this session, else first shell.
+    // Additional window without pending: prefer shell that already hosts this session
+    // (last match — closer to tear-out target than shells_.front()).
     for (auto& s : shells_) {
       for (const auto& t : s->tabs()) {
         if (t.session == session) {
           shell = s.get();
-          break;
         }
-      }
-      if (shell) {
-        break;
       }
     }
   }
   if (!shell && !shells_.empty()) {
-    shell = shells_.front().get();
+    shell = shells_.back().get();
   }
   if (!shell) {
     return;
@@ -221,11 +259,17 @@ void ShellApp::onSubWindowRemoved(ClientSession* session, qint64 tabId) {
 }
 
 void ShellApp::onSessionDead(ClientSession* session) {
-  QList<qint64> tabs;
-  for (auto it = tabToShell_.begin(); it != tabToShell_.end(); ++it) {
-    // find tabs of this session
+  if (!session) {
+    return;
   }
+  // Disconnect further death signals — process finished + socket disconnect both fire.
+  session->disconnect(this);
+
+  QList<qint64> tabs;
   for (auto& shell : shells_) {
+    if (!shell) {
+      continue;
+    }
     const auto copy = shell->tabs();
     for (const auto& t : copy) {
       if (t.session == session) {
@@ -235,6 +279,7 @@ void ShellApp::onSessionDead(ClientSession* session) {
   }
   for (qint64 id : tabs) {
     if (auto* shell = tabToShell_.take(id)) {
+      shell->releaseEmbedOwnershipForTab(id);
       shell->removeTab(id);
       destroyShellIfEmpty(shell);
     }
@@ -245,6 +290,39 @@ void ShellApp::onSessionDead(ClientSession* session) {
                                    return p.get() == session;
                                  }),
                   sessions_.end());
+}
+
+void ShellApp::closeShell(ShellWindow* shell) {
+  if (!shell) {
+    return;
+  }
+  const auto tabs = shell->tabs();
+  for (const auto& t : tabs) {
+    if (t.isHome) {
+      continue;
+    }
+    tabToShell_.remove(t.tabId);
+    shell->releaseEmbedOwnershipForTab(t.tabId);
+    shell->removeTab(t.tabId);
+    if (t.session) {
+      t.session->requestClose(t.tabId);
+    }
+  }
+
+  // Drop from ownership list before force-close.
+  for (auto it = shells_.begin(); it != shells_.end(); ++it) {
+    if (it->get() == shell) {
+      ShellWindow* raw = it->release();
+      shells_.erase(it);
+      raw->forceClose();
+      raw->deleteLater();
+      break;
+    }
+  }
+
+  if (shells_.empty()) {
+    QCoreApplication::quit();
+  }
 }
 
 void ShellApp::closeTab(qint64 tabId) {
@@ -292,6 +370,8 @@ void ShellApp::tearOutTab(ShellWindow* source, qint64 tabId, QPoint globalPos) {
   if (!found || moved.isHome) {
     return;
   }
+  clearAllDropIndicators();
+  source->releaseEmbedOwnershipForTab(tabId);
   source->removeTab(tabId);
   tabToShell_.remove(tabId);
 
@@ -303,10 +383,13 @@ void ShellApp::tearOutTab(ShellWindow* source, qint64 tabId, QPoint globalPos) {
   }
   neu->raise();
   neu->activateWindow();
+  if (neu->embed()) {
+    neu->embed()->resyncForeignWindow();
+  }
   destroyShellIfEmpty(source);
 }
 
-void ShellApp::mergeTab(qint64 tabId, ShellWindow* target) {
+void ShellApp::mergeTab(qint64 tabId, ShellWindow* target, int insertIndex) {
   if (tabId == kHomeTabId) {
     return;
   }
@@ -324,11 +407,22 @@ void ShellApp::mergeTab(qint64 tabId, ShellWindow* target) {
   if (!moved.tabId || moved.isHome) {
     return;
   }
+  clearAllDropIndicators();
+  source->releaseEmbedOwnershipForTab(tabId);
   source->removeTab(tabId);
   tabToShell_.insert(tabId, target);
-  target->addTab(moved);
+  if (insertIndex < 0) {
+    target->addTab(moved);
+  } else {
+    target->insertTab(moved, insertIndex);
+  }
   if (moved.session) {
     moved.session->notifyReattachment(target->shellId());
+  }
+  target->raise();
+  target->activateWindow();
+  if (target->embed()) {
+    target->embed()->resyncForeignWindow();
   }
   destroyShellIfEmpty(source);
 }
@@ -358,7 +452,7 @@ void ShellApp::destroyShellIfEmpty(ShellWindow* shell) {
     if (it->get() == shell) {
       ShellWindow* raw = it->release();
       shells_.erase(it);
-      raw->close();
+      raw->forceClose();
       raw->deleteLater();
       return;
     }

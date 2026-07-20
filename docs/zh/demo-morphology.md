@@ -12,7 +12,8 @@
 | 并列 | 不同 Client 进程的窗口以 **Tab** 并列在同一顶层壳窗 |
 | 关闭 | 可单独关闭某个 Client Tab；关闭后按 **激活历史（MRU）** 切回上一 Tab |
 | 拖出 | 将 Client Tab **拖出** 成新的顶层壳窗 |
-| 合入 | 将 Tab **拖入** 另一顶层壳窗的 Tab 栏 |
+| 合入 | 将 Tab **拖入** 另一顶层壳窗的 Tab 栏（按落点插入） |
+| 同窗重排 | 在同一顶层壳内拖动 Client Tab，调整顺序 |
 | 空壳销毁 | 若某壳已无剩余 **Client Tab**（仅剩 Home），且不是唯一顶层壳 → **销毁该壳** |
 
 首期平台：**Windows（形态 A）**。
@@ -76,9 +77,10 @@ Client{N}-Window{M}
 
 1. 按住 **Client** Tab 拖出壳外 → 释放后 **新建** 一个顶层壳（含 Home + 该 Tab）。  
 2. 若原壳因此 **没有剩余 Client Tab**（仅剩 Home）且不是唯一壳 → **销毁原顶层壳**。  
-3. 拖到另一壳的 Tab 栏 → 合入。  
-4. DnD **只改 Host 侧模型**，禁止在 mime 中传 HWND；合入/拖出后再 reattach。  
-5. **Home** 不可拖出 / 合入。
+3. 拖到另一壳的 Tab 栏 → 按插入指示合入。  
+4. 在同一壳内拖到其他 Tab 左/右侧 → **重排**（不撕出）。  
+5. DnD **只改 Host 侧模型**，禁止在 mime 中传 HWND；合入/拖出后再 reattach。  
+6. **Home** 不可拖出 / 合入 / 重排。
 
 ## 6. 关 Tab 与激活链
 
@@ -89,10 +91,13 @@ Client{N}-Window{M}
 
 ### 7.1 本 Demo 要做（已实现）
 
-- 单实例启动 → 一壳 + **Home** +「创建 Client」  
+- 单实例启动 → 一壳 + **Home** +「Create Client」  
 - 多 Client 进程 + 同 Client 多子窗 + Tab 名递增  
-- 关 Tab（激活历史）、拖出新壳、合入他壳、无 Client Tab 时毁多余壳  
-- Windows `SetParent` 嵌入 + Protobuf Protobuf 合约  
+- 关 Tab（激活历史）、同窗重排、拖出新壳、合入他壳、无 Client Tab 时毁多余壳  
+- 关壳清理 / 杀 Client 后 Host 不崩  
+- Windows `SetParent` 嵌入 + 精简 Protobuf 合约  
+
+手工验收步骤见 [demo-acceptance.md](demo-acceptance.md)。
 
 ### 7.2 可后置或简化
 

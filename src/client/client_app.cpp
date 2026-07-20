@@ -113,11 +113,12 @@ void ClientApp::ensureMainReported() {
 void ClientApp::createPage(qint64 tabId, const QString& title) {
   auto* page = new PageWindow(tabId, title);
   pages_.insert(tabId, page);
-  connect(page, &PageWindow::requestNewWindow, this, [this] {
+  connect(page, &PageWindow::requestNewWindow, this, [this, tabId] {
     shell::ipc::v1::Envelope env;
     env.set_protocol(1);
     env.set_id(mps::ipc::newCorrelationId());
     env.set_dir(shell::ipc::v1::DIR_REQ);
+    env.set_tab_id(tabId);
     env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
     env.mutable_invoke()->set_method("demo.request_new_window");
     channel_->send(env);

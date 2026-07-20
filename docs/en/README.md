@@ -12,6 +12,7 @@ Phase-1 platform: **Windows (form A)**; macOS / Linux directories are placeholde
 |-------|-------------|---------|
 | Product spec | [../zh/multiprocess-shell-spec.md](../zh/multiprocess-shell-spec.md) | [multiprocess-shell-spec.md](multiprocess-shell-spec.md) |
 | Demo morphology | [../zh/demo-morphology.md](../zh/demo-morphology.md) | [demo-morphology.md](demo-morphology.md) |
+| Demo acceptance | [../zh/demo-acceptance.md](../zh/demo-acceptance.md) | [demo-acceptance.md](demo-acceptance.md) |
 | Demo IPC | [../zh/demo-ipc.md](../zh/demo-ipc.md) | [demo-ipc.md](demo-ipc.md) |
 | IPC alternatives (future) | [../zh/ipc-alternatives.md](../zh/ipc-alternatives.md) | [ipc-alternatives.md](ipc-alternatives.md) |
 | Build | [../zh/build.md](../zh/build.md) | [build.md](build.md) |

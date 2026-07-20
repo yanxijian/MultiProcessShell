@@ -50,6 +50,8 @@ public:
 
   [[nodiscard]] qint64 shellId() const { return shellId_; }
   void addTab(const TabInfo& info);
+  void insertTab(const TabInfo& info, int insertIndex);
+  void moveTab(qint64 tabId, int insertIndex);
   void removeTab(qint64 tabId);
   void setActiveTab(qint64 tabId);
   [[nodiscard]] QVector<TabInfo> tabs() const { return tabs_; }
@@ -59,9 +61,16 @@ public:
   [[nodiscard]] QWidget* titleBarWidget() const { return titleBar_; }
   [[nodiscard]] bool isOverChrome(QPoint globalPos) const;
   [[nodiscard]] bool isChromeDropTarget(const QObject* watched) const;
+  [[nodiscard]] int tabInsertIndexAt(QPoint globalPos) const;
+  void updateDropInsertIndicator(int insertIndex);
+  void clearDropInsertIndicator();
+  /// Stop tracking active HWND without Hide (tear-out/merge handoff).
+  void releaseEmbedOwnershipForTab(qint64 tabId);
   void installChromeDropFilter(QObject* filter);
   void showEmptyState(bool empty);
   void takeTabsFrom(ShellWindow* other, const QList<qint64>& tabIds);
+  /// Close without emitting shellCloseRequested (app-driven teardown).
+  void forceClose();
 
 signals:
   void createClientClicked();
@@ -69,6 +78,8 @@ signals:
   void tabActivated(qint64 tabId);
   void tabTearOutRequested(qint64 tabId, QPoint globalPos);
   void tabMergeRequested(qint64 tabId, ShellWindow* target, int insertIndex);
+  void shellCloseRequested(ShellWindow* self);
+  void dropIndicatorsClearRequested();
 
 protected:
   void closeEvent(QCloseEvent* event) override;
@@ -80,6 +91,7 @@ private:
   void syncWorkspace();
   void pushActivationHistory(qint64 tabId);
   void reinstallChromeDropTargets();
+  void scheduleEmbedResync();
   [[nodiscard]] qint64 previousActivationTarget(qint64 closingTabId) const;
   TabInfo* findTab(qint64 tabId);
   [[nodiscard]] const TabInfo* findTab(qint64 tabId) const;
@@ -89,6 +101,7 @@ private:
   qint64 shellId_ = 0;
   QWidget* titleBar_ = nullptr;
   QWidget* captionDrag_ = nullptr;  // blank area: system-move only (not tabs)
+  QWidget* dropIndicator_ = nullptr;
   QHBoxLayout* tabRow_ = nullptr;
   QStackedWidget* stack_ = nullptr;
   QWidget* emptyPage_ = nullptr;
@@ -98,6 +111,7 @@ private:
   qint64 activeTabId_ = kHomeTabId;
   QList<qint64> activationHistory_;  // MRU: most recently activated first
   QList<TabButton*> tabButtons_;
+  bool forceClosing_ = false;
 };
 
 }  // namespace mps::host

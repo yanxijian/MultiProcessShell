@@ -7,6 +7,7 @@
 #include <QLocalSocket>
 #include <QObject>
 #include <QProcess>
+#include <QHash>
 #include <memory>
 
 namespace mps::host {
@@ -31,6 +32,7 @@ public:
   void requestClose(qint64 tabId);
   void notifyReattachment(qint64 shellId);
   void setDragSuppress(bool on);
+  [[nodiscard]] bool isDead() const { return dead_; }
 
 signals:
   void sessionHelloOk(ClientSession* self);
@@ -38,17 +40,19 @@ signals:
   void subWindowAdded(ClientSession* self, qint64 tabId, QString title, quintptr wid);
   void subWindowRemoved(ClientSession* self, qint64 tabId);
   void sessionDead(ClientSession* self);
-  void invokeNewWindow(ClientSession* self);
+  void invokeNewWindow(ClientSession* self, qint64 sourceTabId);
 
 private:
   void onEnvelope(shell::ipc::v1::Envelope env);
   void sendHelloAck();
+  void markDead();
 
   int clientIndex_ = 0;
   qint64 pageId_ = 0;
   QString endpoint_;
   bool ready_ = false;
   bool helloSeen_ = false;
+  bool dead_ = false;
   QProcess* process_ = nullptr;
   QLocalSocket* socket_ = nullptr;
   std::unique_ptr<mps::ipc::EnvelopeChannel> channel_;

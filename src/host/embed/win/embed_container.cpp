@@ -2,6 +2,7 @@
 
 #include <QResizeEvent>
 #include <QShowEvent>
+#include <QTimer>
 
 namespace mps::host {
 
@@ -11,25 +12,67 @@ EmbedContainer::EmbedContainer(QWidget* parent) : QWidget(parent) {
   setMinimumSize(200, 150);
 }
 
-void EmbedContainer::clearForeignWindow() {
+bool EmbedContainer::foreignAlive() const {
 #ifdef Q_OS_WIN
-  if (foreignWid_) {
+  if (!foreignWid_) {
+    return false;
+  }
+  return IsWindow(reinterpret_cast<HWND>(foreignWid_)) != FALSE;
+#else
+  return foreignWid_ != 0;
+#endif
+}
+
+void EmbedContainer::clearForeignWindow(bool hide) {
+#ifdef Q_OS_WIN
+  if (foreignWid_ && IsWindow(reinterpret_cast<HWND>(foreignWid_))) {
     const HWND child = reinterpret_cast<HWND>(foreignWid_);
     SetParent(child, nullptr);
-    ShowWindow(child, SW_HIDE);
+    if (hide) {
+      ShowWindow(child, SW_HIDE);
+    }
   }
+#else
+  Q_UNUSED(hide);
 #endif
   foreignWid_ = 0;
 }
 
+void EmbedContainer::releaseForeignWindow() {
+  // Caller will reparent; avoid Hide to reduce flash during tear-out/merge.
+  foreignWid_ = 0;
+}
+
 void EmbedContainer::setForeignWindow(quintptr wid) {
+#ifdef Q_OS_WIN
+  if (wid && !IsWindow(reinterpret_cast<HWND>(wid))) {
+    wid = 0;
+  }
+#endif
   if (foreignWid_ == wid) {
-    syncForeignGeometry();
+    if (wid) {
+      resyncForeignWindow();
+    }
     return;
   }
-  clearForeignWindow();
+  if (foreignWid_) {
+    clearForeignWindow(true);
+  }
   foreignWid_ = wid;
   applyEmbed();
+}
+
+void EmbedContainer::resyncForeignWindow() {
+  if (!foreignAlive()) {
+    foreignWid_ = 0;
+    return;
+  }
+  applyEmbed();
+  QTimer::singleShot(0, this, [this] {
+    if (foreignAlive()) {
+      syncForeignGeometry();
+    }
+  });
 }
 
 void EmbedContainer::resizeEvent(QResizeEvent* event) {
@@ -44,7 +87,8 @@ void EmbedContainer::showEvent(QShowEvent* event) {
 
 void EmbedContainer::applyEmbed() {
 #ifdef Q_OS_WIN
-  if (!foreignWid_) {
+  if (!foreignAlive()) {
+    foreignWid_ = 0;
     return;
   }
   winId();  // ensure native handle
@@ -66,6 +110,8 @@ void EmbedContainer::applyEmbed() {
                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
   ShowWindow(child, SW_SHOW);
   syncForeignGeometry();
+  InvalidateRect(child, nullptr, TRUE);
+  UpdateWindow(child);
 #else
   Q_UNUSED(foreignWid_);
 #endif
@@ -73,7 +119,8 @@ void EmbedContainer::applyEmbed() {
 
 void EmbedContainer::syncForeignGeometry() {
 #ifdef Q_OS_WIN
-  if (!foreignWid_) {
+  if (!foreignAlive()) {
+    foreignWid_ = 0;
     return;
   }
   winId();

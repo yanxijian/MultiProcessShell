@@ -14,8 +14,13 @@ class EmbedContainer final : public QWidget {
 public:
   explicit EmbedContainer(QWidget* parent = nullptr);
 
-  void clearForeignWindow();
+  /// Detach and optionally hide the foreign window, then forget it.
+  void clearForeignWindow(bool hide = true);
+  /// Stop tracking without SetParent(null)/Hide — next host will reparent.
+  void releaseForeignWindow();
   void setForeignWindow(quintptr wid);
+  /// Force geometry + show after shell move / reattach.
+  void resyncForeignWindow();
   [[nodiscard]] quintptr foreignWindow() const { return foreignWid_; }
 
 protected:
@@ -25,6 +30,7 @@ protected:
 private:
   void syncForeignGeometry();
   void applyEmbed();
+  [[nodiscard]] bool foreignAlive() const;
 
   quintptr foreignWid_ = 0;
 };

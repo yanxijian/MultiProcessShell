@@ -201,16 +201,67 @@ void ShellWindow::syncWorkspace() {
   const TabInfo* active = findTab(activeTabId_);
   const bool showHome = !active || active->isHome || active->wid == 0;
   if (showHome) {
-    embed_->clearForeignWindow();
+    embed_->clearForeignWindow(true);
     stack_->setCurrentWidget(emptyPage_);
   } else {
     stack_->setCurrentWidget(embed_);
     embed_->setForeignWindow(active->wid);
-    QTimer::singleShot(0, this, [this] {
-      if (auto* t = findTab(activeTabId_); t && !t->isHome && t->wid) {
-        embed_->setForeignWindow(t->wid);
-      }
-    });
+    scheduleEmbedResync();
+  }
+}
+
+void ShellWindow::scheduleEmbedResync() {
+  QTimer::singleShot(0, this, [this] {
+    if (auto* t = findTab(activeTabId_); t && !t->isHome && t->wid) {
+      embed_->setForeignWindow(t->wid);
+      embed_->resyncForeignWindow();
+    }
+  });
+}
+
+void ShellWindow::releaseEmbedOwnershipForTab(qint64 tabId) {
+  if (activeTabId_ != tabId || !embed_) {
+    return;
+  }
+  embed_->releaseForeignWindow();
+}
+
+void ShellWindow::updateDropInsertIndicator(int insertIndex) {
+  if (!titleBar_ || tabButtons_.isEmpty()) {
+    return;
+  }
+  insertIndex = qBound(1, insertIndex, tabs_.size());
+  if (!dropIndicator_) {
+    dropIndicator_ = new QWidget(titleBar_);
+    dropIndicator_->setObjectName(QStringLiteral("DropInsertIndicator"));
+    dropIndicator_->setFixedWidth(3);
+    dropIndicator_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    dropIndicator_->setStyleSheet(
+        QStringLiteral("#DropInsertIndicator { background: #2d6cdf; border-radius: 1px; }"));
+  }
+
+  int x = 8;
+  if (insertIndex < tabButtons_.size()) {
+    auto* btn = tabButtons_[insertIndex];
+    if (btn) {
+      x = btn->geometry().left();
+    }
+  } else if (!tabButtons_.isEmpty()) {
+    auto* last = tabButtons_.last();
+    if (last) {
+      x = last->geometry().right() + 2;
+    }
+  }
+  const int y = 4;
+  const int h = qMax(8, titleBar_->height() - 8);
+  dropIndicator_->setGeometry(x - 1, y, 3, h);
+  dropIndicator_->show();
+  dropIndicator_->raise();
+}
+
+void ShellWindow::clearDropInsertIndicator() {
+  if (dropIndicator_) {
+    dropIndicator_->hide();
   }
 }
 
@@ -269,12 +320,77 @@ void ShellWindow::reinstallChromeDropTargets() {
 }
 
 void ShellWindow::addTab(const TabInfo& info) {
+  insertTab(info, tabs_.size());
+}
+
+void ShellWindow::insertTab(const TabInfo& info, int insertIndex) {
   if (info.isHome) {
     return;
   }
-  tabs_.push_back(info);
+  // Home stays at index 0; client tabs occupy [1, size].
+  insertIndex = qBound(1, insertIndex, tabs_.size());
+  tabs_.insert(insertIndex, info);
   setActiveTab(info.tabId);
   rebuildTabs();
+}
+
+void ShellWindow::moveTab(qint64 tabId, int insertIndex) {
+  if (tabId == kHomeTabId) {
+    return;
+  }
+  int from = -1;
+  for (int i = 0; i < tabs_.size(); ++i) {
+    if (tabs_[i].tabId == tabId) {
+      from = i;
+      break;
+    }
+  }
+  if (from < 0 || tabs_[from].isHome) {
+    return;
+  }
+  insertIndex = qBound(1, insertIndex, tabs_.size());
+  if (insertIndex == from || insertIndex == from + 1) {
+    return;  // same slot (before/after self)
+  }
+  const TabInfo moved = tabs_.takeAt(from);
+  if (insertIndex > from) {
+    --insertIndex;
+  }
+  insertIndex = qBound(1, insertIndex, tabs_.size());
+  tabs_.insert(insertIndex, moved);
+  rebuildTabs();
+  setActiveTab(tabId);
+}
+
+int ShellWindow::tabInsertIndexAt(QPoint globalPos) const {
+  // Default: append after all tabs.
+  int insert = tabs_.size();
+  for (int i = 0; i < tabButtons_.size(); ++i) {
+    auto* btn = tabButtons_[i];
+    if (!btn) {
+      continue;
+    }
+    const QRect r(btn->mapToGlobal(QPoint(0, 0)), btn->size());
+    if (!r.contains(globalPos)) {
+      continue;
+    }
+    if (btn->info().isHome) {
+      // Never place a client tab before Home.
+      return 1;
+    }
+    int idx = -1;
+    for (int t = 0; t < tabs_.size(); ++t) {
+      if (tabs_[t].tabId == btn->info().tabId) {
+        idx = t;
+        break;
+      }
+    }
+    if (idx < 0) {
+      break;
+    }
+    return (globalPos.x() < r.center().x()) ? idx : (idx + 1);
+  }
+  return insert;
 }
 
 void ShellWindow::removeTab(qint64 tabId) {
@@ -311,6 +427,8 @@ void ShellWindow::setActiveTab(qint64 tabId) {
   syncWorkspace();
   if (auto* t = findTab(tabId); t && t->session && !t->isHome) {
     t->session->requestActivate(tabId);
+    raise();
+    activateWindow();
   }
 }
 
@@ -387,6 +505,8 @@ void ShellWindow::rebuildTabs() {
         drag->setDragCursor(cursorPm, Qt::CopyAction);
         drag->setDragCursor(cursorPm, Qt::IgnoreAction);
         const auto drop = drag->exec(Qt::MoveAction);
+        emit dropIndicatorsClearRequested();
+        clearDropInsertIndicator();
         if (auto* info = findTab(tabId); info && info->session) {
           info->session->setDragSuppress(false);
         }
@@ -429,14 +549,23 @@ void ShellWindow::takeTabsFrom(ShellWindow* other, const QList<qint64>& tabIds) 
   }
 }
 
-void ShellWindow::closeEvent(QCloseEvent* event) {
-  const auto copy = tabs_;
-  for (const auto& t : copy) {
-    if (!t.isHome) {
-      emit tabCloseRequested(t.tabId);
-    }
+void ShellWindow::forceClose() {
+  forceClosing_ = true;
+  clearDropInsertIndicator();
+  if (embed_) {
+    embed_->releaseForeignWindow();
   }
-  QMainWindow::closeEvent(event);
+  close();
+}
+
+void ShellWindow::closeEvent(QCloseEvent* event) {
+  if (forceClosing_) {
+    QMainWindow::closeEvent(event);
+    return;
+  }
+  // Route through ShellApp so tabs/sessions/shells_ stay consistent.
+  event->ignore();
+  emit shellCloseRequested(this);
 }
 
 bool ShellWindow::eventFilter(QObject* watched, QEvent* event) {

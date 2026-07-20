@@ -2,6 +2,7 @@
 
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QHash>
 #include <QLocalSocket>
 
 namespace mps::host {
@@ -30,7 +31,7 @@ ClientSession::~ClientSession() {
 void ClientSession::startClientProcess(const QString& clientExe, const QString& token) {
   process_ = new QProcess(this);
   connect(process_, &QProcess::finished, this, [this](int, QProcess::ExitStatus) {
-    emit sessionDead(this);
+    markDead();
   });
   QStringList args;
   args << QStringLiteral("--from-host")
@@ -46,8 +47,16 @@ void ClientSession::attachSocket(QLocalSocket* socket) {
   channel_ = std::make_unique<mps::ipc::EnvelopeChannel>(socket_, this);
   channel_->setHandler([this](shell::ipc::v1::Envelope env) { onEnvelope(std::move(env)); });
   connect(channel_.get(), &mps::ipc::EnvelopeChannel::disconnected, this, [this] {
-    emit sessionDead(this);
+    markDead();
   });
+}
+
+void ClientSession::markDead() {
+  if (dead_) {
+    return;
+  }
+  dead_ = true;
+  emit sessionDead(this);
 }
 
 void ClientSession::sendHelloAck() {
@@ -69,6 +78,9 @@ void ClientSession::sendHelloAck() {
 }
 
 void ClientSession::requestCreateSubWindow(qint64 tabId, const QString& title) {
+  if (dead_ || !channel_) {
+    return;
+  }
   pendingTabs_.push_back(tabId);
   shell::ipc::v1::Envelope env;
   env.set_protocol(1);
@@ -82,6 +94,9 @@ void ClientSession::requestCreateSubWindow(qint64 tabId, const QString& title) {
 }
 
 void ClientSession::requestActivate(qint64 tabId) {
+  if (dead_ || !channel_) {
+    return;
+  }
   shell::ipc::v1::Envelope env;
   env.set_protocol(1);
   env.set_id(mps::ipc::newCorrelationId());
@@ -94,6 +109,9 @@ void ClientSession::requestActivate(qint64 tabId) {
 }
 
 void ClientSession::requestClose(qint64 tabId) {
+  if (dead_ || !channel_) {
+    return;
+  }
   shell::ipc::v1::Envelope env;
   env.set_protocol(1);
   env.set_id(mps::ipc::newCorrelationId());
@@ -106,6 +124,9 @@ void ClientSession::requestClose(qint64 tabId) {
 }
 
 void ClientSession::notifyReattachment(qint64 shellId) {
+  if (dead_ || !channel_) {
+    return;
+  }
   shell::ipc::v1::Envelope env;
   env.set_protocol(1);
   env.set_id(mps::ipc::newCorrelationId());
@@ -117,6 +138,9 @@ void ClientSession::notifyReattachment(qint64 shellId) {
 }
 
 void ClientSession::setDragSuppress(bool on) {
+  if (dead_ || !channel_) {
+    return;
+  }
   shell::ipc::v1::Envelope env;
   env.set_protocol(1);
   env.set_id(mps::ipc::newCorrelationId());
@@ -174,8 +198,7 @@ void ClientSession::onEnvelope(shell::ipc::v1::Envelope env) {
   if (env.has_invoke()) {
     // Client asks Host to create another window in this session.
     if (env.invoke().method() == "demo.request_new_window") {
-      // Handled at ShellApp level via signal — forward through channel owner.
-      emit invokeNewWindow(this);
+      emit invokeNewWindow(this, env.tab_id());
       shell::ipc::v1::Envelope res;
       res.set_protocol(1);
       res.set_id(env.id());

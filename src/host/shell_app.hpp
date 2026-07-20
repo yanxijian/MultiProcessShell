@@ -20,7 +20,9 @@ public:
   void closeTab(qint64 tabId);
   void activateTab(ShellWindow* shell, qint64 tabId);
   void tearOutTab(ShellWindow* source, qint64 tabId, QPoint globalPos);
-  void mergeTab(qint64 tabId, ShellWindow* target);
+  void mergeTab(qint64 tabId, ShellWindow* target, int insertIndex = -1);
+  void closeShell(ShellWindow* shell);
+  void clearAllDropIndicators();
   [[nodiscard]] ShellWindow* shellForTab(qint64 tabId) const;
   [[nodiscard]] ShellWindow* shellAtGlobal(QPoint globalPos) const;
   [[nodiscard]] ShellWindow* shellFromChromeTarget(QObject* watched) const;

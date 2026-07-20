@@ -12,7 +12,8 @@ Chrome-like multi-window / multi-tab behavior:
 | Side-by-side | Windows from different Client processes appear as **tabs** in one shell |
 | Close | Close a Client tab; switch via **MRU activation history** |
 | Tear-out | Drag a Client tab **out** into a **new** top-level shell |
-| Merge | Drag a tab **into** another shell’s tab bar |
+| Merge | Drag a tab **into** another shell’s tab bar (insert at drop point) |
+| Reorder | Drag Client tabs within the same shell to change order |
 | Destroy empty | If a shell has **no Client tabs** left (Home only) and is not the sole shell → **destroy** it |
 
 Phase-1 platform: **Windows (form A)**.
@@ -74,9 +75,10 @@ Examples: `Client1-Window1`, `Client1-Window2`, `Client2-Window1`.
 
 1. Drag a **Client** tab outside → release creates a **new** shell (with Home + that tab).  
 2. If the source then has **no Client tabs** (Home only) and is not the sole shell → **destroy** the source.  
-3. Drop on another shell’s tab bar → merge.  
-4. DnD updates **Host model only**; never put HWND in mime; then reattach.  
-5. **Home** cannot tear out / merge.
+3. Drop on another shell’s tab bar → merge at the insert marker.  
+4. Drag within the same shell onto other tabs → **reorder** (no tear-out).  
+5. DnD updates **Host model only**; never put HWND in mime; then reattach.  
+6. **Home** cannot tear out / merge / reorder.
 
 ## 6. Close tab + activation history
 
@@ -89,8 +91,12 @@ Examples: `Client1-Window1`, `Client1-Window2`, `Client2-Window1`.
 
 - One shell at start → **Home** + Create Client  
 - Multi-Client processes + same-Client multi-window + title increments  
-- Close tab (history), tear-out, merge, destroy spare shells with no Client tabs  
+- Close tab (history), same-shell reorder, tear-out, merge, destroy spare shells with no Client tabs  
+- Shell close cleanup / Host survives Client kill  
 - Windows `SetParent` embed + minimal Protobuf contract  
+
+Manual checklist: [demo-acceptance.md](demo-acceptance.md).
+
 
 ### 7.2 Deferred / simplified
 
