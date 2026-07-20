@@ -4,7 +4,7 @@
 > **Status**: Alternatives list — **not** the current implementation.  
 > **Current path**: [demo-ipc.md](demo-ipc.md) and spec §5 — **Protobuf + length-prefixed Envelope + Named Pipe / UDS**.
 
-This note absorbs conclusions from a six-platform (desktop + mobile) C++ IPC guide and adds options more relevant to **MultiProcessShell** (chrome + embed).  
+This note compares common C++ / cross-language IPC options against **MultiProcessShell** (chrome + embed) constraints, for future stack changes.  
 **Do not treat this document as a replacement for the frozen Demo / `.proto` contract.**
 
 ---
@@ -46,7 +46,7 @@ Shell control messages are usually small and frequent; embed geometry/handles st
 | Linux / macOS / Android | UDS |
 | iOS / HarmonyOS Next | Sandbox-allowed UDS (e.g. under App Group) |
 
-Mobile often cannot freely fork processes; background freeze needs reconnect/retry. “Library builds on six platforms” ≠ “shell morphology works on six platforms.”
+Mobile often cannot freely fork processes; background freeze needs reconnect/retry. “Library builds on many platforms” ≠ “shell morphology works on those platforms.”
 
 ---
 
@@ -64,7 +64,7 @@ Mobile often cannot freely fork processes; background freeze needs reconnect/ret
 | **Chromium Mojo** | Strong desktop sandbox / handles | **Not recommended** for small teams | Deep Chromium/GN coupling |
 | **Thrift / newline JSON** | — | **Reject** as control primary | Dual IDL / fragile text |
 
-Guide mapping: Cap'n for all-C++; gRPC for cross-language UI; Zenoh for distributed/async — accepted as **optional futures**, not current work.
+Practical leaning for this repo: Cap'n if all-C++ and serialization CPU dominates; gRPC if the UI surface becomes multi-language; Zenoh for distributed/async data planes — all **optional futures**, not current work.
 
 ---
 
