@@ -7,6 +7,7 @@
 #include <QDrag>
 #include <QMimeData>
 #include <QMouseEvent>
+#include <QPainter>
 #include <QStackedWidget>
 #include <QStyle>
 #include <QTimer>
@@ -17,7 +18,21 @@ namespace mps::host {
 namespace {
 qint64 g_nextShellId = 1;
 const char* kTabMime = "application/x-mps-tab-id";
+
+QPixmap makeTabDragCursor() {
+  QPixmap pm(28, 28);
+  pm.fill(Qt::transparent);
+  QPainter p(&pm);
+  p.setRenderHint(QPainter::Antialiasing, true);
+  p.setPen(QPen(QColor(40, 40, 40), 1.2));
+  p.setBrush(QColor(245, 245, 245, 230));
+  p.drawRoundedRect(QRectF(3, 8, 18, 12), 3, 3);
+  p.setBrush(QColor(80, 80, 80));
+  p.setPen(Qt::NoPen);
+  p.drawEllipse(QPointF(20, 20), 5, 5);
+  return pm;
 }
+}  // namespace
 
 TabButton::TabButton(const TabInfo& info, QWidget* parent) : QFrame(parent), info_(info) {
   setObjectName(QStringLiteral("TabButton"));
@@ -217,6 +232,42 @@ bool ShellWindow::isOverChrome(QPoint globalPos) const {
   return r.contains(globalPos);
 }
 
+bool ShellWindow::isChromeDropTarget(const QObject* watched) const {
+  if (!watched || !titleBar_) {
+    return false;
+  }
+  if (watched == titleBar_ || watched == captionDrag_) {
+    return true;
+  }
+  const auto* w = qobject_cast<const QWidget*>(watched);
+  return w && titleBar_->isAncestorOf(w);
+}
+
+void ShellWindow::installChromeDropFilter(QObject* filter) {
+  chromeDropFilter_ = filter;
+  setAcceptDrops(false);
+  reinstallChromeDropTargets();
+}
+
+void ShellWindow::reinstallChromeDropTargets() {
+  if (!chromeDropFilter_ || !titleBar_) {
+    return;
+  }
+  titleBar_->setAcceptDrops(true);
+  titleBar_->installEventFilter(chromeDropFilter_);
+  if (captionDrag_) {
+    captionDrag_->setAcceptDrops(true);
+    captionDrag_->installEventFilter(chromeDropFilter_);
+  }
+  for (auto* btn : tabButtons_) {
+    if (!btn) {
+      continue;
+    }
+    btn->setAcceptDrops(true);
+    btn->installEventFilter(chromeDropFilter_);
+  }
+}
+
 void ShellWindow::addTab(const TabInfo& info) {
   if (info.isHome) {
     return;
@@ -331,6 +382,10 @@ void ShellWindow::rebuildTabs() {
           drag->setPixmap(btnSender->grab());
           drag->setHotSpot(QPoint(btnSender->width() / 2, btnSender->height() / 2));
         }
+        const QPixmap cursorPm = makeTabDragCursor();
+        drag->setDragCursor(cursorPm, Qt::MoveAction);
+        drag->setDragCursor(cursorPm, Qt::CopyAction);
+        drag->setDragCursor(cursorPm, Qt::IgnoreAction);
         const auto drop = drag->exec(Qt::MoveAction);
         if (auto* info = findTab(tabId); info && info->session) {
           info->session->setDragSuppress(false);
@@ -343,6 +398,7 @@ void ShellWindow::rebuildTabs() {
       });
     }
   }
+  reinstallChromeDropTargets();
 }
 
 void ShellWindow::takeTabsFrom(ShellWindow* other, const QList<qint64>& tabIds) {

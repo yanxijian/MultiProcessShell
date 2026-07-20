@@ -23,6 +23,7 @@ public:
   void mergeTab(qint64 tabId, ShellWindow* target);
   [[nodiscard]] ShellWindow* shellForTab(qint64 tabId) const;
   [[nodiscard]] ShellWindow* shellAtGlobal(QPoint globalPos) const;
+  [[nodiscard]] ShellWindow* shellFromChromeTarget(QObject* watched) const;
   void destroyShellIfEmpty(ShellWindow* shell);
 
 protected:

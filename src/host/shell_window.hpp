@@ -56,7 +56,10 @@ public:
   [[nodiscard]] qint64 activeTabId() const { return activeTabId_; }
   [[nodiscard]] int clientTabCount() const;
   [[nodiscard]] EmbedContainer* embed() { return embed_; }
+  [[nodiscard]] QWidget* titleBarWidget() const { return titleBar_; }
   [[nodiscard]] bool isOverChrome(QPoint globalPos) const;
+  [[nodiscard]] bool isChromeDropTarget(const QObject* watched) const;
+  void installChromeDropFilter(QObject* filter);
   void showEmptyState(bool empty);
   void takeTabsFrom(ShellWindow* other, const QList<qint64>& tabIds);
 
@@ -76,11 +79,13 @@ private:
   void syncEmbedToActive();
   void syncWorkspace();
   void pushActivationHistory(qint64 tabId);
+  void reinstallChromeDropTargets();
   [[nodiscard]] qint64 previousActivationTarget(qint64 closingTabId) const;
   TabInfo* findTab(qint64 tabId);
   [[nodiscard]] const TabInfo* findTab(qint64 tabId) const;
 
   ShellApp* app_ = nullptr;
+  QObject* chromeDropFilter_ = nullptr;
   qint64 shellId_ = 0;
   QWidget* titleBar_ = nullptr;
   QWidget* captionDrag_ = nullptr;  // blank area: system-move only (not tabs)
