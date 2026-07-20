@@ -7,6 +7,7 @@
 | `build_repo.py` | 配置/编译本仓（默认要 `QTDIR`；`--no-demos` 除外） |
 | `build_qt.py` | 辅助外置编译 Qt（qtbase）到指定前缀 |
 | `deploy_demo.py` | Windows：`windeployqt` 到 Demo 旁，并同步 `dist/Demo/` |
+| `format_source.py` | 按根目录 `.clang-format` 格式化手写 C/C++（排除 `build/`、`_deps/`、`*.pb.*`） |
 
 ## Windows 注意
 
@@ -20,6 +21,8 @@
 python scripts\build_repo.py
 python scripts\build_repo.py --no-demos --test
 python scripts\deploy_demo.py
+python scripts\format_source.py
+python scripts\format_source.py --check
 python scripts\build_qt.py --source <qt-everywhere-src> --build-dir <qt-build> --prefix %QTDIR%
 ```
 

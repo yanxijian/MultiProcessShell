@@ -7,6 +7,7 @@
 | `build_repo.py` | Configure/build this repo (`QTDIR` required unless `--no-demos`) |
 | `build_qt.py` | Help build external Qt (qtbase) into a prefix |
 | `deploy_demo.py` | Windows: `windeployqt` beside demos + sync `dist/Demo/` |
+| `format_source.py` | Format handwritten C/C++ via root `.clang-format` (skips `build/`, `_deps/`, `*.pb.*`) |
 
 ## Windows notes
 
@@ -20,6 +21,8 @@
 python scripts\build_repo.py
 python scripts\build_repo.py --no-demos --test
 python scripts\deploy_demo.py
+python scripts\format_source.py
+python scripts\format_source.py --check
 python scripts\build_qt.py --source <qt-everywhere-src> --build-dir <qt-build> --prefix %QTDIR%
 ```
 

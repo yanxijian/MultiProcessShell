@@ -1,0 +1,7 @@
+# Paths ignored by clang-format (also honored by scripts/format_source.py)
+
+build/
+**/_deps/
+**/*.pb.cc
+**/*.pb.h
+**/*.pb.*
