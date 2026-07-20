@@ -4,6 +4,7 @@
 #include <QUuid>
 #include <QGuiApplication>
 #include <QDragEnterEvent>
+#include <QDragMoveEvent>
 #include <QDropEvent>
 #include <QMimeData>
 #include <algorithm>
@@ -59,8 +60,8 @@ bool ShellApp::eventFilter(QObject* watched, QEvent* event) {
   if (!shell) {
     return QObject::eventFilter(watched, event);
   }
-  if (event->type() == QEvent::DragEnter) {
-    auto* de = static_cast<QDragEnterEvent*>(event);
+  if (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove) {
+    auto* de = static_cast<QDragMoveEvent*>(event);
     if (de->mimeData()->hasFormat(QString::fromUtf8(kTabMime))) {
       de->acceptProposedAction();
       return true;
@@ -307,6 +308,15 @@ void ShellApp::mergeTab(qint64 tabId, ShellWindow* target) {
 
 ShellWindow* ShellApp::shellForTab(qint64 tabId) const {
   return tabToShell_.value(tabId, nullptr);
+}
+
+ShellWindow* ShellApp::shellAtGlobal(QPoint globalPos) const {
+  for (const auto& shell : shells_) {
+    if (shell && shell->isVisible() && shell->frameGeometry().contains(globalPos)) {
+      return shell.get();
+    }
+  }
+  return nullptr;
 }
 
 void ShellApp::destroyShellIfEmpty(ShellWindow* shell) {

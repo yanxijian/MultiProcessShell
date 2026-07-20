@@ -22,16 +22,19 @@ const char* kTabMime = "application/x-mps-tab-id";
 TabButton::TabButton(const TabInfo& info, QWidget* parent) : QFrame(parent), info_(info) {
   setObjectName(QStringLiteral("TabButton"));
   setFrameShape(QFrame::StyledPanel);
-  setCursor(Qt::ArrowCursor);
+  setCursor(info_.isHome ? Qt::ArrowCursor : Qt::OpenHandCursor);
+  setAttribute(Qt::WA_Hover, true);
   auto* lay = new QHBoxLayout(this);
   lay->setContentsMargins(10, 4, 6, 4);
   lay->setSpacing(6);
   title_ = new QLabel(info_.title, this);
+  title_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
   lay->addWidget(title_);
   if (!info_.isHome) {
     auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
     closeBtn->setFixedSize(18, 18);
     closeBtn->setFlat(true);
+    closeBtn->setCursor(Qt::ArrowCursor);
     lay->addWidget(closeBtn);
     connect(closeBtn, &QPushButton::clicked, this, [this] { emit closeRequested(info_.tabId); });
   }
@@ -63,30 +66,37 @@ void TabButton::setActive(bool on) {
 void TabButton::mousePressEvent(QMouseEvent* event) {
   if (event->button() == Qt::LeftButton) {
     dragStart_ = event->pos();
+    pressActive_ = true;
     dragging_ = false;
     emit activated(info_.tabId);
+    event->accept();
+    return;
   }
   QFrame::mousePressEvent(event);
 }
 
 void TabButton::mouseMoveEvent(QMouseEvent* event) {
-  if (info_.isHome) {
-    QFrame::mouseMoveEvent(event);
-    return;
-  }
-  if (!(event->buttons() & Qt::LeftButton)) {
+  if (!pressActive_ || info_.isHome || !(event->buttons() & Qt::LeftButton)) {
     QFrame::mouseMoveEvent(event);
     return;
   }
   if ((event->pos() - dragStart_).manhattanLength() < QApplication::startDragDistance()) {
-    QFrame::mouseMoveEvent(event);
+    event->accept();
     return;
   }
   if (!dragging_) {
     dragging_ = true;
+    setCursor(Qt::ClosedHandCursor);
     emit dragStarted(info_.tabId);
   }
-  QFrame::mouseMoveEvent(event);
+  event->accept();
+}
+
+void TabButton::mouseReleaseEvent(QMouseEvent* event) {
+  pressActive_ = false;
+  dragging_ = false;
+  setCursor(info_.isHome ? Qt::ArrowCursor : Qt::OpenHandCursor);
+  QFrame::mouseReleaseEvent(event);
 }
 
 ShellWindow::ShellWindow(ShellApp* app, QWidget* parent)
@@ -110,11 +120,20 @@ ShellWindow::ShellWindow(ShellApp* app, QWidget* parent)
   auto* titleLay = new QHBoxLayout(titleBar_);
   titleLay->setContentsMargins(8, 4, 8, 4);
   titleLay->setSpacing(6);
+
   tabRow_ = new QHBoxLayout();
   tabRow_->setSpacing(6);
   tabRow_->setContentsMargins(0, 0, 0, 0);
-  titleLay->addLayout(tabRow_, 1);
-  titleLay->addStretch(0);
+  titleLay->addLayout(tabRow_, 0);
+
+  // Blank caption strip: ONLY this area starts system-move (not the tabs).
+  captionDrag_ = new QWidget(titleBar_);
+  captionDrag_->setObjectName(QStringLiteral("CaptionDrag"));
+  captionDrag_->setMinimumWidth(48);
+  captionDrag_->setCursor(Qt::SizeAllCursor);
+  captionDrag_->setStyleSheet(QStringLiteral("#CaptionDrag { background: transparent; }"));
+  titleLay->addWidget(captionDrag_, 1);
+  captionDrag_->installEventFilter(this);
 
   auto* minBtn = new QPushButton(QStringLiteral("—"), titleBar_);
   auto* maxBtn = new QPushButton(QStringLiteral("□"), titleBar_);
@@ -129,8 +148,6 @@ ShellWindow::ShellWindow(ShellApp* app, QWidget* parent)
     isMaximized() ? showNormal() : showMaximized();
   });
   connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
-
-  titleBar_->installEventFilter(this);
 
   stack_ = new QStackedWidget(root);
   emptyPage_ = new QWidget(stack_);
@@ -174,7 +191,6 @@ void ShellWindow::syncWorkspace() {
   } else {
     stack_->setCurrentWidget(embed_);
     embed_->setForeignWindow(active->wid);
-    // Layout may not have applied yet when first switching onto the embed page.
     QTimer::singleShot(0, this, [this] {
       if (auto* t = findTab(activeTabId_); t && !t->isHome && t->wid) {
         embed_->setForeignWindow(t->wid);
@@ -250,7 +266,6 @@ qint64 ShellWindow::previousActivationTarget(qint64 /*closingTabId*/) const {
       return id;
     }
   }
-  // History exhausted: prefer any remaining client tab, else Home.
   for (const auto& t : tabs_) {
     if (!t.isHome) {
       return t.tabId;
@@ -303,17 +318,22 @@ void ShellWindow::rebuildTabs() {
         if (auto* info = findTab(tabId); info && info->session) {
           info->session->setDragSuppress(true);
         }
+        // Drag pixmap from the tab chrome (simple visual feedback).
+        if (auto* btnSender = qobject_cast<TabButton*>(sender())) {
+          drag->setPixmap(btnSender->grab());
+          drag->setHotSpot(QPoint(btnSender->width() / 2, btnSender->height() / 2));
+        }
         const auto drop = drag->exec(Qt::MoveAction);
         if (auto* info = findTab(tabId); info && info->session) {
           info->session->setDragSuppress(false);
         }
-        if (drop == Qt::IgnoreAction) {
+        // Tear out only when released outside every shell (not when cancelled on self).
+        if (drop == Qt::IgnoreAction && app_ && !app_->shellAtGlobal(QCursor::pos())) {
           emit tabTearOutRequested(tabId, QCursor::pos());
         }
       });
     }
   }
-  tabRow_->addStretch(1);
 }
 
 void ShellWindow::takeTabsFrom(ShellWindow* other, const QList<qint64>& tabIds) {
@@ -355,7 +375,8 @@ void ShellWindow::closeEvent(QCloseEvent* event) {
 }
 
 bool ShellWindow::eventFilter(QObject* watched, QEvent* event) {
-  if (watched == titleBar_ && event->type() == QEvent::MouseButtonPress) {
+  // System-move is bound to the blank caption strip only — never to Tab buttons.
+  if (watched == captionDrag_ && event->type() == QEvent::MouseButtonPress) {
     auto* me = static_cast<QMouseEvent*>(event);
     if (me->button() == Qt::LeftButton) {
       winId();

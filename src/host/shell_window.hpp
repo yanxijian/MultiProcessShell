@@ -33,11 +33,13 @@ signals:
 protected:
   void mousePressEvent(QMouseEvent* event) override;
   void mouseMoveEvent(QMouseEvent* event) override;
+  void mouseReleaseEvent(QMouseEvent* event) override;
 
 private:
   TabInfo info_;
   QLabel* title_ = nullptr;
   QPoint dragStart_;
+  bool pressActive_ = false;
   bool dragging_ = false;
 };
 
@@ -80,6 +82,7 @@ private:
   ShellApp* app_ = nullptr;
   qint64 shellId_ = 0;
   QWidget* titleBar_ = nullptr;
+  QWidget* captionDrag_ = nullptr;  // blank area: system-move only (not tabs)
   QHBoxLayout* tabRow_ = nullptr;
   QStackedWidget* stack_ = nullptr;
   QWidget* emptyPage_ = nullptr;

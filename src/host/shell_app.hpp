@@ -22,6 +22,7 @@ public:
   void tearOutTab(ShellWindow* source, qint64 tabId, QPoint globalPos);
   void mergeTab(qint64 tabId, ShellWindow* target);
   [[nodiscard]] ShellWindow* shellForTab(qint64 tabId) const;
+  [[nodiscard]] ShellWindow* shellAtGlobal(QPoint globalPos) const;
   void destroyShellIfEmpty(ShellWindow* shell);
 
 protected:
