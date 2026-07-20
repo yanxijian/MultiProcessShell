@@ -2,7 +2,8 @@
 
 > **English**：[../en/demo-ipc.md](../en/demo-ipc.md)  
 > 与 [demo-morphology.md](demo-morphology.md) 配套。控制面：`shell.ipc.v1` + 长度前缀 `Envelope`。  
-> **权威 IDL**：仓库 `proto/shell/ipc/v1/ipc.proto`（与产品长文规格中的 IDL 草图冲突时，以本文件 + `.proto` 为准）。
+> **权威 IDL**：仓库 `proto/shell/ipc/v1/ipc.proto`（与产品长文规格中的 IDL 草图冲突时，以本文件 + `.proto` 为准）。  
+> 远期其他 IPC 栈（gRPC / Cap'n Proto / Zenoh 等）见 [ipc-alternatives.md](ipc-alternatives.md)（备选，不改变本文合约）。
 
 ## 1. 决议摘要
 

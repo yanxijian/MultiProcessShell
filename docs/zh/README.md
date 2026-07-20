@@ -11,6 +11,7 @@
 | [multiprocess-shell-spec.md](multiprocess-shell-spec.md) | 产品技术规格（全量愿景） |
 | [demo-morphology.md](demo-morphology.md) | Demo 形态（定稿，与实现一致） |
 | [demo-ipc.md](demo-ipc.md) | Demo IPC 合约（定稿） |
+| [ipc-alternatives.md](ipc-alternatives.md) | IPC 备选方案（远期参考，非当前实现） |
 | [build.md](build.md) | 构建与部署 |
 
 仓库入口：[../../README.md](../../README.md)。  

@@ -2,7 +2,8 @@
 
 > **中文主文档**: [`../zh/demo-ipc.md`](../zh/demo-ipc.md)  
 > Companion to [demo-morphology.md](demo-morphology.md). Control plane: `shell.ipc.v1` + length-prefixed `Envelope`.  
-> **Authoritative IDL**: `proto/shell/ipc/v1/ipc.proto` (prefer this file + `.proto` over older sketches in the long-form product spec).
+> **Authoritative IDL**: `proto/shell/ipc/v1/ipc.proto` (prefer this file + `.proto` over older sketches in the long-form product spec).  
+> Future alternate stacks (gRPC / Cap'n Proto / Zenoh, …): [ipc-alternatives.md](ipc-alternatives.md) (reference only; does not change this contract).
 
 ## 1. Decisions
 

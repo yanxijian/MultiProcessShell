@@ -643,6 +643,8 @@ lang-app
 | 换行 JSON | 不作为控制面主协议；调试日志可另用文本 |
 | Mojo | 不采用 |
 
+更完整的备选对照（Cap'n Proto、Zenoh、六端通道与移动端限制、换栈门槛等）见 **[ipc-alternatives.md](ipc-alternatives.md)**。该文为远期参考，**不改变**本节主路径决议。
+
 ### 5.11 安全（控制面）
 
 见 §10；与 Protobuf 相关的要点：`MainWindowAdded.pid` 必须与 `Hello.pid` 一致且与 OS 查询的窗口属主 PID 一致，否则 `ERROR_DENIED` / 拒绝 embed。

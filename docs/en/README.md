@@ -13,6 +13,7 @@ Phase-1 platform: **Windows (form A)**; macOS / Linux directories are placeholde
 | Product spec | [../zh/multiprocess-shell-spec.md](../zh/multiprocess-shell-spec.md) | [multiprocess-shell-spec.md](multiprocess-shell-spec.md) |
 | Demo morphology | [../zh/demo-morphology.md](../zh/demo-morphology.md) | [demo-morphology.md](demo-morphology.md) |
 | Demo IPC | [../zh/demo-ipc.md](../zh/demo-ipc.md) | [demo-ipc.md](demo-ipc.md) |
+| IPC alternatives (future) | [../zh/ipc-alternatives.md](../zh/ipc-alternatives.md) | [ipc-alternatives.md](ipc-alternatives.md) |
 | Build | [../zh/build.md](../zh/build.md) | [build.md](build.md) |
 | demos / scripts / src / … | folder `README.md`（中文） | [demos.md](demos.md), [scripts.md](scripts.md), [src.md](src.md), … |
 
@@ -70,6 +71,7 @@ python scripts\build_repo.py --no-demos --test
 | [build.md](build.md) | [../zh/build.md](../zh/build.md) |
 | [demo-morphology.md](demo-morphology.md) | [../zh/demo-morphology.md](../zh/demo-morphology.md) |
 | [demo-ipc.md](demo-ipc.md) | [../zh/demo-ipc.md](../zh/demo-ipc.md) |
+| [ipc-alternatives.md](ipc-alternatives.md) | [../zh/ipc-alternatives.md](../zh/ipc-alternatives.md) |
 | [multiprocess-shell-spec.md](multiprocess-shell-spec.md) | [../zh/multiprocess-shell-spec.md](../zh/multiprocess-shell-spec.md) (summary) |
 | [demos.md](demos.md) | [../../demos/README.md](../../demos/README.md) |
 | [scripts.md](scripts.md) | [../../scripts/README.md](../../scripts/README.md) |

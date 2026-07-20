@@ -71,6 +71,8 @@ Required capability negotiation via `Hello` / `HelloAck` (`Capabilities.embed`, 
 
 Heartbeat: Client → Host ~2s; Host marks unhealthy after timeout; UI offers terminate (no auto-kill by default).
 
+**Out of scope this phase:** gRPC runtime, Thrift, Mojo, JSON as primary. Future alternatives (Cap'n Proto, Zenoh, six-platform notes): [ipc-alternatives.md](ipc-alternatives.md) — reference only; does not change the primary path.
+
 ## 6. Embed backends
 
 | Backend | Platform |
