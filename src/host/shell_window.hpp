@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __MPS_HOST_SHELL_WINDOW_H__
+#define __MPS_HOST_SHELL_WINDOW_H__
 
 #include "embed_container.hpp"
 #include "tab_info.hpp"
@@ -183,3 +184,5 @@ namespace mps::host
 		QHash<qint64, QPropertyAnimation*> tabSlideAnims_;
 	};
 } // namespace mps::host
+
+#endif  // __MPS_HOST_SHELL_WINDOW_H__

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __MPS_CLIENT_CLIENT_APP_H__
+#define __MPS_CLIENT_CLIENT_APP_H__
 
 #include "envelope_channel.hpp"
 
@@ -52,3 +53,5 @@ namespace mps::client
 		PageWindow* active_ = nullptr;
 	};
 } // namespace mps::client
+
+#endif  // __MPS_CLIENT_CLIENT_APP_H__

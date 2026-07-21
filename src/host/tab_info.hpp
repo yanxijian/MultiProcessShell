@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __MPS_HOST_TAB_INFO_H__
+#define __MPS_HOST_TAB_INFO_H__
 
 #include <QString>
 
@@ -32,3 +33,5 @@ namespace mps::host
 		}
 	};
 } // namespace mps::host
+
+#endif  // __MPS_HOST_TAB_INFO_H__

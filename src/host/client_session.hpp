@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __MPS_HOST_CLIENT_SESSION_H__
+#define __MPS_HOST_CLIENT_SESSION_H__
 
 #include "envelope_channel.hpp"
 #include "tab_info.hpp"
@@ -78,3 +79,5 @@ namespace mps::host
 		quintptr mainWid_ = 0;
 	};
 } // namespace mps::host
+
+#endif  // __MPS_HOST_CLIENT_SESSION_H__

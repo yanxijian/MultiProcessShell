@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __MPS_IPC_QT_ENVELOPE_CHANNEL_H__
+#define __MPS_IPC_QT_ENVELOPE_CHANNEL_H__
 
 #include "frame.hpp"
 #include "shell/ipc/v1/ipc.pb.h"
@@ -44,3 +45,5 @@ namespace mps::ipc
 
 	[[nodiscard]] std::string newCorrelationId();
 } // namespace mps::ipc
+
+#endif  // __MPS_IPC_QT_ENVELOPE_CHANNEL_H__

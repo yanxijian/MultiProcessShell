@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __MPS_HOST_EMBED_CONTAINER_H__
+#define __MPS_HOST_EMBED_CONTAINER_H__
 
 #include <QWidget>
 
@@ -39,3 +40,5 @@ namespace mps::host
 		quintptr foreignWid_ = 0;
 	};
 } // namespace mps::host
+
+#endif  // __MPS_HOST_EMBED_CONTAINER_H__

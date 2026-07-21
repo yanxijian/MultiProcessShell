@@ -1,4 +1,5 @@
 # MultiProcessShell — from Desktop clang-format.md (Microsoft base + overrides)
+# Include guards are NOT a clang-format concern — see .cursor/rules/cpp-include-guards.mdc.
 # Indent: Tab width 4; access modifiers flush; namespaces indented.
 
 BasedOnStyle: Microsoft

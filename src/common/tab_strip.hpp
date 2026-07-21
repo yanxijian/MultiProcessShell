@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __MPS_TAB_STRIP_TAB_STRIP_H__
+#define __MPS_TAB_STRIP_TAB_STRIP_H__
 
 // Pure browser-style detachable tab strip / tear-out / shell rules (no Qt).
 // Host widgets call these; unit tests lock the contracts against regressions.
@@ -259,3 +260,5 @@ namespace mps::tab_strip
 		return clientTabCount == 0 && shellCount > 1;
 	}
 } // namespace mps::tab_strip
+
+#endif  // __MPS_TAB_STRIP_TAB_STRIP_H__

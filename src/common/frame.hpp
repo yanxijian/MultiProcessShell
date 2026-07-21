@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __MPS_IPC_FRAME_H__
+#define __MPS_IPC_FRAME_H__
 
 #include <cstddef>
 #include <cstdint>
@@ -53,3 +54,5 @@ namespace mps::ipc
 		bool failed_ = false;
 	};
 } // namespace mps::ipc
+
+#endif  // __MPS_IPC_FRAME_H__

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __MPS_HOST_SHELL_APP_H__
+#define __MPS_HOST_SHELL_APP_H__
 
 #include "client_session.hpp"
 #include "shell_window.hpp"
@@ -93,3 +94,5 @@ namespace mps::host
 		// Slops live in mps::tab_strip (unit-tested).
 	};
 } // namespace mps::host
+
+#endif  // __MPS_HOST_SHELL_APP_H__
