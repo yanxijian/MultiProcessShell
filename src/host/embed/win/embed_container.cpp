@@ -130,8 +130,7 @@ namespace mps::host
 		const HWND child = reinterpret_cast<HWND>(m_foreignWid);
 		LONG_PTR style = GetWindowLongPtrW(child, GWL_STYLE);
 		style |= WS_CHILD;
-		style &= ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_BORDER
-				   | WS_DLGFRAME);
+		style &= ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_BORDER | WS_DLGFRAME);
 		SetWindowLongPtrW(child, GWL_STYLE, style);
 
 		LONG_PTR ex = GetWindowLongPtrW(child, GWL_EXSTYLE);

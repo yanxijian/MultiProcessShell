@@ -54,4 +54,4 @@ namespace mps::client
 	};
 } // namespace mps::client
 
-#endif  // __MPS_CLIENT_CLIENT_APP_H__
+#endif // __MPS_CLIENT_CLIENT_APP_H__

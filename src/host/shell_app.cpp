@@ -197,8 +197,7 @@ namespace mps::host
 				dropGlobal = w->mapToGlobal(de->position().toPoint());
 			}
 			const qint64 tabId = de->mimeData()->data(QString::fromUtf8(kTabMimeType)).toLongLong();
-			const int guestW =
-				m_dragTabWidth > 0 ? m_dragTabWidth : (m_tabDragGhost ? m_tabDragGhost->contentSize().width() : 80);
+			const int guestW = m_dragTabWidth > 0 ? m_dragTabWidth : (m_tabDragGhost ? m_tabDragGhost->contentSize().width() : 80);
 
 			// Only one shell shows strip feedback at a time.
 			for (auto& s : m_shells)
@@ -214,8 +213,7 @@ namespace mps::host
 			if (m_dragSource && shell == m_dragSource && tabId == m_dragTabId)
 			{
 				shell->previewTabYieldAtCursor(tabId, QCursor::pos(), 0,
-											   m_tabGhostHotSpot.x()
-												   - (m_tabDragGhost ? m_tabDragGhost->contentOrigin().x() : 0));
+											   m_tabGhostHotSpot.x() - (m_tabDragGhost ? m_tabDragGhost->contentOrigin().x() : 0));
 			}
 			else
 			{
@@ -226,8 +224,7 @@ namespace mps::host
 				// Merge target: live tab yield, not only a blue bar.
 				shell->clearDropInsertIndicator();
 				shell->previewTabYieldAtCursor(tabId, dropGlobal, guestW,
-											   m_tabGhostHotSpot.x()
-												   - (m_tabDragGhost ? m_tabDragGhost->contentOrigin().x() : 0));
+											   m_tabGhostHotSpot.x() - (m_tabDragGhost ? m_tabDragGhost->contentOrigin().x() : 0));
 			}
 			de->acceptProposedAction();
 			return true;
@@ -461,11 +458,11 @@ namespace mps::host
 		}
 		m_pendingFirstShell.remove(session);
 		m_sessions.erase(std::remove_if(m_sessions.begin(), m_sessions.end(),
-									   [&](const std::unique_ptr<ClientSession>& p)
-									   {
-										   return p.get() == session;
-									   }),
-						m_sessions.end());
+										[&](const std::unique_ptr<ClientSession>& p)
+										{
+											return p.get() == session;
+										}),
+						 m_sessions.end());
 	}
 
 	void ShellApp::closeShell(ShellWindow* shell)
@@ -743,8 +740,7 @@ namespace mps::host
 	{
 		const bool overAny = tabDropZoneShellAtGlobal(globalPos) != nullptr;
 		const bool nearLeave =
-			m_dragSource
-			&& m_dragSource->isNearTabDropZone(globalPos, tab_strip::kTearOutLeaveSlopV, tab_strip::kTearOutLeaveSlopH);
+			m_dragSource && m_dragSource->isNearTabDropZone(globalPos, tab_strip::kTearOutLeaveSlopV, tab_strip::kTearOutLeaveSlopH);
 		return tab_strip::shouldSuppressTearOut(overAny, nearLeave);
 	}
 
@@ -834,11 +830,10 @@ namespace mps::host
 			m_tabDragGhost->hide();
 		}
 		// Fallback hotspot if geometry must be estimated without a visible ghost.
-		const int previewHx =
-			qBound(16,
-				   int(double(m_tabGhostHotSpot.x() - (m_tabDragGhost ? m_tabDragGhost->contentOrigin().x() : 0))
-					   * double(m_dragPreviewSize.width()) / qMax(1, m_dragTabWidth)),
-				   m_dragPreviewSize.width() - 16);
+		const int previewHx = qBound(16,
+									 int(double(m_tabGhostHotSpot.x() - (m_tabDragGhost ? m_tabDragGhost->contentOrigin().x() : 0))
+										 * double(m_dragPreviewSize.width()) / qMax(1, m_dragTabWidth)),
+									 m_dragPreviewSize.width() - 16);
 		m_dragHotSpot = QPoint(previewHx, TearOutPreview::kFramePad + TearOutPreview::kTitleBarHeight / 2);
 
 		if (m_tearOutPreview)
@@ -1094,11 +1089,9 @@ namespace mps::host
 
 		const bool overStrip = tabDropZoneShellAtGlobal(g) != nullptr;
 		const bool nearLeave =
-			m_dragSource
-			&& m_dragSource->isNearTabDropZone(g, tab_strip::kTearOutLeaveSlopV, tab_strip::kTearOutLeaveSlopH);
+			m_dragSource && m_dragSource->isNearTabDropZone(g, tab_strip::kTearOutLeaveSlopV, tab_strip::kTearOutLeaveSlopH);
 		const bool nearReturn =
-			m_dragSource
-			&& m_dragSource->isNearTabDropZone(g, tab_strip::kTearOutReturnSlopV, tab_strip::kTearOutReturnSlopH);
+			m_dragSource && m_dragSource->isNearTabDropZone(g, tab_strip::kTearOutReturnSlopV, tab_strip::kTearOutReturnSlopH);
 
 		const bool wasDetached = m_tearOutDetached;
 		m_tearOutDetached = tab_strip::nextTearOutDetached(wasDetached, overStrip, nearLeave, nearReturn);
@@ -1169,8 +1162,7 @@ namespace mps::host
 				{
 					stripShell = m_dragSource;
 				}
-				const int guestW =
-					m_dragTabWidth > 0 ? m_dragTabWidth : (m_tabDragGhost ? m_tabDragGhost->contentSize().width() : 80);
+				const int guestW = m_dragTabWidth > 0 ? m_dragTabWidth : (m_tabDragGhost ? m_tabDragGhost->contentSize().width() : 80);
 				if (stripShell == m_dragSource)
 				{
 					for (auto& s : m_shells)

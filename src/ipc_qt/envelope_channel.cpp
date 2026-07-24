@@ -54,8 +54,7 @@ namespace mps::ipc
 		{
 			return;
 		}
-		m_decoder.append(reinterpret_cast<const std::uint8_t*>(chunk.constData()),
-						static_cast<std::size_t>(chunk.size()));
+		m_decoder.append(reinterpret_cast<const std::uint8_t*>(chunk.constData()), static_cast<std::size_t>(chunk.size()));
 
 		for (;;)
 		{

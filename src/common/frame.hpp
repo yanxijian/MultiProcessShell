@@ -55,4 +55,4 @@ namespace mps::ipc
 	};
 } // namespace mps::ipc
 
-#endif  // __MPS_IPC_FRAME_H__
+#endif // __MPS_IPC_FRAME_H__

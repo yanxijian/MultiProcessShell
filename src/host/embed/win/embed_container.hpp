@@ -41,4 +41,4 @@ namespace mps::host
 	};
 } // namespace mps::host
 
-#endif  // __MPS_HOST_EMBED_CONTAINER_H__
+#endif // __MPS_HOST_EMBED_CONTAINER_H__

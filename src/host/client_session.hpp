@@ -80,4 +80,4 @@ namespace mps::host
 	};
 } // namespace mps::host
 
-#endif  // __MPS_HOST_CLIENT_SESSION_H__
+#endif // __MPS_HOST_CLIENT_SESSION_H__

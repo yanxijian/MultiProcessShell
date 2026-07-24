@@ -34,4 +34,4 @@ namespace mps::host
 	};
 } // namespace mps::host
 
-#endif  // __MPS_HOST_TAB_INFO_H__
+#endif // __MPS_HOST_TAB_INFO_H__

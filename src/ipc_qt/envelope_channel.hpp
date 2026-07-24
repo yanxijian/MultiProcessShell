@@ -46,4 +46,4 @@ namespace mps::ipc
 	[[nodiscard]] std::string newCorrelationId();
 } // namespace mps::ipc
 
-#endif  // __MPS_IPC_QT_ENVELOPE_CHANNEL_H__
+#endif // __MPS_IPC_QT_ENVELOPE_CHANNEL_H__

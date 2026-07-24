@@ -185,4 +185,4 @@ namespace mps::host
 	};
 } // namespace mps::host
 
-#endif  // __MPS_HOST_SHELL_WINDOW_H__
+#endif // __MPS_HOST_SHELL_WINDOW_H__

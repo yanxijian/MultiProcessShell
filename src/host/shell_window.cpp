@@ -63,9 +63,8 @@ namespace mps::host
 		}
 		if (m_info.isHome)
 		{
-			setStyleSheet(
-				QStringLiteral("#TabButton { border: 2px solid #5a5a5a; border-radius: 4px; background: #f3f3f3; }"
-							   "#TabButton[active=\"true\"] { background: #ffffff; }"));
+			setStyleSheet(QStringLiteral("#TabButton { border: 2px solid #5a5a5a; border-radius: 4px; background: #f3f3f3; }"
+										 "#TabButton[active=\"true\"] { background: #ffffff; }"));
 		}
 		else
 		{
@@ -174,8 +173,7 @@ namespace mps::host
 		m_titleBar = new QWidget(root);
 		m_titleBar->setObjectName(QStringLiteral("TitleBar"));
 		m_titleBar->setFixedHeight(40);
-		m_titleBar->setStyleSheet(
-			QStringLiteral("#TitleBar { background: #e8e8e8; border-bottom: 1px solid #c0c0c0; }"));
+		m_titleBar->setStyleSheet(QStringLiteral("#TitleBar { background: #e8e8e8; border-bottom: 1px solid #c0c0c0; }"));
 		auto* titleLay = new QHBoxLayout(m_titleBar);
 		titleLay->setContentsMargins(8, 4, 8, 4);
 		titleLay->setSpacing(6);
@@ -351,8 +349,7 @@ namespace mps::host
 			m_dropIndicator->setObjectName(QStringLiteral("DropInsertIndicator"));
 			m_dropIndicator->setFixedWidth(3);
 			m_dropIndicator->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-			m_dropIndicator->setStyleSheet(
-				QStringLiteral("#DropInsertIndicator { background: #2d6cdf; border-radius: 1px; }"));
+			m_dropIndicator->setStyleSheet(QStringLiteral("#DropInsertIndicator { background: #2d6cdf; border-radius: 1px; }"));
 		}
 
 		int x = 8;
@@ -499,8 +496,7 @@ namespace mps::host
 		const int localGhostLeft = ghostLeft - originGlobalX;
 		const int localGhostRight = ghostRight - originGlobalX;
 
-		insertAmong = tab_strip::computeYieldInsertAmong(otherWidths, dragW, localGhostLeft, localGhostRight, inset,
-														 minAmong, insertAmong);
+		insertAmong = tab_strip::computeYieldInsertAmong(otherWidths, dragW, localGhostLeft, localGhostRight, inset, minAmong, insertAmong);
 
 		std::vector<int64_t> othersStd;
 		othersStd.reserve(static_cast<size_t>(others.size()));
@@ -1383,8 +1379,7 @@ namespace mps::host
 									m_app->endTabDrag(/*tearOrMerge=*/false);
 									m_app->mergeTab(tabId, zoneShell, insertIndex);
 								}
-								else if (!cancelled && hasTabYieldPreview() && m_app
-										 && m_app->shouldSuppressTearOutAt(releasePos))
+								else if (!cancelled && hasTabYieldPreview() && m_app && m_app->shouldSuppressTearOutAt(releasePos))
 								{
 									// Near the strip with a live yield preview — keep the new order.
 									commitTabYieldPreview();

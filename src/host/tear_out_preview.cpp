@@ -170,8 +170,7 @@ namespace mps::host
 		p.setPen(Qt::NoPen);
 		p.setBrush(QColor(0xe8, 0xe8, 0xe8, 230));
 		p.drawRoundedRect(titleBar, 6, 6);
-		p.fillRect(QRectF(titleBar.left(), titleBar.center().y(), titleBar.width(), titleBar.height() / 2),
-				   QColor(0xe8, 0xe8, 0xe8, 230));
+		p.fillRect(QRectF(titleBar.left(), titleBar.center().y(), titleBar.width(), titleBar.height() / 2), QColor(0xe8, 0xe8, 0xe8, 230));
 
 		// Home stub so the floating client tab sits after it (wrap alignment).
 		const QRectF homeChip(titleBar.left() + 8, titleBar.top() + 6, 64, titleBar.height() - 12);
@@ -188,10 +187,9 @@ namespace mps::host
 		if (!m_content.isNull())
 		{
 			p.setOpacity(0.92);
-			const QPixmap scaled =
-				m_content.scaled(body.size().toSize(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
-			const QRect src((scaled.width() - body.width()) / 2, (scaled.height() - body.height()) / 2,
-							int(body.width()), int(body.height()));
+			const QPixmap scaled = m_content.scaled(body.size().toSize(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+			const QRect src((scaled.width() - body.width()) / 2, (scaled.height() - body.height()) / 2, int(body.width()),
+							int(body.height()));
 			p.drawPixmap(body.toRect(), scaled, src.intersected(scaled.rect()));
 			p.setOpacity(1.0);
 		}

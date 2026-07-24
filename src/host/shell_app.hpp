@@ -95,4 +95,4 @@ namespace mps::host
 	};
 } // namespace mps::host
 
-#endif  // __MPS_HOST_SHELL_APP_H__
+#endif // __MPS_HOST_SHELL_APP_H__

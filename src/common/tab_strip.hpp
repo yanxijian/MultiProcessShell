@@ -55,8 +55,8 @@ namespace mps::tab_strip
 
 	/// Next tab after closing `closingTabId`. Prefer MRU still present in `existingIds`,
 	/// else first non-Home client, else Home.
-	inline int64_t previousActivationTarget(const std::vector<int64_t>& history,
-											const std::vector<int64_t>& existingIds, int64_t closingTabId)
+	inline int64_t previousActivationTarget(const std::vector<int64_t>& history, const std::vector<int64_t>& existingIds,
+											int64_t closingTabId)
 	{
 		const auto exists = [&](int64_t id)
 		{
@@ -112,8 +112,7 @@ namespace mps::tab_strip
 
 	/// Midpoint insert from local X vs packed tab midpoints. Never returns 0
 	/// when there is at least a Home tab (caller passes widths including Home).
-	inline int midpointInsertIndex(int localX, const std::vector<int>& widths, int margin = kTabStripMargin,
-								   int spacing = kTabSpacing)
+	inline int midpointInsertIndex(int localX, const std::vector<int>& widths, int margin = kTabStripMargin, int spacing = kTabSpacing)
 	{
 		if (widths.empty())
 		{
@@ -136,8 +135,7 @@ namespace mps::tab_strip
 
 	/// Ideal center X of `others[otherIndex]` when a gap of `dragW` is reserved at
 	/// `gapAmong` (layout origin = 0).
-	inline int idealOtherCenterX(const std::vector<int>& otherWidths, int dragW, int gapAmong, int otherIndex,
-								 int spacing = kTabSpacing)
+	inline int idealOtherCenterX(const std::vector<int>& otherWidths, int dragW, int gapAmong, int otherIndex, int spacing = kTabSpacing)
 	{
 		int x = 0;
 		for (int i = 0; i < static_cast<int>(otherWidths.size()); ++i)
@@ -162,8 +160,8 @@ namespace mps::tab_strip
 	}
 
 	/// Walk insert-among index until ghost edges (+/- inset) are stable vs neighbor centers.
-	inline int computeYieldInsertAmong(const std::vector<int>& otherWidths, int dragW, int ghostLeft, int ghostRight,
-									   int inset, int minAmong, int insertAmong, int spacing = kTabSpacing)
+	inline int computeYieldInsertAmong(const std::vector<int>& otherWidths, int dragW, int ghostLeft, int ghostRight, int inset,
+									   int minAmong, int insertAmong, int spacing = kTabSpacing)
 	{
 		const int n = static_cast<int>(otherWidths.size());
 		insertAmong = detail::clamp_i(insertAmong, minAmong, n);
@@ -261,4 +259,4 @@ namespace mps::tab_strip
 	}
 } // namespace mps::tab_strip
 
-#endif  // __MPS_TAB_STRIP_TAB_STRIP_H__
+#endif // __MPS_TAB_STRIP_TAB_STRIP_H__
