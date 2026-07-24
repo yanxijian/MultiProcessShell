@@ -59,37 +59,37 @@ namespace mps::host
 		void finishGhostSnapBack();
 		[[nodiscard]] QString makeTitle(int clientIndex, int windowIndex) const;
 
-		QString clientExe_;
-		QString endpoint_;
-		QString token_;
-		QLocalServer* server_ = nullptr;
-		std::vector<std::unique_ptr<ShellWindow>> shells_;
-		std::vector<std::unique_ptr<ClientSession>> sessions_;
-		QHash<qint64, ShellWindow*> tabToShell_;
-		qint64 nextTabId_ = 1;
-		int nextClientIndex_ = 1;
-		QHash<int, int> nextWindowIndex_; // clientIndex -> next M
+		QString m_clientExe;
+		QString m_endpoint;
+		QString m_token;
+		QLocalServer* m_server = nullptr;
+		std::vector<std::unique_ptr<ShellWindow>> m_shells;
+		std::vector<std::unique_ptr<ClientSession>> m_sessions;
+		QHash<qint64, ShellWindow*> m_tabToShell;
+		qint64 m_nextTabId = 1;
+		int m_nextClientIndex = 1;
+		QHash<int, int> m_nextWindowIndex; // clientIndex -> next M
 		// Queued first CreateSubWindow per session after ready
-		QHash<ClientSession*, ShellWindow*> pendingFirstShell_;
+		QHash<ClientSession*, ShellWindow*> m_pendingFirstShell;
 
 		// Detachable-tab tear-out drag session
-		TearOutPreview* tearOutPreview_ = nullptr;
-		TabDragGhost* tabDragGhost_ = nullptr;
-		QTimer* dragVisualTimer_ = nullptr;
-		QPropertyAnimation* ghostSnapAnim_ = nullptr;
-		ShellWindow* dragSource_ = nullptr;
-		qint64 dragTabId_ = 0;
-		qint64 dragResumeTabId_ = 0;
-		QPoint dragHotSpot_{40, 20};
-		QPoint tabGhostHotSpot_{20, 16};
-		QSize dragPreviewSize_{720, 480};
-		int dragTabWidth_ = 0;
-		bool dragDropHandled_ = false;
-		bool dragActive_ = false;
-		bool dragCancelled_ = false;
-		bool tearOutDetached_ = false; // hysteresis: window-preview mode
-		bool ghostSnapBackActive_ = false;
-		bool dragForbiddenCursor_ = false;
+		TearOutPreview* m_tearOutPreview = nullptr;
+		TabDragGhost* m_tabDragGhost = nullptr;
+		QTimer* m_dragVisualTimer = nullptr;
+		QPropertyAnimation* m_ghostSnapAnim = nullptr;
+		ShellWindow* m_dragSource = nullptr;
+		qint64 m_dragTabId = 0;
+		qint64 m_dragResumeTabId = 0;
+		QPoint m_dragHotSpot{40, 20};
+		QPoint m_tabGhostHotSpot{20, 16};
+		QSize m_dragPreviewSize{720, 480};
+		int m_dragTabWidth = 0;
+		bool m_dragDropHandled = false;
+		bool m_dragActive = false;
+		bool m_dragCancelled = false;
+		bool m_tearOutDetached = false; // hysteresis: window-preview mode
+		bool m_ghostSnapBackActive = false;
+		bool m_dragForbiddenCursor = false;
 		// Leave strip → tear-out; return requires getting closer (hysteresis).
 		// Slops live in mps::tab_strip (unit-tested).
 	};

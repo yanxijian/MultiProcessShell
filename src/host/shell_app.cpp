@@ -29,34 +29,34 @@ namespace mps::host
 {
 	ShellApp::ShellApp(QString clientExe, QObject* parent)
 		: QObject(parent)
-		, clientExe_(std::move(clientExe))
+		, m_clientExe(std::move(clientExe))
 	{
-		token_ = QUuid::createUuid().toString(QUuid::WithoutBraces);
-		endpoint_ = QStringLiteral("mps-demo-%1").arg(token_);
-		server_ = new QLocalServer(this);
-		QLocalServer::removeServer(endpoint_);
-		if (!server_->listen(endpoint_))
+		m_token = QUuid::createUuid().toString(QUuid::WithoutBraces);
+		m_endpoint = QStringLiteral("mps-demo-%1").arg(m_token);
+		m_server = new QLocalServer(this);
+		QLocalServer::removeServer(m_endpoint);
+		if (!m_server->listen(m_endpoint))
 		{
-			qWarning("Failed to listen on %s", qPrintable(endpoint_));
+			qWarning("Failed to listen on %s", qPrintable(m_endpoint));
 		}
-		connect(server_, &QLocalServer::newConnection, this, &ShellApp::onNewConnection);
+		connect(m_server, &QLocalServer::newConnection, this, &ShellApp::onNewConnection);
 
 		// Tool windows: no QWidget parent (ShellApp is QObject-only). Owned explicitly.
-		tearOutPreview_ = new TearOutPreview(nullptr);
-		tearOutPreview_->hide();
-		tabDragGhost_ = new TabDragGhost(nullptr);
-		tabDragGhost_->hide();
-		dragVisualTimer_ = new QTimer(this);
-		dragVisualTimer_->setInterval(16);
-		connect(dragVisualTimer_, &QTimer::timeout, this, &ShellApp::updateTabDragVisuals);
+		m_tearOutPreview = new TearOutPreview(nullptr);
+		m_tearOutPreview->hide();
+		m_tabDragGhost = new TabDragGhost(nullptr);
+		m_tabDragGhost->hide();
+		m_dragVisualTimer = new QTimer(this);
+		m_dragVisualTimer->setInterval(16);
+		connect(m_dragVisualTimer, &QTimer::timeout, this, &ShellApp::updateTabDragVisuals);
 	}
 
 	ShellApp::~ShellApp()
 	{
-		delete tearOutPreview_;
-		tearOutPreview_ = nullptr;
-		delete tabDragGhost_;
-		tabDragGhost_ = nullptr;
+		delete m_tearOutPreview;
+		m_tearOutPreview = nullptr;
+		delete m_tabDragGhost;
+		m_tabDragGhost = nullptr;
 	}
 
 	ShellWindow* ShellApp::createShell(QPoint pos, QSize size, bool showNow)
@@ -76,7 +76,7 @@ namespace mps::host
 		{
 			raw->show();
 		}
-		shells_.push_back(std::move(shell));
+		m_shells.push_back(std::move(shell));
 		return raw;
 	}
 
@@ -110,7 +110,7 @@ namespace mps::host
 
 	void ShellApp::clearAllDropIndicators()
 	{
-		for (auto& shell : shells_)
+		for (auto& shell : m_shells)
 		{
 			if (shell)
 			{
@@ -121,7 +121,7 @@ namespace mps::host
 
 	void ShellApp::clearAllTabYieldPreviews()
 	{
-		for (auto& shell : shells_)
+		for (auto& shell : m_shells)
 		{
 			if (shell)
 			{
@@ -136,7 +136,7 @@ namespace mps::host
 		{
 			return shell;
 		}
-		for (const auto& shell : shells_)
+		for (const auto& shell : m_shells)
 		{
 			if (shell && shell->isStripDropTarget(watched))
 			{
@@ -150,14 +150,14 @@ namespace mps::host
 	{
 		// Esc during tab drag → cancel (browser-style), do not tear out.
 		// Note: on Windows, OLE DnD often swallows KeyPress; see pollEscapeCancel_().
-		if (dragActive_ && (event->type() == QEvent::KeyPress || event->type() == QEvent::ShortcutOverride))
+		if (m_dragActive && (event->type() == QEvent::KeyPress || event->type() == QEvent::ShortcutOverride))
 		{
 			auto* ke = static_cast<QKeyEvent*>(event);
 			if (ke->key() == Qt::Key_Escape)
 			{
-				if (!dragCancelled_)
+				if (!m_dragCancelled)
 				{
-					dragCancelled_ = true;
+					m_dragCancelled = true;
 					startGhostSnapBack();
 				}
 				return false; // let QDrag / OLE also abort
@@ -198,10 +198,10 @@ namespace mps::host
 			}
 			const qint64 tabId = de->mimeData()->data(QString::fromUtf8(kTabMimeType)).toLongLong();
 			const int guestW =
-				dragTabWidth_ > 0 ? dragTabWidth_ : (tabDragGhost_ ? tabDragGhost_->contentSize().width() : 80);
+				m_dragTabWidth > 0 ? m_dragTabWidth : (m_tabDragGhost ? m_tabDragGhost->contentSize().width() : 80);
 
 			// Only one shell shows strip feedback at a time.
-			for (auto& s : shells_)
+			for (auto& s : m_shells)
 			{
 				if (!s || s.get() == shell)
 				{
@@ -211,23 +211,23 @@ namespace mps::host
 				s->clearTabYieldPreview();
 			}
 
-			if (dragSource_ && shell == dragSource_ && tabId == dragTabId_)
+			if (m_dragSource && shell == m_dragSource && tabId == m_dragTabId)
 			{
 				shell->previewTabYieldAtCursor(tabId, QCursor::pos(), 0,
-											   tabGhostHotSpot_.x()
-												   - (tabDragGhost_ ? tabDragGhost_->contentOrigin().x() : 0));
+											   m_tabGhostHotSpot.x()
+												   - (m_tabDragGhost ? m_tabDragGhost->contentOrigin().x() : 0));
 			}
 			else
 			{
-				if (dragSource_ && dragSource_ != shell)
+				if (m_dragSource && m_dragSource != shell)
 				{
-					dragSource_->clearTabYieldPreview();
+					m_dragSource->clearTabYieldPreview();
 				}
 				// Merge target: live tab yield, not only a blue bar.
 				shell->clearDropInsertIndicator();
 				shell->previewTabYieldAtCursor(tabId, dropGlobal, guestW,
-											   tabGhostHotSpot_.x()
-												   - (tabDragGhost_ ? tabDragGhost_->contentOrigin().x() : 0));
+											   m_tabGhostHotSpot.x()
+												   - (m_tabDragGhost ? m_tabDragGhost->contentOrigin().x() : 0));
 			}
 			de->acceptProposedAction();
 			return true;
@@ -288,11 +288,11 @@ namespace mps::host
 
 	void ShellApp::createClientOn(ShellWindow* shell)
 	{
-		const int clientIndex = nextClientIndex_++;
-		nextWindowIndex_[clientIndex] = 1;
-		auto session = std::make_unique<ClientSession>(clientIndex, endpoint_, this);
+		const int clientIndex = m_nextClientIndex++;
+		m_nextWindowIndex[clientIndex] = 1;
+		auto session = std::make_unique<ClientSession>(clientIndex, m_endpoint, this);
 		auto* raw = session.get();
-		pendingFirstShell_.insert(raw, shell);
+		m_pendingFirstShell.insert(raw, shell);
 		connect(raw, &ClientSession::sessionHelloOk, this, &ShellApp::onSessionReady);
 		connect(raw, &ClientSession::subWindowAdded, this, &ShellApp::onSubWindowAdded);
 		connect(raw, &ClientSession::subWindowRemoved, this, &ShellApp::onSubWindowRemoved);
@@ -300,15 +300,15 @@ namespace mps::host
 		connect(raw, &ClientSession::invokeNewWindow, this,
 				[this](ClientSession* session, qint64 sourceTabId)
 				{
-					const int m = nextWindowIndex_[session->clientIndex()]++;
-					const qint64 tabId = nextTabId_++;
+					const int m = m_nextWindowIndex[session->clientIndex()]++;
+					const qint64 tabId = m_nextTabId++;
 					const QString title = makeTitle(session->clientIndex(), m);
 					// Prefer the shell that hosts the page where the user clicked.
 					ShellWindow* shell = shellForTab(sourceTabId);
 					if (!shell)
 					{
 						// Fallback: any shell that already hosts this session (prefer last match).
-						for (auto& s : shells_)
+						for (auto& s : m_shells)
 						{
 							for (const auto& t : s->tabs())
 							{
@@ -319,28 +319,28 @@ namespace mps::host
 							}
 						}
 					}
-					if (!shell && !shells_.empty())
+					if (!shell && !m_shells.empty())
 					{
-						shell = shells_.back().get();
+						shell = m_shells.back().get();
 					}
 					if (shell)
 					{
-						pendingFirstShell_.insert(session, shell);
+						m_pendingFirstShell.insert(session, shell);
 					}
 					session->requestCreateSubWindow(tabId, title);
 				});
-		raw->startClientProcess(clientExe_, token_);
-		sessions_.push_back(std::move(session));
+		raw->startClientProcess(m_clientExe, m_token);
+		m_sessions.push_back(std::move(session));
 	}
 
 	void ShellApp::onNewConnection()
 	{
-		while (server_->hasPendingConnections())
+		while (m_server->hasPendingConnections())
 		{
-			auto* sock = server_->nextPendingConnection();
+			auto* sock = m_server->nextPendingConnection();
 			// Attach to the newest session still without a socket.
 			ClientSession* target = nullptr;
-			for (auto it = sessions_.rbegin(); it != sessions_.rend(); ++it)
+			for (auto it = m_sessions.rbegin(); it != m_sessions.rend(); ++it)
 			{
 				if (!(*it)->channel())
 				{
@@ -360,25 +360,25 @@ namespace mps::host
 
 	void ShellApp::onSessionReady(ClientSession* session)
 	{
-		auto* shell = pendingFirstShell_.value(session, nullptr);
+		auto* shell = m_pendingFirstShell.value(session, nullptr);
 		if (!shell)
 		{
 			return;
 		}
-		const int m = nextWindowIndex_[session->clientIndex()]++;
-		const qint64 tabId = nextTabId_++;
+		const int m = m_nextWindowIndex[session->clientIndex()]++;
+		const qint64 tabId = m_nextTabId++;
 		const QString title = makeTitle(session->clientIndex(), m);
 		session->requestCreateSubWindow(tabId, title);
 	}
 
 	void ShellApp::onSubWindowAdded(ClientSession* session, qint64 tabId, QString title, quintptr wid)
 	{
-		ShellWindow* shell = pendingFirstShell_.take(session);
+		ShellWindow* shell = m_pendingFirstShell.take(session);
 		if (!shell)
 		{
 			// Additional window without pending: prefer shell that already hosts this session
 			// (last match — closer to tear-out target than shells_.front()).
-			for (auto& s : shells_)
+			for (auto& s : m_shells)
 			{
 				for (const auto& t : s->tabs())
 				{
@@ -389,9 +389,9 @@ namespace mps::host
 				}
 			}
 		}
-		if (!shell && !shells_.empty())
+		if (!shell && !m_shells.empty())
 		{
-			shell = shells_.back().get();
+			shell = m_shells.back().get();
 		}
 		if (!shell)
 		{
@@ -410,7 +410,7 @@ namespace mps::host
 		{
 			info.windowIndex = parts[1].mid(6).toInt();
 		}
-		tabToShell_.insert(tabId, shell);
+		m_tabToShell.insert(tabId, shell);
 		shell->addTab(info);
 		session->notifyReattachment(shell->shellId());
 	}
@@ -418,7 +418,7 @@ namespace mps::host
 	void ShellApp::onSubWindowRemoved(ClientSession* session, qint64 tabId)
 	{
 		Q_UNUSED(session);
-		if (auto* shell = tabToShell_.take(tabId))
+		if (auto* shell = m_tabToShell.take(tabId))
 		{
 			shell->removeTab(tabId);
 			destroyShellIfEmpty(shell);
@@ -435,7 +435,7 @@ namespace mps::host
 		session->disconnect(this);
 
 		QList<qint64> tabs;
-		for (auto& shell : shells_)
+		for (auto& shell : m_shells)
 		{
 			if (!shell)
 			{
@@ -452,20 +452,20 @@ namespace mps::host
 		}
 		for (qint64 id : tabs)
 		{
-			if (auto* shell = tabToShell_.take(id))
+			if (auto* shell = m_tabToShell.take(id))
 			{
 				shell->releaseEmbedOwnershipForTab(id);
 				shell->removeTab(id);
 				destroyShellIfEmpty(shell);
 			}
 		}
-		pendingFirstShell_.remove(session);
-		sessions_.erase(std::remove_if(sessions_.begin(), sessions_.end(),
+		m_pendingFirstShell.remove(session);
+		m_sessions.erase(std::remove_if(m_sessions.begin(), m_sessions.end(),
 									   [&](const std::unique_ptr<ClientSession>& p)
 									   {
 										   return p.get() == session;
 									   }),
-						sessions_.end());
+						m_sessions.end());
 	}
 
 	void ShellApp::closeShell(ShellWindow* shell)
@@ -481,7 +481,7 @@ namespace mps::host
 			{
 				continue;
 			}
-			tabToShell_.remove(t.tabId);
+			m_tabToShell.remove(t.tabId);
 			shell->releaseEmbedOwnershipForTab(t.tabId);
 			shell->removeTab(t.tabId);
 			if (t.session)
@@ -491,19 +491,19 @@ namespace mps::host
 		}
 
 		// Drop from ownership list before force-close.
-		for (auto it = shells_.begin(); it != shells_.end(); ++it)
+		for (auto it = m_shells.begin(); it != m_shells.end(); ++it)
 		{
 			if (it->get() == shell)
 			{
 				ShellWindow* raw = it->release();
-				shells_.erase(it);
+				m_shells.erase(it);
 				raw->forceClose();
 				raw->deleteLater();
 				break;
 			}
 		}
 
-		if (shells_.empty())
+		if (m_shells.empty())
 		{
 			QCoreApplication::quit();
 		}
@@ -515,7 +515,7 @@ namespace mps::host
 		{
 			return;
 		}
-		auto* shell = tabToShell_.value(tabId, nullptr);
+		auto* shell = m_tabToShell.value(tabId, nullptr);
 		if (!shell)
 		{
 			return;
@@ -536,7 +536,7 @@ namespace mps::host
 		else
 		{
 			// Orphan tab (no session): drop locally.
-			tabToShell_.remove(tabId);
+			m_tabToShell.remove(tabId);
 			shell->removeTab(tabId);
 			destroyShellIfEmpty(shell);
 		}
@@ -580,7 +580,7 @@ namespace mps::host
 			source->releaseEmbedOwnershipForTab(tabId);
 		}
 		source->removeTab(tabId);
-		tabToShell_.remove(tabId);
+		m_tabToShell.remove(tabId);
 
 		QPoint pos = suggestedGeometry.topLeft();
 		if (pos.isNull())
@@ -590,12 +590,12 @@ namespace mps::host
 		QSize sz = suggestedGeometry.size();
 		if (!sz.isValid() || sz.width() < 200 || sz.height() < 150)
 		{
-			sz = dragPreviewSize_.isValid() ? dragPreviewSize_ : QSize(960, 640);
+			sz = m_dragPreviewSize.isValid() ? m_dragPreviewSize : QSize(960, 640);
 		}
 
 		// Create hidden, embed first, then show — preview stays on top until first paints.
 		auto* neu = createShell(pos, sz, /*showNow=*/false);
-		tabToShell_.insert(tabId, neu);
+		m_tabToShell.insert(tabId, neu);
 		neu->addTab(moved);
 		if (moved.session)
 		{
@@ -607,18 +607,18 @@ namespace mps::host
 			neu->embed()->setForeignWindow(moved.wid);
 			neu->embed()->resyncForeignWindow();
 		}
-		if (tearOutPreview_)
+		if (m_tearOutPreview)
 		{
-			tearOutPreview_->setGeometry(QRect(pos, sz));
-			if (!tearOutPreview_->isVisible())
+			m_tearOutPreview->setGeometry(QRect(pos, sz));
+			if (!m_tearOutPreview->isVisible())
 			{
-				tearOutPreview_->show();
+				m_tearOutPreview->show();
 			}
-			tearOutPreview_->raise();
+			m_tearOutPreview->raise();
 		}
-		if (tabDragGhost_)
+		if (m_tabDragGhost)
 		{
-			tabDragGhost_->hide();
+			m_tabDragGhost->hide();
 		}
 		neu->show();
 		neu->raise();
@@ -633,18 +633,18 @@ namespace mps::host
 		QTimer::singleShot(48, this,
 						   [this]()
 						   {
-							   if (dragActive_)
+							   if (m_dragActive)
 							   {
 								   return;
 							   }
-							   if (tearOutPreview_)
+							   if (m_tearOutPreview)
 							   {
-								   tearOutPreview_->hide();
-								   tearOutPreview_->setContentPixmap({});
+								   m_tearOutPreview->hide();
+								   m_tearOutPreview->setContentPixmap({});
 							   }
-							   if (tabDragGhost_)
+							   if (m_tabDragGhost)
 							   {
-								   tabDragGhost_->setPixmap({});
+								   m_tabDragGhost->setPixmap({});
 							   }
 						   });
 		destroyShellIfEmpty(source);
@@ -656,7 +656,7 @@ namespace mps::host
 		{
 			return;
 		}
-		auto* source = tabToShell_.value(tabId, nullptr);
+		auto* source = m_tabToShell.value(tabId, nullptr);
 		if (!tab_strip::canMergeTab(tabId, tabId == kHomeTabId, source != nullptr, source == target))
 		{
 			return;
@@ -685,7 +685,7 @@ namespace mps::host
 			source->releaseEmbedOwnershipForTab(tabId);
 		}
 		source->removeTab(tabId);
-		tabToShell_.insert(tabId, target);
+		m_tabToShell.insert(tabId, target);
 		if (insertIndex < 0)
 		{
 			target->addTab(moved);
@@ -712,12 +712,12 @@ namespace mps::host
 
 	ShellWindow* ShellApp::shellForTab(qint64 tabId) const
 	{
-		return tabToShell_.value(tabId, nullptr);
+		return m_tabToShell.value(tabId, nullptr);
 	}
 
 	ShellWindow* ShellApp::shellAtGlobal(QPoint globalPos) const
 	{
-		for (const auto& shell : shells_)
+		for (const auto& shell : m_shells)
 		{
 			if (shell && shell->isVisible() && shell->frameGeometry().contains(globalPos))
 			{
@@ -729,7 +729,7 @@ namespace mps::host
 
 	ShellWindow* ShellApp::tabDropZoneShellAtGlobal(QPoint globalPos) const
 	{
-		for (const auto& shell : shells_)
+		for (const auto& shell : m_shells)
 		{
 			if (shell && shell->isVisible() && shell->isOverTabDropZone(globalPos))
 			{
@@ -743,8 +743,8 @@ namespace mps::host
 	{
 		const bool overAny = tabDropZoneShellAtGlobal(globalPos) != nullptr;
 		const bool nearLeave =
-			dragSource_
-			&& dragSource_->isNearTabDropZone(globalPos, tab_strip::kTearOutLeaveSlopV, tab_strip::kTearOutLeaveSlopH);
+			m_dragSource
+			&& m_dragSource->isNearTabDropZone(globalPos, tab_strip::kTearOutLeaveSlopV, tab_strip::kTearOutLeaveSlopH);
 		return tab_strip::shouldSuppressTearOut(overAny, nearLeave);
 	}
 
@@ -754,17 +754,17 @@ namespace mps::host
 		{
 			return;
 		}
-		dragActive_ = true;
-		dragDropHandled_ = false;
-		dragCancelled_ = false;
-		tearOutDetached_ = false;
-		ghostSnapBackActive_ = false;
-		dragForbiddenCursor_ = false;
-		dragSource_ = source;
-		dragTabId_ = tabId;
-		dragResumeTabId_ = 0;
-		dragPreviewSize_ = source->size();
-		dragTabWidth_ = 0;
+		m_dragActive = true;
+		m_dragDropHandled = false;
+		m_dragCancelled = false;
+		m_tearOutDetached = false;
+		m_ghostSnapBackActive = false;
+		m_dragForbiddenCursor = false;
+		m_dragSource = source;
+		m_dragTabId = tabId;
+		m_dragResumeTabId = 0;
+		m_dragPreviewSize = source->size();
+		m_dragTabWidth = 0;
 #ifdef Q_OS_WIN
 		// Clear Esc transition bit so a prior Esc press is not mistaken for cancel.
 		GetAsyncKeyState(VK_ESCAPE);
@@ -786,7 +786,7 @@ namespace mps::host
 
 		// Snapshot tab face + content BEFORE hiding / switching away.
 		const QSize tabLogicalSize = source->tabButtonSize(tabId);
-		dragTabWidth_ = tabLogicalSize.width() > 0 ? tabLogicalSize.width() : 80;
+		m_dragTabWidth = tabLogicalSize.width() > 0 ? tabLogicalSize.width() : 80;
 		const QPixmap tabGhostPm = source->grabTabButton(tabId);
 		QPixmap contentSnap;
 		if (source->activeTabId() == tabId && source->embed())
@@ -795,7 +795,7 @@ namespace mps::host
 		}
 		if (contentSnap.isNull() && wid)
 		{
-			contentSnap = captureWindowPixmap(wid, dragPreviewSize_);
+			contentSnap = captureWindowPixmap(wid, m_dragPreviewSize);
 		}
 
 		source->setTabDragHidden(tabId, true);
@@ -803,7 +803,7 @@ namespace mps::host
 		// While dragging, show the previous tab's content in the source shell.
 		if (source->activeTabId() == tabId)
 		{
-			dragResumeTabId_ = tabId;
+			m_dragResumeTabId = tabId;
 			const qint64 next = source->previousActivationTarget(tabId);
 			if (next != tabId)
 			{
@@ -811,13 +811,13 @@ namespace mps::host
 			}
 		}
 
-		if (tabDragGhost_)
+		if (m_tabDragGhost)
 		{
-			const QSize contentSz = tabLogicalSize.isValid() ? tabLogicalSize : QSize(dragTabWidth_, 28);
-			tabDragGhost_->setTabPixmap(tabGhostPm, contentSz);
+			const QSize contentSz = tabLogicalSize.isValid() ? tabLogicalSize : QSize(m_dragTabWidth, 28);
+			m_tabDragGhost->setTabPixmap(tabGhostPm, contentSz);
 			// Press-point hotspot: keep grab point under the cursor while free-
 			// following. Strip mode still pins content top to the tab row (see below).
-			const QPoint origin = tabDragGhost_->contentOrigin();
+			const QPoint origin = m_tabDragGhost->contentOrigin();
 			int hx = localHotSpot.x();
 			int hy = localHotSpot.y();
 			if (hx <= 0)
@@ -830,41 +830,41 @@ namespace mps::host
 			}
 			hx = qBound(4, hx, qMax(4, contentSz.width() - 4));
 			hy = qBound(2, hy, qMax(2, contentSz.height() - 2));
-			tabGhostHotSpot_ = QPoint(origin.x() + hx, origin.y() + hy);
-			tabDragGhost_->hide();
+			m_tabGhostHotSpot = QPoint(origin.x() + hx, origin.y() + hy);
+			m_tabDragGhost->hide();
 		}
 		// Fallback hotspot if geometry must be estimated without a visible ghost.
 		const int previewHx =
 			qBound(16,
-				   int(double(tabGhostHotSpot_.x() - (tabDragGhost_ ? tabDragGhost_->contentOrigin().x() : 0))
-					   * double(dragPreviewSize_.width()) / qMax(1, dragTabWidth_)),
-				   dragPreviewSize_.width() - 16);
-		dragHotSpot_ = QPoint(previewHx, TearOutPreview::kFramePad + TearOutPreview::kTitleBarHeight / 2);
+				   int(double(m_tabGhostHotSpot.x() - (m_tabDragGhost ? m_tabDragGhost->contentOrigin().x() : 0))
+					   * double(m_dragPreviewSize.width()) / qMax(1, m_dragTabWidth)),
+				   m_dragPreviewSize.width() - 16);
+		m_dragHotSpot = QPoint(previewHx, TearOutPreview::kFramePad + TearOutPreview::kTitleBarHeight / 2);
 
-		if (tearOutPreview_)
+		if (m_tearOutPreview)
 		{
-			tearOutPreview_->setContentPixmap(contentSnap);
-			tearOutPreview_->resize(dragPreviewSize_);
-			tearOutPreview_->hide();
+			m_tearOutPreview->setContentPixmap(contentSnap);
+			m_tearOutPreview->resize(m_dragPreviewSize);
+			m_tearOutPreview->hide();
 		}
 		qApp->installEventFilter(this);
-		if (dragVisualTimer_)
+		if (m_dragVisualTimer)
 		{
-			dragVisualTimer_->start();
+			m_dragVisualTimer->start();
 		}
 		updateTabDragVisuals();
 	}
 
 	void ShellApp::noteTabDragDropHandled()
 	{
-		dragDropHandled_ = true;
+		m_dragDropHandled = true;
 	}
 
 	bool ShellApp::consumeDragCancelled()
 	{
 		pollEscapeCancel();
-		const bool cancelled = dragCancelled_;
-		dragCancelled_ = false;
+		const bool cancelled = m_dragCancelled;
+		m_dragCancelled = false;
 		return cancelled;
 	}
 
@@ -875,9 +875,9 @@ namespace mps::host
 		const SHORT esc = GetAsyncKeyState(VK_ESCAPE);
 		if ((esc & 0x8000) || (esc & 0x0001))
 		{
-			if (!dragCancelled_)
+			if (!m_dragCancelled)
 			{
-				dragCancelled_ = true;
+				m_dragCancelled = true;
 				startGhostSnapBack();
 			}
 		}
@@ -886,60 +886,60 @@ namespace mps::host
 
 	void ShellApp::startGhostSnapBack()
 	{
-		if (!tabDragGhost_ || !dragSource_ || dragTabId_ == 0)
+		if (!m_tabDragGhost || !m_dragSource || m_dragTabId == 0)
 		{
 			finishGhostSnapBack();
 			return;
 		}
-		if (tearOutPreview_)
+		if (m_tearOutPreview)
 		{
-			tearOutPreview_->hide();
+			m_tearOutPreview->hide();
 		}
-		tearOutDetached_ = false;
+		m_tearOutDetached = false;
 
-		QRect target = dragSource_->tabDragSlotGlobalRect(dragTabId_);
+		QRect target = m_dragSource->tabDragSlotGlobalRect(m_dragTabId);
 		if (!target.isValid())
 		{
 			finishGhostSnapBack();
 			return;
 		}
 		// Keep ghost size; snap content into the slot (account for shadow pad).
-		const QPoint origin = tabDragGhost_->contentOrigin();
-		const QSize ghostSize = tabDragGhost_->size();
+		const QPoint origin = m_tabDragGhost->contentOrigin();
+		const QSize ghostSize = m_tabDragGhost->size();
 		const QRect end(target.topLeft() - origin, ghostSize);
-		const QRect start = tabDragGhost_->geometry();
+		const QRect start = m_tabDragGhost->geometry();
 
-		ghostSnapBackActive_ = true;
-		if (!tabDragGhost_->isVisible())
+		m_ghostSnapBackActive = true;
+		if (!m_tabDragGhost->isVisible())
 		{
-			tabDragGhost_->show();
+			m_tabDragGhost->show();
 		}
-		tabDragGhost_->raise();
+		m_tabDragGhost->raise();
 
-		if (!ghostSnapAnim_)
+		if (!m_ghostSnapAnim)
 		{
-			ghostSnapAnim_ = new QPropertyAnimation(tabDragGhost_, "geometry", this);
-			ghostSnapAnim_->setDuration(160);
-			ghostSnapAnim_->setEasingCurve(QEasingCurve::InOutCubic);
-			connect(ghostSnapAnim_, &QPropertyAnimation::finished, this, &ShellApp::finishGhostSnapBack);
+			m_ghostSnapAnim = new QPropertyAnimation(m_tabDragGhost, "geometry", this);
+			m_ghostSnapAnim->setDuration(160);
+			m_ghostSnapAnim->setEasingCurve(QEasingCurve::InOutCubic);
+			connect(m_ghostSnapAnim, &QPropertyAnimation::finished, this, &ShellApp::finishGhostSnapBack);
 		}
-		ghostSnapAnim_->stop();
-		ghostSnapAnim_->setStartValue(start);
-		ghostSnapAnim_->setEndValue(end);
-		ghostSnapAnim_->start();
+		m_ghostSnapAnim->stop();
+		m_ghostSnapAnim->setStartValue(start);
+		m_ghostSnapAnim->setEndValue(end);
+		m_ghostSnapAnim->start();
 	}
 
 	void ShellApp::finishGhostSnapBack()
 	{
-		ghostSnapBackActive_ = false;
-		if (tabDragGhost_)
+		m_ghostSnapBackActive = false;
+		if (m_tabDragGhost)
 		{
-			tabDragGhost_->hide();
+			m_tabDragGhost->hide();
 		}
 		// Keep source yield until endTabDrag so slot stays stable during anim; clear others.
-		for (auto& s : shells_)
+		for (auto& s : m_shells)
 		{
-			if (s && s.get() != dragSource_)
+			if (s && s.get() != m_dragSource)
 			{
 				s->clearTabYieldPreview();
 				s->clearDropInsertIndicator();
@@ -949,74 +949,74 @@ namespace mps::host
 
 	QRect ShellApp::tearOutPreviewGeometry() const
 	{
-		if (tearOutPreview_ && tearOutPreview_->isVisible())
+		if (m_tearOutPreview && m_tearOutPreview->isVisible())
 		{
-			return tearOutPreview_->geometry();
+			return m_tearOutPreview->geometry();
 		}
 		// Fallback: same wrap math around the tab ghost (or cursor).
-		if (tabDragGhost_ && tabDragGhost_->isVisible())
+		if (m_tabDragGhost && m_tabDragGhost->isVisible())
 		{
-			const QPoint o = tabDragGhost_->contentOrigin();
-			const QRect tabContent(tabDragGhost_->pos() + o, tabDragGhost_->contentSize());
-			const QRect geo = TearOutPreview::geometryForTabContent(tabContent, dragPreviewSize_);
+			const QPoint o = m_tabDragGhost->contentOrigin();
+			const QRect tabContent(m_tabDragGhost->pos() + o, m_tabDragGhost->contentSize());
+			const QRect geo = TearOutPreview::geometryForTabContent(tabContent, m_dragPreviewSize);
 			if (geo.isValid())
 			{
 				return geo;
 			}
 		}
-		const QPoint pos = QCursor::pos() - dragHotSpot_;
-		return QRect(pos, dragPreviewSize_);
+		const QPoint pos = QCursor::pos() - m_dragHotSpot;
+		return QRect(pos, m_dragPreviewSize);
 	}
 
 	void ShellApp::endTabDrag(bool tearOrMerge)
 	{
-		if (!dragActive_)
+		if (!m_dragActive)
 		{
 			return;
 		}
 		qApp->removeEventFilter(this);
-		if (dragVisualTimer_)
+		if (m_dragVisualTimer)
 		{
-			dragVisualTimer_->stop();
+			m_dragVisualTimer->stop();
 		}
-		if (ghostSnapAnim_)
+		if (m_ghostSnapAnim)
 		{
-			ghostSnapAnim_->stop();
+			m_ghostSnapAnim->stop();
 		}
-		ghostSnapBackActive_ = false;
-		tearOutDetached_ = false;
+		m_ghostSnapBackActive = false;
+		m_tearOutDetached = false;
 		// Keep preview visible across tear-out until the new shell is shown.
 		if (!tearOrMerge)
 		{
-			if (tearOutPreview_)
+			if (m_tearOutPreview)
 			{
-				tearOutPreview_->hide();
-				tearOutPreview_->setContentPixmap({});
+				m_tearOutPreview->hide();
+				m_tearOutPreview->setContentPixmap({});
 			}
-			if (tabDragGhost_)
+			if (m_tabDragGhost)
 			{
-				tabDragGhost_->hide();
-				tabDragGhost_->setPixmap({});
+				m_tabDragGhost->hide();
+				m_tabDragGhost->setPixmap({});
 			}
 		}
-		else if (tabDragGhost_)
+		else if (m_tabDragGhost)
 		{
 			// Tear-out uses the window preview; hide the tab ghost.
-			tabDragGhost_->hide();
+			m_tabDragGhost->hide();
 		}
 		clearAllTabYieldPreviews();
 
-		ShellWindow* source = dragSource_;
-		const qint64 tabId = dragTabId_;
-		const qint64 resumeId = dragResumeTabId_;
-		const bool dropHandled = dragDropHandled_;
+		ShellWindow* source = m_dragSource;
+		const qint64 tabId = m_dragTabId;
+		const qint64 resumeId = m_dragResumeTabId;
+		const bool dropHandled = m_dragDropHandled;
 
-		dragActive_ = false;
-		dragSource_ = nullptr;
-		dragTabId_ = 0;
-		dragResumeTabId_ = 0;
-		dragDropHandled_ = false;
-		dragTabWidth_ = 0;
+		m_dragActive = false;
+		m_dragSource = nullptr;
+		m_dragTabId = 0;
+		m_dragResumeTabId = 0;
+		m_dragDropHandled = false;
+		m_dragTabWidth = 0;
 
 		if (!source)
 		{
@@ -1053,20 +1053,20 @@ namespace mps::host
 
 	void ShellApp::updateTabDragVisuals()
 	{
-		if (!dragActive_)
+		if (!m_dragActive)
 		{
 			return;
 		}
 		pollEscapeCancel();
-		if (ghostSnapBackActive_)
+		if (m_ghostSnapBackActive)
 		{
 			return;
 		}
-		if (dragCancelled_)
+		if (m_dragCancelled)
 		{
-			if (tearOutPreview_)
+			if (m_tearOutPreview)
 			{
-				tearOutPreview_->hide();
+				m_tearOutPreview->hide();
 			}
 			clearAllDropIndicators();
 			return;
@@ -1075,7 +1075,7 @@ namespace mps::host
 
 		// Forbidden cursor over window min/max/close (not a drop target).
 		bool forbidden = false;
-		for (auto& s : shells_)
+		for (auto& s : m_shells)
 		{
 			if (s && s->isOverWindowButtons(g))
 			{
@@ -1083,9 +1083,9 @@ namespace mps::host
 				break;
 			}
 		}
-		if (forbidden != dragForbiddenCursor_)
+		if (forbidden != m_dragForbiddenCursor)
 		{
-			dragForbiddenCursor_ = forbidden;
+			m_dragForbiddenCursor = forbidden;
 			if (QApplication::overrideCursor())
 			{
 				QApplication::changeOverrideCursor(forbidden ? Qt::ForbiddenCursor : Qt::ArrowCursor);
@@ -1094,30 +1094,30 @@ namespace mps::host
 
 		const bool overStrip = tabDropZoneShellAtGlobal(g) != nullptr;
 		const bool nearLeave =
-			dragSource_
-			&& dragSource_->isNearTabDropZone(g, tab_strip::kTearOutLeaveSlopV, tab_strip::kTearOutLeaveSlopH);
+			m_dragSource
+			&& m_dragSource->isNearTabDropZone(g, tab_strip::kTearOutLeaveSlopV, tab_strip::kTearOutLeaveSlopH);
 		const bool nearReturn =
-			dragSource_
-			&& dragSource_->isNearTabDropZone(g, tab_strip::kTearOutReturnSlopV, tab_strip::kTearOutReturnSlopH);
+			m_dragSource
+			&& m_dragSource->isNearTabDropZone(g, tab_strip::kTearOutReturnSlopV, tab_strip::kTearOutReturnSlopH);
 
-		const bool wasDetached = tearOutDetached_;
-		tearOutDetached_ = tab_strip::nextTearOutDetached(wasDetached, overStrip, nearLeave, nearReturn);
+		const bool wasDetached = m_tearOutDetached;
+		m_tearOutDetached = tab_strip::nextTearOutDetached(wasDetached, overStrip, nearLeave, nearReturn);
 
-		const int contentHotX = tabGhostHotSpot_.x() - (tabDragGhost_ ? tabDragGhost_->contentOrigin().x() : 0);
+		const int contentHotX = m_tabGhostHotSpot.x() - (m_tabDragGhost ? m_tabDragGhost->contentOrigin().x() : 0);
 
 		// The tab always stays under the cursor. Window preview is an extra layer
 		// while detached — never replace/hide the tab ghost for it.
 		auto positionTabGhost = [&](bool pinToStrip, ShellWindow* stripShell, bool bumpZ)
 		{
-			if (!tabDragGhost_)
+			if (!m_tabDragGhost)
 			{
 				return;
 			}
-			const QPoint origin = tabDragGhost_->contentOrigin();
-			const int contentW = tabDragGhost_->contentSize().width();
-			int left = g.x() - tabGhostHotSpot_.x();
+			const QPoint origin = m_tabDragGhost->contentOrigin();
+			const int contentW = m_tabDragGhost->contentSize().width();
+			int left = g.x() - m_tabGhostHotSpot.x();
 			// Free-follow: press point stays under the cursor (avoids downward bias).
-			int top = g.y() - tabGhostHotSpot_.y();
+			int top = g.y() - m_tabGhostHotSpot.y();
 			if (pinToStrip && stripShell)
 			{
 				// On strip: lock content top to the tab row; X still follows.
@@ -1130,32 +1130,32 @@ namespace mps::host
 					left = clampedContentLeft - origin.x();
 				}
 			}
-			if (tabDragGhost_->pos() != QPoint(left, top))
+			if (m_tabDragGhost->pos() != QPoint(left, top))
 			{
-				tabDragGhost_->move(left, top);
+				m_tabDragGhost->move(left, top);
 			}
-			const bool needShow = !tabDragGhost_->isVisible();
+			const bool needShow = !m_tabDragGhost->isVisible();
 			if (needShow)
 			{
-				tabDragGhost_->show();
+				m_tabDragGhost->show();
 			}
 			// Raising every frame fights the window preview and flickers on Win/DPI.
 			if (bumpZ || needShow)
 			{
-				tabDragGhost_->raise();
+				m_tabDragGhost->raise();
 			}
 		};
 
-		if (!tearOutDetached_)
+		if (!m_tearOutDetached)
 		{
-			if (wasDetached && tearOutPreview_)
+			if (wasDetached && m_tearOutPreview)
 			{
-				tearOutPreview_->hide();
+				m_tearOutPreview->hide();
 			}
 			ShellWindow* stripShell = tabDropZoneShellAtGlobal(g);
 			if (!stripShell)
 			{
-				stripShell = dragSource_;
+				stripShell = m_dragSource;
 			}
 			// Pin Y only while the cursor is actually on the strip. During the leave
 			// slop (cursor already below the strip, window preview not yet shown) the
@@ -1163,31 +1163,31 @@ namespace mps::host
 			// moves down and looks upwardly biased.
 			positionTabGhost(/*pinToStrip=*/overStrip, stripShell, /*bumpZ=*/wasDetached);
 
-			if (dragSource_ && dragTabId_ != 0)
+			if (m_dragSource && m_dragTabId != 0)
 			{
 				if (!stripShell && nearLeave)
 				{
-					stripShell = dragSource_;
+					stripShell = m_dragSource;
 				}
 				const int guestW =
-					dragTabWidth_ > 0 ? dragTabWidth_ : (tabDragGhost_ ? tabDragGhost_->contentSize().width() : 80);
-				if (stripShell == dragSource_)
+					m_dragTabWidth > 0 ? m_dragTabWidth : (m_tabDragGhost ? m_tabDragGhost->contentSize().width() : 80);
+				if (stripShell == m_dragSource)
 				{
-					for (auto& s : shells_)
+					for (auto& s : m_shells)
 					{
-						if (s && s.get() != dragSource_)
+						if (s && s.get() != m_dragSource)
 						{
 							s->clearDropInsertIndicator();
 							s->clearTabYieldPreview();
 						}
 					}
-					dragSource_->previewTabYieldAtCursor(dragTabId_, g, 0, contentHotX);
+					m_dragSource->previewTabYieldAtCursor(m_dragTabId, g, 0, contentHotX);
 				}
 				else if (stripShell)
 				{
-					dragSource_->clearTabYieldPreview();
+					m_dragSource->clearTabYieldPreview();
 					stripShell->clearDropInsertIndicator();
-					stripShell->previewTabYieldAtCursor(dragTabId_, g, guestW, contentHotX);
+					stripShell->previewTabYieldAtCursor(m_dragTabId, g, guestW, contentHotX);
 				}
 			}
 			return;
@@ -1199,29 +1199,29 @@ namespace mps::host
 		{
 			clearAllDropIndicators();
 			// As soon as the tear-out window appears, siblings claim the old slot.
-			if (dragSource_ && dragTabId_ != 0)
+			if (m_dragSource && m_dragTabId != 0)
 			{
-				dragSource_->collapseTornOutTabSlot(dragTabId_);
+				m_dragSource->collapseTornOutTabSlot(m_dragTabId);
 			}
-			for (auto& s : shells_)
+			for (auto& s : m_shells)
 			{
-				if (s && s.get() != dragSource_)
+				if (s && s.get() != m_dragSource)
 				{
 					s->clearTabYieldPreview();
 				}
 			}
 		}
 		positionTabGhost(/*pinToStrip=*/false, nullptr, /*bumpZ=*/!wasDetached);
-		if (tearOutPreview_ && tabDragGhost_)
+		if (m_tearOutPreview && m_tabDragGhost)
 		{
-			const QPoint o = tabDragGhost_->contentOrigin();
-			const QRect tabContent(tabDragGhost_->pos() + o, tabDragGhost_->contentSize());
-			const bool previewNeedShow = !tearOutPreview_->isVisible();
-			tearOutPreview_->alignToTabContent(tabContent);
+			const QPoint o = m_tabDragGhost->contentOrigin();
+			const QRect tabContent(m_tabDragGhost->pos() + o, m_tabDragGhost->contentSize());
+			const bool previewNeedShow = !m_tearOutPreview->isVisible();
+			m_tearOutPreview->alignToTabContent(tabContent);
 			if (previewNeedShow || !wasDetached)
 			{
-				tearOutPreview_->raise();
-				tabDragGhost_->raise();
+				m_tearOutPreview->raise();
+				m_tabDragGhost->raise();
 			}
 		}
 	}
@@ -1232,7 +1232,7 @@ namespace mps::host
 		{
 			return;
 		}
-		if (!tab_strip::shouldDestroyEmptyShell(shell->clientTabCount(), static_cast<int>(shells_.size())))
+		if (!tab_strip::shouldDestroyEmptyShell(shell->clientTabCount(), static_cast<int>(m_shells.size())))
 		{
 			if (shell->clientTabCount() == 0)
 			{
@@ -1241,12 +1241,12 @@ namespace mps::host
 			return;
 		}
 		shell->setActiveTab(kHomeTabId);
-		for (auto it = shells_.begin(); it != shells_.end(); ++it)
+		for (auto it = m_shells.begin(); it != m_shells.end(); ++it)
 		{
 			if (it->get() == shell)
 			{
 				ShellWindow* raw = it->release();
-				shells_.erase(it);
+				m_shells.erase(it);
 				raw->forceClose();
 				raw->deleteLater();
 				return;

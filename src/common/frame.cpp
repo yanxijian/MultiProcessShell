@@ -39,8 +39,8 @@ namespace mps::ipc
 
 	void FrameDecoder::reset()
 	{
-		buffer_.clear();
-		failed_ = false;
+		m_buffer.clear();
+		m_failed = false;
 	}
 
 	void FrameDecoder::append(std::string_view bytes)
@@ -50,38 +50,38 @@ namespace mps::ipc
 
 	void FrameDecoder::append(const std::uint8_t* data, std::size_t size)
 	{
-		if (failed_ || data == nullptr || size == 0)
+		if (m_failed || data == nullptr || size == 0)
 		{
 			return;
 		}
-		buffer_.insert(buffer_.end(), data, data + size);
+		m_buffer.insert(m_buffer.end(), data, data + size);
 	}
 
 	FrameError FrameDecoder::tryPop(std::string& out)
 	{
 		out.clear();
-		if (failed_)
+		if (m_failed)
 		{
 			return FrameError::PayloadTooLarge;
 		}
-		if (buffer_.size() < 4)
+		if (m_buffer.size() < 4)
 		{
 			return FrameError::Incomplete;
 		}
-		const std::uint32_t len = readBe32(buffer_.data());
+		const std::uint32_t len = readBe32(m_buffer.data());
 		if (len > kMaxFramePayloadBytes)
 		{
-			failed_ = true;
-			buffer_.clear();
+			m_failed = true;
+			m_buffer.clear();
 			return FrameError::PayloadTooLarge;
 		}
 		const std::size_t need = 4u + static_cast<std::size_t>(len);
-		if (buffer_.size() < need)
+		if (m_buffer.size() < need)
 		{
 			return FrameError::Incomplete;
 		}
-		out.assign(reinterpret_cast<const char*>(buffer_.data() + 4), static_cast<std::size_t>(len));
-		buffer_.erase(buffer_.begin(), buffer_.begin() + static_cast<std::ptrdiff_t>(need));
+		out.assign(reinterpret_cast<const char*>(m_buffer.data() + 4), static_cast<std::size_t>(len));
+		m_buffer.erase(m_buffer.begin(), m_buffer.begin() + static_cast<std::ptrdiff_t>(need));
 		return FrameError::Ok;
 	}
 } // namespace mps::ipc

@@ -27,7 +27,7 @@ namespace mps::ipc
 		[[nodiscard]] bool send(const shell::ipc::v1::Envelope& env);
 		[[nodiscard]] QIODevice* device() const
 		{
-			return device_;
+			return m_device;
 		}
 
 	signals:
@@ -37,10 +37,10 @@ namespace mps::ipc
 		void onReadyRead();
 
 	private:
-		QIODevice* device_ = nullptr;
-		FrameDecoder decoder_;
-		Handler handler_;
-		QByteArray readBuf_;
+		QIODevice* m_device = nullptr;
+		FrameDecoder m_decoder;
+		Handler m_handler;
+		QByteArray m_readBuf;
 	};
 
 	[[nodiscard]] std::string newCorrelationId();

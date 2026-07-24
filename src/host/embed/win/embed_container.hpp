@@ -25,7 +25,7 @@ namespace mps::host
 		void resyncForeignWindow();
 		[[nodiscard]] quintptr foreignWindow() const
 		{
-			return foreignWid_;
+			return m_foreignWid;
 		}
 
 	protected:
@@ -37,7 +37,7 @@ namespace mps::host
 		void applyEmbed();
 		[[nodiscard]] bool foreignAlive() const;
 
-		quintptr foreignWid_ = 0;
+		quintptr m_foreignWid = 0;
 	};
 } // namespace mps::host
 

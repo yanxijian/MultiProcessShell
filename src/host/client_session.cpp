@@ -14,52 +14,52 @@ namespace mps::host
 
 	ClientSession::ClientSession(int clientIndex, QString endpoint, QObject* parent)
 		: QObject(parent)
-		, clientIndex_(clientIndex)
-		, pageId_(g_nextPageId++)
-		, endpoint_(std::move(endpoint))
+		, m_clientIndex(clientIndex)
+		, m_pageId(g_nextPageId++)
+		, m_endpoint(std::move(endpoint))
 	{
 	}
 
 	ClientSession::~ClientSession()
 	{
-		if (process_)
+		if (m_process)
 		{
-			process_->disconnect(this);
-			process_->kill();
-			process_->waitForFinished(1000);
+			m_process->disconnect(this);
+			m_process->kill();
+			m_process->waitForFinished(1000);
 		}
-		if (socket_)
+		if (m_socket)
 		{
-			socket_->disconnect(this);
-			socket_->abort();
+			m_socket->disconnect(this);
+			m_socket->abort();
 		}
 	}
 
 	void ClientSession::startClientProcess(const QString& clientExe, const QString& token)
 	{
-		process_ = new QProcess(this);
-		connect(process_, &QProcess::finished, this,
+		m_process = new QProcess(this);
+		connect(m_process, &QProcess::finished, this,
 				[this](int, QProcess::ExitStatus)
 				{
 					markDead();
 				});
 		QStringList args;
-		args << QStringLiteral("--from-host") << QStringLiteral("--endpoint=%1").arg(endpoint_)
+		args << QStringLiteral("--from-host") << QStringLiteral("--endpoint=%1").arg(m_endpoint)
 			 << QStringLiteral("--pipe-token=%1").arg(token) << QStringLiteral("--protocol=1");
-		process_->start(clientExe, args);
+		m_process->start(clientExe, args);
 	}
 
 	void ClientSession::attachSocket(QLocalSocket* socket)
 	{
-		socket_ = socket;
-		socket_->setParent(this);
-		channel_ = std::make_unique<mps::ipc::EnvelopeChannel>(socket_, this);
-		channel_->setHandler(
+		m_socket = socket;
+		m_socket->setParent(this);
+		m_channel = std::make_unique<mps::ipc::EnvelopeChannel>(m_socket, this);
+		m_channel->setHandler(
 			[this](shell::ipc::v1::Envelope env)
 			{
 				onEnvelope(std::move(env));
 			});
-		connect(channel_.get(), &mps::ipc::EnvelopeChannel::disconnected, this,
+		connect(m_channel.get(), &mps::ipc::EnvelopeChannel::disconnected, this,
 				[this]
 				{
 					markDead();
@@ -68,11 +68,11 @@ namespace mps::host
 
 	void ClientSession::markDead()
 	{
-		if (dead_)
+		if (m_dead)
 		{
 			return;
 		}
-		dead_ = true;
+		m_dead = true;
 		emit sessionDead(this);
 	}
 
@@ -85,37 +85,37 @@ namespace mps::host
 		env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
 		auto* ack = env.mutable_hello_ack();
 		ack->set_protocol(1);
-		ack->set_session_id(QString::number(pageId_).toStdString());
+		ack->set_session_id(QString::number(m_pageId).toStdString());
 		auto* caps = ack->mutable_host_caps();
 		caps->set_embed(shell::ipc::v1::EMBED_HWND);
 		caps->set_tab_drag(true);
 		caps->set_heartbeat(true);
 		caps->set_invoke(true);
 		caps->set_multi_sub_window(true);
-		channel_->send(env);
+		m_channel->send(env);
 	}
 
 	void ClientSession::requestCreateSubWindow(qint64 tabId, const QString& title)
 	{
-		if (dead_ || !channel_)
+		if (m_dead || !m_channel)
 		{
 			return;
 		}
-		pendingTabs_.push_back(tabId);
+		m_pendingTabs.push_back(tabId);
 		shell::ipc::v1::Envelope env;
 		env.set_protocol(1);
 		env.set_id(mps::ipc::newCorrelationId());
 		env.set_dir(shell::ipc::v1::DIR_REQ);
-		env.set_page_id(pageId_);
+		env.set_page_id(m_pageId);
 		env.set_tab_id(tabId);
 		env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
 		env.mutable_create_sub_window()->set_title(title.toStdString());
-		channel_->send(env);
+		m_channel->send(env);
 	}
 
 	void ClientSession::requestActivate(qint64 tabId)
 	{
-		if (dead_ || !channel_)
+		if (m_dead || !m_channel)
 		{
 			return;
 		}
@@ -123,16 +123,16 @@ namespace mps::host
 		env.set_protocol(1);
 		env.set_id(mps::ipc::newCorrelationId());
 		env.set_dir(shell::ipc::v1::DIR_EVT);
-		env.set_page_id(pageId_);
+		env.set_page_id(m_pageId);
 		env.set_tab_id(tabId);
 		env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
 		env.mutable_active_sub_window();
-		channel_->send(env);
+		m_channel->send(env);
 	}
 
 	void ClientSession::requestClose(qint64 tabId)
 	{
-		if (dead_ || !channel_)
+		if (m_dead || !m_channel)
 		{
 			return;
 		}
@@ -140,16 +140,16 @@ namespace mps::host
 		env.set_protocol(1);
 		env.set_id(mps::ipc::newCorrelationId());
 		env.set_dir(shell::ipc::v1::DIR_REQ);
-		env.set_page_id(pageId_);
+		env.set_page_id(m_pageId);
 		env.set_tab_id(tabId);
 		env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
 		env.mutable_query_close_sub_window();
-		channel_->send(env);
+		m_channel->send(env);
 	}
 
 	void ClientSession::notifyReattachment(qint64 shellId)
 	{
-		if (dead_ || !channel_)
+		if (m_dead || !m_channel)
 		{
 			return;
 		}
@@ -157,15 +157,15 @@ namespace mps::host
 		env.set_protocol(1);
 		env.set_id(mps::ipc::newCorrelationId());
 		env.set_dir(shell::ipc::v1::DIR_EVT);
-		env.set_page_id(pageId_);
+		env.set_page_id(m_pageId);
 		env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
 		env.mutable_notify_main_window_reattachment()->set_shell_id(shellId);
-		channel_->send(env);
+		m_channel->send(env);
 	}
 
 	void ClientSession::setDragSuppress(bool on)
 	{
-		if (dead_ || !channel_)
+		if (m_dead || !m_channel)
 		{
 			return;
 		}
@@ -173,45 +173,45 @@ namespace mps::host
 		env.set_protocol(1);
 		env.set_id(mps::ipc::newCorrelationId());
 		env.set_dir(shell::ipc::v1::DIR_EVT);
-		env.set_page_id(pageId_);
+		env.set_page_id(m_pageId);
 		env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
 		env.mutable_set_drag_suppress()->set_suppress(on);
-		channel_->send(env);
+		m_channel->send(env);
 	}
 
 	void ClientSession::onEnvelope(shell::ipc::v1::Envelope env)
 	{
-		if (env.has_hello() && !helloSeen_)
+		if (env.has_hello() && !m_helloSeen)
 		{
-			helloSeen_ = true;
+			m_helloSeen = true;
 			sendHelloAck();
 			emit sessionHelloOk(this);
 			return;
 		}
 		if (env.has_main_window_added())
 		{
-			mainWid_ = static_cast<quintptr>(env.main_window_added().wid());
-			ready_ = true;
+			m_mainWid = static_cast<quintptr>(env.main_window_added().wid());
+			m_ready = true;
 			emit sessionReady(this);
 			return;
 		}
 		if (env.has_sub_window_added())
 		{
 			qint64 tabId = env.tab_id();
-			if (tabId == 0 && !pendingTabs_.isEmpty())
+			if (tabId == 0 && !m_pendingTabs.isEmpty())
 			{
-				tabId = pendingTabs_.takeFirst();
+				tabId = m_pendingTabs.takeFirst();
 			}
-			else if (!pendingTabs_.isEmpty() && pendingTabs_.front() == tabId)
+			else if (!m_pendingTabs.isEmpty() && m_pendingTabs.front() == tabId)
 			{
-				pendingTabs_.pop_front();
+				m_pendingTabs.pop_front();
 			}
 			quintptr wid = static_cast<quintptr>(env.sub_window_added().wid());
 			if (wid == 0)
 			{
-				wid = mainWid_;
+				wid = m_mainWid;
 			}
-			tabWids_.insert(tabId, wid);
+			m_tabWids.insert(tabId, wid);
 			const QString title = QString::fromStdString(env.sub_window_added().title());
 			emit subWindowAdded(this, tabId, title, wid);
 			return;
@@ -219,7 +219,7 @@ namespace mps::host
 		if (env.has_sub_window_removed())
 		{
 			const qint64 tabId = env.tab_id();
-			tabWids_.remove(tabId);
+			m_tabWids.remove(tabId);
 			emit subWindowRemoved(this, tabId);
 			return;
 		}
@@ -229,7 +229,7 @@ namespace mps::host
 			if (env.query_close_sub_window_result().accept())
 			{
 				const qint64 tabId = env.tab_id();
-				tabWids_.remove(tabId);
+				m_tabWids.remove(tabId);
 				emit subWindowRemoved(this, tabId);
 			}
 			return;
@@ -246,7 +246,7 @@ namespace mps::host
 				res.set_dir(shell::ipc::v1::DIR_RES);
 				res.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
 				res.mutable_invoke_result()->set_payload("ok");
-				channel_->send(res);
+				m_channel->send(res);
 				return;
 			}
 			shell::ipc::v1::Envelope res;
@@ -257,7 +257,7 @@ namespace mps::host
 			auto* err = res.mutable_error();
 			err->set_code(shell::ipc::v1::ERROR_UNIMPLEMENTED);
 			err->set_message("Invoke not implemented in Demo Host");
-			channel_->send(res);
+			m_channel->send(res);
 			return;
 		}
 		if (env.has_heartbeat())

@@ -42,16 +42,16 @@ namespace mps::ipc
 
 		[[nodiscard]] bool failed() const
 		{
-			return failed_;
+			return m_failed;
 		}
 		[[nodiscard]] std::size_t bufferedSize() const
 		{
-			return buffer_.size();
+			return m_buffer.size();
 		}
 
 	private:
-		std::vector<std::uint8_t> buffer_;
-		bool failed_ = false;
+		std::vector<std::uint8_t> m_buffer;
+		bool m_failed = false;
 	};
 } // namespace mps::ipc
 

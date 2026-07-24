@@ -24,19 +24,19 @@ namespace mps::host
 
 		[[nodiscard]] int clientIndex() const
 		{
-			return clientIndex_;
+			return m_clientIndex;
 		}
 		[[nodiscard]] qint64 pageId() const
 		{
-			return pageId_;
+			return m_pageId;
 		}
 		[[nodiscard]] bool ready() const
 		{
-			return ready_;
+			return m_ready;
 		}
 		[[nodiscard]] mps::ipc::EnvelopeChannel* channel()
 		{
-			return channel_.get();
+			return m_channel.get();
 		}
 
 		void startClientProcess(const QString& clientExe, const QString& token);
@@ -48,7 +48,7 @@ namespace mps::host
 		void setDragSuppress(bool on);
 		[[nodiscard]] bool isDead() const
 		{
-			return dead_;
+			return m_dead;
 		}
 
 	signals:
@@ -64,19 +64,19 @@ namespace mps::host
 		void sendHelloAck();
 		void markDead();
 
-		int clientIndex_ = 0;
-		qint64 pageId_ = 0;
-		QString endpoint_;
-		bool ready_ = false;
-		bool helloSeen_ = false;
-		bool dead_ = false;
-		QProcess* process_ = nullptr;
-		QLocalSocket* socket_ = nullptr;
-		std::unique_ptr<mps::ipc::EnvelopeChannel> channel_;
+		int m_clientIndex = 0;
+		qint64 m_pageId = 0;
+		QString m_endpoint;
+		bool m_ready = false;
+		bool m_helloSeen = false;
+		bool m_dead = false;
+		QProcess* m_process = nullptr;
+		QLocalSocket* m_socket = nullptr;
+		std::unique_ptr<mps::ipc::EnvelopeChannel> m_channel;
 		// pending CreateSubWindow tab ids awaiting SubWindowAdded (same order)
-		QList<qint64> pendingTabs_;
-		QHash<qint64, quintptr> tabWids_;
-		quintptr mainWid_ = 0;
+		QList<qint64> m_pendingTabs;
+		QHash<qint64, quintptr> m_tabWids;
+		quintptr m_mainWid = 0;
 	};
 } // namespace mps::host
 

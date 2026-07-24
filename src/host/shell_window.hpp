@@ -29,7 +29,7 @@ namespace mps::host
 		TabButton(const TabInfo& info, QWidget* parent = nullptr);
 		[[nodiscard]] const TabInfo& info() const
 		{
-			return info_;
+			return m_info;
 		}
 		void setInfo(const TabInfo& info);
 		void setActive(bool on);
@@ -47,11 +47,11 @@ namespace mps::host
 		bool eventFilter(QObject* watched, QEvent* event) override;
 
 	private:
-		TabInfo info_;
-		QLabel* title_ = nullptr;
-		QPoint dragStart_;
-		bool pressActive_ = false;
-		bool dragging_ = false;
+		TabInfo m_info;
+		QLabel* m_title = nullptr;
+		QPoint m_dragStart;
+		bool m_pressActive = false;
+		bool m_dragging = false;
 	};
 
 	class ShellWindow final : public QMainWindow
@@ -62,7 +62,7 @@ namespace mps::host
 
 		[[nodiscard]] qint64 shellId() const
 		{
-			return shellId_;
+			return m_shellId;
 		}
 		void addTab(const TabInfo& info);
 		void insertTab(const TabInfo& info, int insertIndex);
@@ -71,20 +71,20 @@ namespace mps::host
 		void setActiveTab(qint64 tabId);
 		[[nodiscard]] QVector<TabInfo> tabs() const
 		{
-			return tabs_;
+			return m_tabs;
 		}
 		[[nodiscard]] qint64 activeTabId() const
 		{
-			return activeTabId_;
+			return m_activeTabId;
 		}
 		[[nodiscard]] int clientTabCount() const;
 		[[nodiscard]] EmbedContainer* embed()
 		{
-			return embed_;
+			return m_embed;
 		}
 		[[nodiscard]] QWidget* titleBarWidget() const
 		{
-			return titleBar_;
+			return m_titleBar;
 		}
 		/// Tab buttons + trailing strip (merge/reorder hot zone); excludes window buttons.
 		[[nodiscard]] bool isOverTabDropZone(QPoint globalPos) const;
@@ -111,7 +111,7 @@ namespace mps::host
 		void collapseTornOutTabSlot(qint64 dragTabId);
 		[[nodiscard]] bool hasTabYieldPreview() const
 		{
-			return yieldDragTabId_ != 0;
+			return m_yieldDragTabId != 0;
 		}
 		/// Insert index of the dragged tab in the live yield order (-1 if none).
 		[[nodiscard]] int yieldInsertIndex() const;
@@ -157,31 +157,31 @@ namespace mps::host
 		TabInfo* findTab(qint64 tabId);
 		[[nodiscard]] const TabInfo* findTab(qint64 tabId) const;
 
-		ShellApp* app_ = nullptr;
-		QObject* stripDropFilter_ = nullptr;
-		qint64 shellId_ = 0;
-		QWidget* titleBar_ = nullptr;
-		QWidget* tabDropTrail_ = nullptr; // trailing strip: drop-to-append + system-move
-		QWidget* dropIndicator_ = nullptr;
-		QPushButton* minBtn_ = nullptr;
-		QPushButton* maxBtn_ = nullptr;
-		QPushButton* closeBtn_ = nullptr;
-		QHBoxLayout* tabRow_ = nullptr;
-		QStackedWidget* stack_ = nullptr;
-		QWidget* emptyPage_ = nullptr;
-		QPushButton* createClientBtn_ = nullptr;
-		EmbedContainer* embed_ = nullptr;
-		QVector<TabInfo> tabs_;
-		qint64 activeTabId_ = kHomeTabId;
-		QList<qint64> activationHistory_; // MRU: most recently activated first
-		QList<TabButton*> tabButtons_;
-		bool forceClosing_ = false;
-		qint64 yieldDragTabId_ = 0;
-		QVector<qint64> yieldOrder_;
-		bool stripDragLayoutActive_ = false;
-		int dragTabWidth_ = 0;
-		int stripDragOriginX_ = 0;
-		QHash<qint64, QPropertyAnimation*> tabSlideAnims_;
+		ShellApp* m_app = nullptr;
+		QObject* m_stripDropFilter = nullptr;
+		qint64 m_shellId = 0;
+		QWidget* m_titleBar = nullptr;
+		QWidget* m_tabDropTrail = nullptr; // trailing strip: drop-to-append + system-move
+		QWidget* m_dropIndicator = nullptr;
+		QPushButton* m_minBtn = nullptr;
+		QPushButton* m_maxBtn = nullptr;
+		QPushButton* m_closeBtn = nullptr;
+		QHBoxLayout* m_tabRow = nullptr;
+		QStackedWidget* m_stack = nullptr;
+		QWidget* m_emptyPage = nullptr;
+		QPushButton* m_createClientBtn = nullptr;
+		EmbedContainer* m_embed = nullptr;
+		QVector<TabInfo> m_tabs;
+		qint64 m_activeTabId = kHomeTabId;
+		QList<qint64> m_activationHistory; // MRU: most recently activated first
+		QList<TabButton*> m_tabButtons;
+		bool m_forceClosing = false;
+		qint64 m_yieldDragTabId = 0;
+		QVector<qint64> m_yieldOrder;
+		bool m_stripDragLayoutActive = false;
+		int m_dragTabWidth = 0;
+		int m_stripDragOriginX = 0;
+		QHash<qint64, QPropertyAnimation*> m_tabSlideAnims;
 	};
 } // namespace mps::host
 

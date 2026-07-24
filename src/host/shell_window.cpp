@@ -34,7 +34,7 @@ namespace mps::host
 
 	TabButton::TabButton(const TabInfo& info, QWidget* parent)
 		: QFrame(parent)
-		, info_(info)
+		, m_info(info)
 	{
 		setObjectName(QStringLiteral("TabButton"));
 		setFrameShape(QFrame::StyledPanel);
@@ -43,10 +43,10 @@ namespace mps::host
 		auto* lay = new QHBoxLayout(this);
 		lay->setContentsMargins(10, 4, 6, 4);
 		lay->setSpacing(6);
-		title_ = new QLabel(info_.title, this);
-		title_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-		lay->addWidget(title_);
-		if (!info_.isHome)
+		m_title = new QLabel(m_info.title, this);
+		m_title->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+		lay->addWidget(m_title);
+		if (!m_info.isHome)
 		{
 			auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
 			closeBtn->setFixedSize(18, 18);
@@ -58,10 +58,10 @@ namespace mps::host
 			connect(closeBtn, &QPushButton::clicked, this,
 					[this]
 					{
-						emit closeRequested(info_.tabId);
+						emit closeRequested(m_info.tabId);
 					});
 		}
-		if (info_.isHome)
+		if (m_info.isHome)
 		{
 			setStyleSheet(
 				QStringLiteral("#TabButton { border: 2px solid #5a5a5a; border-radius: 4px; background: #f3f3f3; }"
@@ -69,7 +69,7 @@ namespace mps::host
 		}
 		else
 		{
-			const QColor accent = (info_.clientIndex % 2 == 0) ? QColor(200, 60, 60) : QColor(120, 70, 180);
+			const QColor accent = (m_info.clientIndex % 2 == 0) ? QColor(200, 60, 60) : QColor(120, 70, 180);
 			setStyleSheet(QStringLiteral("#TabButton { border: 2px solid %1; border-radius: 4px; background: #f3f3f3; }"
 										 "#TabButton[active=\"true\"] { background: #ffffff; }")
 							  .arg(accent.name()));
@@ -78,8 +78,8 @@ namespace mps::host
 
 	void TabButton::setInfo(const TabInfo& info)
 	{
-		info_ = info;
-		title_->setText(info_.title);
+		m_info = info;
+		m_title->setText(m_info.title);
 	}
 
 	void TabButton::setActive(bool on)
@@ -94,19 +94,19 @@ namespace mps::host
 		// Middle-click closes a tab (Home is never closable).
 		if (event->button() == Qt::MiddleButton)
 		{
-			if (!info_.isHome)
+			if (!m_info.isHome)
 			{
-				emit closeRequested(info_.tabId);
+				emit closeRequested(m_info.tabId);
 			}
 			event->accept();
 			return;
 		}
 		if (event->button() == Qt::LeftButton)
 		{
-			dragStart_ = event->pos();
-			pressActive_ = true;
-			dragging_ = false;
-			emit activated(info_.tabId);
+			m_dragStart = event->pos();
+			m_pressActive = true;
+			m_dragging = false;
+			emit activated(m_info.tabId);
 			event->accept();
 			return;
 		}
@@ -115,28 +115,28 @@ namespace mps::host
 
 	void TabButton::mouseMoveEvent(QMouseEvent* event)
 	{
-		if (!pressActive_ || info_.isHome || !(event->buttons() & Qt::LeftButton))
+		if (!m_pressActive || m_info.isHome || !(event->buttons() & Qt::LeftButton))
 		{
 			QFrame::mouseMoveEvent(event);
 			return;
 		}
-		if ((event->pos() - dragStart_).manhattanLength() < QApplication::startDragDistance())
+		if ((event->pos() - m_dragStart).manhattanLength() < QApplication::startDragDistance())
 		{
 			event->accept();
 			return;
 		}
-		if (!dragging_)
+		if (!m_dragging)
 		{
-			dragging_ = true;
-			emit dragStarted(info_.tabId, dragStart_);
+			m_dragging = true;
+			emit dragStarted(m_info.tabId, m_dragStart);
 		}
 		event->accept();
 	}
 
 	void TabButton::mouseReleaseEvent(QMouseEvent* event)
 	{
-		pressActive_ = false;
-		dragging_ = false;
+		m_pressActive = false;
+		m_dragging = false;
 		setCursor(Qt::ArrowCursor);
 		QFrame::mouseReleaseEvent(event);
 	}
@@ -146,9 +146,9 @@ namespace mps::host
 		if (event->type() == QEvent::MouseButtonPress)
 		{
 			auto* me = static_cast<QMouseEvent*>(event);
-			if (me->button() == Qt::MiddleButton && !info_.isHome)
+			if (me->button() == Qt::MiddleButton && !m_info.isHome)
 			{
-				emit closeRequested(info_.tabId);
+				emit closeRequested(m_info.tabId);
 				return true;
 			}
 		}
@@ -157,8 +157,8 @@ namespace mps::host
 
 	ShellWindow::ShellWindow(ShellApp* app, QWidget* parent)
 		: QMainWindow(parent)
-		, app_(app)
-		, shellId_(g_nextShellId++)
+		, m_app(app)
+		, m_shellId(g_nextShellId++)
 	{
 		setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
 		setMinimumSize(720, 480);
@@ -171,35 +171,35 @@ namespace mps::host
 		rootLay->setContentsMargins(0, 0, 0, 0);
 		rootLay->setSpacing(0);
 
-		titleBar_ = new QWidget(root);
-		titleBar_->setObjectName(QStringLiteral("TitleBar"));
-		titleBar_->setFixedHeight(40);
-		titleBar_->setStyleSheet(
+		m_titleBar = new QWidget(root);
+		m_titleBar->setObjectName(QStringLiteral("TitleBar"));
+		m_titleBar->setFixedHeight(40);
+		m_titleBar->setStyleSheet(
 			QStringLiteral("#TitleBar { background: #e8e8e8; border-bottom: 1px solid #c0c0c0; }"));
-		auto* titleLay = new QHBoxLayout(titleBar_);
+		auto* titleLay = new QHBoxLayout(m_titleBar);
 		titleLay->setContentsMargins(8, 4, 8, 4);
 		titleLay->setSpacing(6);
 
-		tabRow_ = new QHBoxLayout();
-		tabRow_->setSpacing(6);
-		tabRow_->setContentsMargins(0, 0, 0, 0);
-		titleLay->addLayout(tabRow_, 0);
+		m_tabRow = new QHBoxLayout();
+		m_tabRow->setSpacing(6);
+		m_tabRow->setContentsMargins(0, 0, 0, 0);
+		titleLay->addLayout(m_tabRow, 0);
 
 		// Blank trail after tabs: drop-to-append + system-move (not window buttons).
-		tabDropTrail_ = new QWidget(titleBar_);
-		tabDropTrail_->setObjectName(QStringLiteral("TabDropTrail"));
-		tabDropTrail_->setMinimumWidth(48);
-		tabDropTrail_->setCursor(Qt::SizeAllCursor);
-		tabDropTrail_->setStyleSheet(QStringLiteral("#TabDropTrail { background: transparent; }"));
-		titleLay->addWidget(tabDropTrail_, 1);
-		tabDropTrail_->installEventFilter(this);
+		m_tabDropTrail = new QWidget(m_titleBar);
+		m_tabDropTrail->setObjectName(QStringLiteral("TabDropTrail"));
+		m_tabDropTrail->setMinimumWidth(48);
+		m_tabDropTrail->setCursor(Qt::SizeAllCursor);
+		m_tabDropTrail->setStyleSheet(QStringLiteral("#TabDropTrail { background: transparent; }"));
+		titleLay->addWidget(m_tabDropTrail, 1);
+		m_tabDropTrail->installEventFilter(this);
 
-		auto* minBtn = new QPushButton(QStringLiteral("—"), titleBar_);
-		auto* maxBtn = new QPushButton(QStringLiteral("□"), titleBar_);
-		auto* closeBtn = new QPushButton(QStringLiteral("×"), titleBar_);
-		minBtn_ = minBtn;
-		maxBtn_ = maxBtn;
-		closeBtn_ = closeBtn;
+		auto* minBtn = new QPushButton(QStringLiteral("—"), m_titleBar);
+		auto* maxBtn = new QPushButton(QStringLiteral("□"), m_titleBar);
+		auto* closeBtn = new QPushButton(QStringLiteral("×"), m_titleBar);
+		m_minBtn = minBtn;
+		m_maxBtn = maxBtn;
+		m_closeBtn = closeBtn;
 		for (auto* b : {minBtn, maxBtn, closeBtn})
 		{
 			b->setFixedSize(28, 24);
@@ -214,26 +214,26 @@ namespace mps::host
 				});
 		connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
 
-		stack_ = new QStackedWidget(root);
-		emptyPage_ = new QWidget(stack_);
-		auto* emptyLay = new QVBoxLayout(emptyPage_);
-		createClientBtn_ = new QPushButton(QStringLiteral("创建 Client"), emptyPage_);
-		createClientBtn_->setFixedSize(160, 40);
+		m_stack = new QStackedWidget(root);
+		m_emptyPage = new QWidget(m_stack);
+		auto* emptyLay = new QVBoxLayout(m_emptyPage);
+		m_createClientBtn = new QPushButton(QStringLiteral("创建 Client"), m_emptyPage);
+		m_createClientBtn->setFixedSize(160, 40);
 		emptyLay->addStretch();
-		emptyLay->addWidget(createClientBtn_, 0, Qt::AlignCenter);
+		emptyLay->addWidget(m_createClientBtn, 0, Qt::AlignCenter);
 		emptyLay->addStretch();
-		connect(createClientBtn_, &QPushButton::clicked, this, &ShellWindow::createClientClicked);
+		connect(m_createClientBtn, &QPushButton::clicked, this, &ShellWindow::createClientClicked);
 
-		embed_ = new EmbedContainer(stack_);
-		stack_->addWidget(emptyPage_);
-		stack_->addWidget(embed_);
+		m_embed = new EmbedContainer(m_stack);
+		m_stack->addWidget(m_emptyPage);
+		m_stack->addWidget(m_embed);
 
-		rootLay->addWidget(titleBar_);
-		rootLay->addWidget(stack_, 1);
+		rootLay->addWidget(m_titleBar);
+		rootLay->addWidget(m_stack, 1);
 
-		tabs_.push_back(TabInfo::makeHome());
-		activeTabId_ = kHomeTabId;
-		activationHistory_ = {kHomeTabId};
+		m_tabs.push_back(TabInfo::makeHome());
+		m_activeTabId = kHomeTabId;
+		m_activationHistory = {kHomeTabId};
 		rebuildTabs();
 		syncWorkspace();
 		setAcceptDrops(true);
@@ -247,21 +247,21 @@ namespace mps::host
 
 	void ShellWindow::syncWorkspace()
 	{
-		if (!stack_)
+		if (!m_stack)
 		{
 			return;
 		}
-		const TabInfo* active = findTab(activeTabId_);
+		const TabInfo* active = findTab(m_activeTabId);
 		const bool showHome = !active || active->isHome || active->wid == 0;
 		if (showHome)
 		{
-			embed_->clearForeignWindow(true);
-			stack_->setCurrentWidget(emptyPage_);
+			m_embed->clearForeignWindow(true);
+			m_stack->setCurrentWidget(m_emptyPage);
 		}
 		else
 		{
-			stack_->setCurrentWidget(embed_);
-			embed_->setForeignWindow(active->wid);
+			m_stack->setCurrentWidget(m_embed);
+			m_embed->setForeignWindow(active->wid);
 			scheduleEmbedResync();
 		}
 	}
@@ -271,26 +271,26 @@ namespace mps::host
 		QTimer::singleShot(0, this,
 						   [this]
 						   {
-							   if (auto* t = findTab(activeTabId_); t && !t->isHome && t->wid)
+							   if (auto* t = findTab(m_activeTabId); t && !t->isHome && t->wid)
 							   {
-								   embed_->setForeignWindow(t->wid);
-								   embed_->resyncForeignWindow();
+								   m_embed->setForeignWindow(t->wid);
+								   m_embed->resyncForeignWindow();
 							   }
 						   });
 	}
 
 	void ShellWindow::releaseEmbedOwnershipForTab(qint64 tabId)
 	{
-		if (activeTabId_ != tabId || !embed_)
+		if (m_activeTabId != tabId || !m_embed)
 		{
 			return;
 		}
-		embed_->releaseForeignWindow();
+		m_embed->releaseForeignWindow();
 	}
 
 	void ShellWindow::setTabDragHidden(qint64 tabId, bool hidden)
 	{
-		for (auto* btn : tabButtons_)
+		for (auto* btn : m_tabButtons)
 		{
 			if (!btn || btn->info().tabId != tabId)
 			{
@@ -314,7 +314,7 @@ namespace mps::host
 
 	QPixmap ShellWindow::grabTabButton(qint64 tabId) const
 	{
-		for (auto* btn : tabButtons_)
+		for (auto* btn : m_tabButtons)
 		{
 			if (btn && btn->info().tabId == tabId)
 			{
@@ -326,7 +326,7 @@ namespace mps::host
 
 	QSize ShellWindow::tabButtonSize(qint64 tabId) const
 	{
-		for (auto* btn : tabButtons_)
+		for (auto* btn : m_tabButtons)
 		{
 			if (btn && btn->info().tabId == tabId)
 			{
@@ -340,62 +340,62 @@ namespace mps::host
 	{
 		// Kept for optional debug; live yield (`previewTabYieldAtCursor`) is the
 		// Legacy merge/reorder cue — callers no longer show this blue bar.
-		if (!titleBar_ || tabButtons_.isEmpty())
+		if (!m_titleBar || m_tabButtons.isEmpty())
 		{
 			return;
 		}
-		insertIndex = qBound(1, insertIndex, tabs_.size());
-		if (!dropIndicator_)
+		insertIndex = qBound(1, insertIndex, m_tabs.size());
+		if (!m_dropIndicator)
 		{
-			dropIndicator_ = new QWidget(titleBar_);
-			dropIndicator_->setObjectName(QStringLiteral("DropInsertIndicator"));
-			dropIndicator_->setFixedWidth(3);
-			dropIndicator_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-			dropIndicator_->setStyleSheet(
+			m_dropIndicator = new QWidget(m_titleBar);
+			m_dropIndicator->setObjectName(QStringLiteral("DropInsertIndicator"));
+			m_dropIndicator->setFixedWidth(3);
+			m_dropIndicator->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+			m_dropIndicator->setStyleSheet(
 				QStringLiteral("#DropInsertIndicator { background: #2d6cdf; border-radius: 1px; }"));
 		}
 
 		int x = 8;
-		if (insertIndex < tabButtons_.size())
+		if (insertIndex < m_tabButtons.size())
 		{
-			auto* btn = tabButtons_[insertIndex];
+			auto* btn = m_tabButtons[insertIndex];
 			if (btn)
 			{
 				x = btn->geometry().left();
 			}
 		}
-		else if (!tabButtons_.isEmpty())
+		else if (!m_tabButtons.isEmpty())
 		{
-			auto* last = tabButtons_.last();
+			auto* last = m_tabButtons.last();
 			if (last)
 			{
 				x = last->geometry().right() + 2;
 			}
 		}
 		const int y = 4;
-		const int h = qMax(8, titleBar_->height() - 8);
-		dropIndicator_->setGeometry(x - 1, y, 3, h);
-		dropIndicator_->show();
-		dropIndicator_->raise();
+		const int h = qMax(8, m_titleBar->height() - 8);
+		m_dropIndicator->setGeometry(x - 1, y, 3, h);
+		m_dropIndicator->show();
+		m_dropIndicator->raise();
 	}
 
 	void ShellWindow::clearDropInsertIndicator()
 	{
-		if (dropIndicator_)
+		if (m_dropIndicator)
 		{
-			dropIndicator_->hide();
+			m_dropIndicator->hide();
 		}
 	}
 
 	void ShellWindow::previewTabYieldAtCursor(qint64 dragTabId, QPoint globalPos, int guestWidth, int hotSpotX)
 	{
-		if (dragTabId == kHomeTabId || !tabRow_ || !titleBar_)
+		if (dragTabId == kHomeTabId || !m_tabRow || !m_titleBar)
 		{
 			return;
 		}
 
 		QHash<qint64, TabButton*> byId;
-		for (auto* b : tabButtons_)
+		for (auto* b : m_tabButtons)
 		{
 			if (b)
 			{
@@ -407,14 +407,14 @@ namespace mps::host
 		{
 			return;
 		}
-		if (localDrag && tabButtons_.isEmpty())
+		if (localDrag && m_tabButtons.isEmpty())
 		{
 			return;
 		}
 
 		QVector<qint64> others;
-		others.reserve(tabs_.size());
-		for (const auto& t : tabs_)
+		others.reserve(m_tabs.size());
+		for (const auto& t : m_tabs)
 		{
 			if (!localDrag || t.tabId != dragTabId)
 			{
@@ -426,9 +426,9 @@ namespace mps::host
 		{
 			if (id == dragTabId)
 			{
-				if (dragTabWidth_ > 0)
+				if (m_dragTabWidth > 0)
 				{
-					return dragTabWidth_;
+					return m_dragTabWidth;
 				}
 				if (!localDrag && guestWidth > 0)
 				{
@@ -450,9 +450,9 @@ namespace mps::host
 		const int ghostRight = ghostLeft + dragW;
 
 		int insertAmong = others.size();
-		if (yieldDragTabId_ == dragTabId && !yieldOrder_.isEmpty())
+		if (m_yieldDragTabId == dragTabId && !m_yieldOrder.isEmpty())
 		{
-			const int idx = yieldOrder_.indexOf(dragTabId);
+			const int idx = m_yieldOrder.indexOf(dragTabId);
 			if (idx >= 0)
 			{
 				insertAmong = idx;
@@ -460,9 +460,9 @@ namespace mps::host
 		}
 		else if (localDrag)
 		{
-			for (int i = 0; i < tabs_.size(); ++i)
+			for (int i = 0; i < m_tabs.size(); ++i)
 			{
-				if (tabs_[i].tabId == dragTabId)
+				if (m_tabs[i].tabId == dragTabId)
 				{
 					insertAmong = i;
 					break;
@@ -470,10 +470,10 @@ namespace mps::host
 			}
 		}
 
-		int originX = stripDragOriginX_;
+		int originX = m_stripDragOriginX;
 		if (originX <= 0)
 		{
-			for (auto* b : tabButtons_)
+			for (auto* b : m_tabButtons)
 			{
 				if (b)
 				{
@@ -495,7 +495,7 @@ namespace mps::host
 		}
 
 		// Map pure local centers (origin 0) into title-bar global X.
-		const int originGlobalX = titleBar_->mapToGlobal(QPoint(originX, 0)).x();
+		const int originGlobalX = m_titleBar->mapToGlobal(QPoint(originX, 0)).x();
 		const int localGhostLeft = ghostLeft - originGlobalX;
 		const int localGhostRight = ghostRight - originGlobalX;
 
@@ -516,17 +516,17 @@ namespace mps::host
 			ids.push_back(id);
 		}
 
-		if (yieldDragTabId_ == dragTabId && yieldOrder_ == ids && stripDragLayoutActive_)
+		if (m_yieldDragTabId == dragTabId && m_yieldOrder == ids && m_stripDragLayoutActive)
 		{
 			return;
 		}
-		yieldDragTabId_ = dragTabId;
-		yieldOrder_ = ids;
+		m_yieldDragTabId = dragTabId;
+		m_yieldOrder = ids;
 
 		ensureStripDragLayout(localDrag ? dragTabId : 0, localDrag ? 0 : dragW);
 		clearDropInsertIndicator();
 
-		int x = stripDragOriginX_ > 0 ? stripDragOriginX_ : tab_strip::kTabStripMargin;
+		int x = m_stripDragOriginX > 0 ? m_stripDragOriginX : tab_strip::kTabStripMargin;
 		const int y = tabStripContentY();
 		for (qint64 id : ids)
 		{
@@ -549,41 +549,41 @@ namespace mps::host
 
 	int ShellWindow::yieldInsertIndex() const
 	{
-		if (yieldDragTabId_ == 0 || yieldOrder_.isEmpty())
+		if (m_yieldDragTabId == 0 || m_yieldOrder.isEmpty())
 		{
 			return -1;
 		}
-		return yieldOrder_.indexOf(yieldDragTabId_);
+		return m_yieldOrder.indexOf(m_yieldDragTabId);
 	}
 
 	QRect ShellWindow::tabDragSlotGlobalRect(qint64 tabId) const
 	{
-		if (!titleBar_)
+		if (!m_titleBar)
 		{
 			return {};
 		}
 		const auto widthOf = [this](qint64 id) -> int
 		{
-			if (id == yieldDragTabId_ && dragTabWidth_ > 0)
+			if (id == m_yieldDragTabId && m_dragTabWidth > 0)
 			{
-				return dragTabWidth_;
+				return m_dragTabWidth;
 			}
-			for (auto* b : tabButtons_)
+			for (auto* b : m_tabButtons)
 			{
 				if (b && b->info().tabId == id)
 				{
 					return b->width();
 				}
 			}
-			return dragTabWidth_ > 0 ? dragTabWidth_ : 80;
+			return m_dragTabWidth > 0 ? m_dragTabWidth : 80;
 		};
 
-		if (yieldDragTabId_ == tabId && !yieldOrder_.isEmpty())
+		if (m_yieldDragTabId == tabId && !m_yieldOrder.isEmpty())
 		{
-			int x = stripDragOriginX_ > 0 ? stripDragOriginX_ : tab_strip::kTabStripMargin;
+			int x = m_stripDragOriginX > 0 ? m_stripDragOriginX : tab_strip::kTabStripMargin;
 			const int y = tabStripContentY();
 			int h = 28;
-			for (auto* b : tabButtons_)
+			for (auto* b : m_tabButtons)
 			{
 				if (b)
 				{
@@ -591,18 +591,18 @@ namespace mps::host
 					break;
 				}
 			}
-			for (qint64 id : yieldOrder_)
+			for (qint64 id : m_yieldOrder)
 			{
 				const int w = widthOf(id);
 				if (id == tabId)
 				{
-					return QRect(titleBar_->mapToGlobal(QPoint(x, y)), QSize(w, h));
+					return QRect(m_titleBar->mapToGlobal(QPoint(x, y)), QSize(w, h));
 				}
 				x += w + tab_strip::kTabSpacing;
 			}
 		}
 
-		for (auto* btn : tabButtons_)
+		for (auto* btn : m_tabButtons)
 		{
 			if (btn && btn->info().tabId == tabId)
 			{
@@ -614,23 +614,23 @@ namespace mps::host
 
 	bool ShellWindow::commitTabYieldPreview()
 	{
-		if (yieldDragTabId_ == 0 || yieldOrder_.isEmpty())
+		if (m_yieldDragTabId == 0 || m_yieldOrder.isEmpty())
 		{
 			return false;
 		}
 		// Merge guest preview — tab is not in this shell's model.
-		if (!findTab(yieldDragTabId_))
+		if (!findTab(m_yieldDragTabId))
 		{
 			return false;
 		}
 		QHash<qint64, TabInfo> byId;
-		for (const auto& t : tabs_)
+		for (const auto& t : m_tabs)
 		{
 			byId.insert(t.tabId, t);
 		}
 		QVector<TabInfo> next;
-		next.reserve(yieldOrder_.size());
-		for (qint64 id : yieldOrder_)
+		next.reserve(m_yieldOrder.size());
+		for (qint64 id : m_yieldOrder)
 		{
 			auto it = byId.find(id);
 			if (it != byId.end())
@@ -643,9 +643,9 @@ namespace mps::host
 		{
 			next.push_back(it.value());
 		}
-		const qint64 dragId = yieldDragTabId_;
+		const qint64 dragId = m_yieldDragTabId;
 		clearTabYieldPreview();
-		tabs_ = next;
+		m_tabs = next;
 		rebuildTabs();
 		setActiveTab(dragId);
 		return true;
@@ -653,23 +653,23 @@ namespace mps::host
 
 	void ShellWindow::ensureStripDragLayout(qint64 hideTabId, int guestWidth)
 	{
-		if (stripDragLayoutActive_ || !tabRow_ || !titleBar_)
+		if (m_stripDragLayoutActive || !m_tabRow || !m_titleBar)
 		{
 			if (guestWidth > 0)
 			{
-				dragTabWidth_ = guestWidth;
+				m_dragTabWidth = guestWidth;
 			}
 			return;
 		}
-		stripDragLayoutActive_ = true;
+		m_stripDragLayoutActive = true;
 		QHash<qint64, QRect> geos;
-		stripDragOriginX_ = tab_strip::kTabStripMargin;
+		m_stripDragOriginX = tab_strip::kTabStripMargin;
 		bool originSet = false;
 		if (guestWidth > 0)
 		{
-			dragTabWidth_ = guestWidth;
+			m_dragTabWidth = guestWidth;
 		}
-		for (auto* btn : tabButtons_)
+		for (auto* btn : m_tabButtons)
 		{
 			if (!btn)
 			{
@@ -678,25 +678,25 @@ namespace mps::host
 			geos.insert(btn->info().tabId, btn->geometry());
 			if (!originSet)
 			{
-				stripDragOriginX_ = btn->geometry().left();
+				m_stripDragOriginX = btn->geometry().left();
 				originSet = true;
 			}
-			if (hideTabId != 0 && btn->info().tabId == hideTabId && dragTabWidth_ <= 0)
+			if (hideTabId != 0 && btn->info().tabId == hideTabId && m_dragTabWidth <= 0)
 			{
-				dragTabWidth_ = btn->width();
+				m_dragTabWidth = btn->width();
 			}
 		}
-		while (QLayoutItem* item = tabRow_->takeAt(0))
+		while (QLayoutItem* item = m_tabRow->takeAt(0))
 		{
 			delete item;
 		}
-		for (auto* btn : tabButtons_)
+		for (auto* btn : m_tabButtons)
 		{
 			if (!btn)
 			{
 				continue;
 			}
-			btn->setParent(titleBar_);
+			btn->setParent(m_titleBar);
 			btn->setGeometry(geos.value(btn->info().tabId));
 			btn->show();
 			btn->raise();
@@ -706,10 +706,10 @@ namespace mps::host
 			setTabDragHidden(hideTabId, true);
 		}
 		// Catch drops in the open gap (no tab widget there during yield/merge).
-		titleBar_->setAcceptDrops(true);
-		if (stripDropFilter_)
+		m_titleBar->setAcceptDrops(true);
+		if (m_stripDropFilter)
 		{
-			titleBar_->installEventFilter(stripDropFilter_);
+			m_titleBar->installEventFilter(m_stripDropFilter);
 		}
 	}
 
@@ -723,7 +723,7 @@ namespace mps::host
 		{
 			return;
 		}
-		QPropertyAnimation*& anim = tabSlideAnims_[btn->info().tabId];
+		QPropertyAnimation*& anim = m_tabSlideAnims[btn->info().tabId];
 		if (!anim)
 		{
 			anim = new QPropertyAnimation(btn, "geometry", this);
@@ -738,7 +738,7 @@ namespace mps::host
 
 	void ShellWindow::stopTabSlideAnimations()
 	{
-		for (auto it = tabSlideAnims_.begin(); it != tabSlideAnims_.end(); ++it)
+		for (auto it = m_tabSlideAnims.begin(); it != m_tabSlideAnims.end(); ++it)
 		{
 			if (it.value())
 			{
@@ -746,35 +746,35 @@ namespace mps::host
 				it.value()->deleteLater();
 			}
 		}
-		tabSlideAnims_.clear();
+		m_tabSlideAnims.clear();
 	}
 
 	void ShellWindow::clearTabYieldPreview()
 	{
 		stopTabSlideAnimations();
-		const bool had = (yieldDragTabId_ != 0) || !yieldOrder_.isEmpty() || stripDragLayoutActive_;
-		yieldDragTabId_ = 0;
-		yieldOrder_.clear();
-		stripDragLayoutActive_ = false;
-		dragTabWidth_ = 0;
-		stripDragOriginX_ = 0;
-		if (titleBar_)
+		const bool had = (m_yieldDragTabId != 0) || !m_yieldOrder.isEmpty() || m_stripDragLayoutActive;
+		m_yieldDragTabId = 0;
+		m_yieldOrder.clear();
+		m_stripDragLayoutActive = false;
+		m_dragTabWidth = 0;
+		m_stripDragOriginX = 0;
+		if (m_titleBar)
 		{
-			titleBar_->setAcceptDrops(false);
+			m_titleBar->setAcceptDrops(false);
 		}
-		if (!had || !tabRow_)
+		if (!had || !m_tabRow)
 		{
 			return;
 		}
-		while (QLayoutItem* item = tabRow_->takeAt(0))
+		while (QLayoutItem* item = m_tabRow->takeAt(0))
 		{
 			delete item;
 		}
-		for (auto* b : tabButtons_)
+		for (auto* b : m_tabButtons)
 		{
 			if (b)
 			{
-				tabRow_->addWidget(b);
+				m_tabRow->addWidget(b);
 			}
 		}
 	}
@@ -783,13 +783,13 @@ namespace mps::host
 	{
 		// Once the tear-out window preview is up, remaining tabs should close the gap
 		// immediately — do not keep an empty slot until mouse release.
-		if (dragTabId == 0 || dragTabId == kHomeTabId || !titleBar_)
+		if (dragTabId == 0 || dragTabId == kHomeTabId || !m_titleBar)
 		{
 			return;
 		}
 
 		QHash<qint64, TabButton*> byId;
-		for (auto* b : tabButtons_)
+		for (auto* b : m_tabButtons)
 		{
 			if (b)
 			{
@@ -806,8 +806,8 @@ namespace mps::host
 		clearDropInsertIndicator();
 
 		std::vector<int64_t> ids;
-		ids.reserve(static_cast<size_t>(tabs_.size()));
-		for (const auto& t : tabs_)
+		ids.reserve(static_cast<size_t>(m_tabs.size()));
+		for (const auto& t : m_tabs)
 		{
 			ids.push_back(t.tabId);
 		}
@@ -818,10 +818,10 @@ namespace mps::host
 		{
 			packed.push_back(id);
 		}
-		yieldDragTabId_ = dragTabId;
-		yieldOrder_ = packed;
+		m_yieldDragTabId = dragTabId;
+		m_yieldOrder = packed;
 
-		int x = stripDragOriginX_ > 0 ? stripDragOriginX_ : tab_strip::kTabStripMargin;
+		int x = m_stripDragOriginX > 0 ? m_stripDragOriginX : tab_strip::kTabStripMargin;
 		const int y = tabStripContentY();
 		for (qint64 id : packed)
 		{
@@ -842,26 +842,26 @@ namespace mps::host
 	QRect ShellWindow::tabStripGlobalRect() const
 	{
 		// During yield, include the reserved drag gap (not only live button rects).
-		if (stripDragLayoutActive_ && titleBar_ && !yieldOrder_.isEmpty())
+		if (m_stripDragLayoutActive && m_titleBar && !m_yieldOrder.isEmpty())
 		{
 			const auto widthOf = [this](qint64 id) -> int
 			{
-				if (id == yieldDragTabId_ && dragTabWidth_ > 0)
+				if (id == m_yieldDragTabId && m_dragTabWidth > 0)
 				{
-					return dragTabWidth_;
+					return m_dragTabWidth;
 				}
-				for (auto* b : tabButtons_)
+				for (auto* b : m_tabButtons)
 				{
 					if (b && b->info().tabId == id)
 					{
 						return b->width();
 					}
 				}
-				return dragTabWidth_ > 0 ? dragTabWidth_ : 80;
+				return m_dragTabWidth > 0 ? m_dragTabWidth : 80;
 			};
-			int x = stripDragOriginX_ > 0 ? stripDragOriginX_ : tab_strip::kTabStripMargin;
+			int x = m_stripDragOriginX > 0 ? m_stripDragOriginX : tab_strip::kTabStripMargin;
 			int h = 28;
-			for (auto* b : tabButtons_)
+			for (auto* b : m_tabButtons)
 			{
 				if (b)
 				{
@@ -870,18 +870,18 @@ namespace mps::host
 				}
 			}
 			int total = 0;
-			for (int i = 0; i < yieldOrder_.size(); ++i)
+			for (int i = 0; i < m_yieldOrder.size(); ++i)
 			{
-				total += widthOf(yieldOrder_[i]);
-				if (i + 1 < yieldOrder_.size())
+				total += widthOf(m_yieldOrder[i]);
+				if (i + 1 < m_yieldOrder.size())
 				{
 					total += tab_strip::kTabSpacing;
 				}
 			}
-			QRect band(titleBar_->mapToGlobal(QPoint(x, tabStripContentY())), QSize(qMax(total, 1), h));
-			if (tabDropTrail_)
+			QRect band(m_titleBar->mapToGlobal(QPoint(x, tabStripContentY())), QSize(qMax(total, 1), h));
+			if (m_tabDropTrail)
 			{
-				const QRect r(tabDropTrail_->mapToGlobal(QPoint(0, 0)), tabDropTrail_->size());
+				const QRect r(m_tabDropTrail->mapToGlobal(QPoint(0, 0)), m_tabDropTrail->size());
 				band = band.united(r);
 			}
 			return band;
@@ -889,7 +889,7 @@ namespace mps::host
 
 		QRect band;
 		bool any = false;
-		for (auto* btn : tabButtons_)
+		for (auto* btn : m_tabButtons)
 		{
 			if (!btn)
 			{
@@ -899,15 +899,15 @@ namespace mps::host
 			band = any ? band.united(r) : r;
 			any = true;
 		}
-		if (tabDropTrail_)
+		if (m_tabDropTrail)
 		{
-			const QRect r(tabDropTrail_->mapToGlobal(QPoint(0, 0)), tabDropTrail_->size());
+			const QRect r(m_tabDropTrail->mapToGlobal(QPoint(0, 0)), m_tabDropTrail->size());
 			band = any ? band.united(r) : r;
 			any = true;
 		}
-		if (!any && titleBar_)
+		if (!any && m_titleBar)
 		{
-			band = QRect(titleBar_->mapToGlobal(QPoint(0, 0)), titleBar_->size());
+			band = QRect(m_titleBar->mapToGlobal(QPoint(0, 0)), m_titleBar->size());
 		}
 		return band;
 	}
@@ -916,7 +916,7 @@ namespace mps::host
 	{
 		// Resting HBoxLayout vertically centers Preferred-height tabs inside the
 		// title-bar margins — do not assume y == kTabStripTop (that looks too high).
-		for (auto* btn : tabButtons_)
+		for (auto* btn : m_tabButtons)
 		{
 			if (!btn || btn->graphicsEffect())
 			{
@@ -924,10 +924,10 @@ namespace mps::host
 			}
 			return btn->y();
 		}
-		if (titleBar_)
+		if (m_titleBar)
 		{
-			const int avail = qMax(1, titleBar_->height() - 8);
-			const int tabH = tabButtons_.isEmpty() || !tabButtons_.first() ? 28 : tabButtons_.first()->height();
+			const int avail = qMax(1, m_titleBar->height() - 8);
+			const int tabH = m_tabButtons.isEmpty() || !m_tabButtons.first() ? 28 : m_tabButtons.first()->height();
 			return 4 + qMax(0, (avail - tabH) / 2);
 		}
 		return kTabStripTop;
@@ -937,7 +937,7 @@ namespace mps::host
 	{
 		// Live sibling Y is stable in Y (yield only animates X) and matches resting
 		// vertical centering — avoids the ghost sitting a few px above the row.
-		for (auto* btn : tabButtons_)
+		for (auto* btn : m_tabButtons)
 		{
 			if (!btn || btn->graphicsEffect())
 			{
@@ -945,9 +945,9 @@ namespace mps::host
 			}
 			return btn->mapToGlobal(QPoint(0, 0)).y();
 		}
-		if (titleBar_)
+		if (m_titleBar)
 		{
-			return titleBar_->mapToGlobal(QPoint(0, tabStripContentY())).y();
+			return m_titleBar->mapToGlobal(QPoint(0, tabStripContentY())).y();
 		}
 		return QCursor::pos().y();
 	}
@@ -955,7 +955,7 @@ namespace mps::host
 	int ShellWindow::clientTabCount() const
 	{
 		int n = 0;
-		for (const auto& t : tabs_)
+		for (const auto& t : m_tabs)
 		{
 			if (!t.isHome)
 			{
@@ -967,7 +967,7 @@ namespace mps::host
 
 	bool ShellWindow::isOverWindowButtons(QPoint globalPos) const
 	{
-		for (auto* b : {minBtn_, maxBtn_, closeBtn_})
+		for (auto* b : {m_minBtn, m_maxBtn, m_closeBtn})
 		{
 			if (!b || !b->isVisible())
 			{
@@ -984,13 +984,13 @@ namespace mps::host
 
 	bool ShellWindow::isOverTabDropZone(QPoint globalPos) const
 	{
-		if (!titleBar_)
+		if (!m_titleBar)
 		{
 			return false;
 		}
 		// During live yield the open gap under the ghost has no tab widget — still count
 		// as on-strip so merge/reorder do not flip to tear-out.
-		if (stripDragLayoutActive_)
+		if (m_stripDragLayoutActive)
 		{
 			const QRect band = tabStripGlobalRect();
 			if (band.isValid() && band.adjusted(0, -4, 0, 4).contains(globalPos))
@@ -998,7 +998,7 @@ namespace mps::host
 				return true;
 			}
 		}
-		for (auto* btn : tabButtons_)
+		for (auto* btn : m_tabButtons)
 		{
 			if (!btn || !btn->isVisible())
 			{
@@ -1010,9 +1010,9 @@ namespace mps::host
 				return true;
 			}
 		}
-		if (tabDropTrail_)
+		if (m_tabDropTrail)
 		{
-			const QRect r(tabDropTrail_->mapToGlobal(QPoint(0, 0)), tabDropTrail_->size());
+			const QRect r(m_tabDropTrail->mapToGlobal(QPoint(0, 0)), m_tabDropTrail->size());
 			if (r.contains(globalPos))
 			{
 				return true;
@@ -1023,13 +1023,13 @@ namespace mps::host
 
 	bool ShellWindow::isNearTabDropZone(QPoint globalPos, int verticalSlop, int horizontalSlop) const
 	{
-		if (!titleBar_)
+		if (!m_titleBar)
 		{
 			return false;
 		}
 		QRect band;
 		bool any = false;
-		for (auto* btn : tabButtons_)
+		for (auto* btn : m_tabButtons)
 		{
 			if (!btn)
 			{
@@ -1039,15 +1039,15 @@ namespace mps::host
 			band = any ? band.united(r) : r;
 			any = true;
 		}
-		if (tabDropTrail_)
+		if (m_tabDropTrail)
 		{
-			const QRect r(tabDropTrail_->mapToGlobal(QPoint(0, 0)), tabDropTrail_->size());
+			const QRect r(m_tabDropTrail->mapToGlobal(QPoint(0, 0)), m_tabDropTrail->size());
 			band = any ? band.united(r) : r;
 			any = true;
 		}
 		if (!any)
 		{
-			const QRect r(titleBar_->mapToGlobal(QPoint(0, 0)), titleBar_->size());
+			const QRect r(m_titleBar->mapToGlobal(QPoint(0, 0)), m_titleBar->size());
 			band = r;
 		}
 		return band.adjusted(-horizontalSlop, -verticalSlop, horizontalSlop, verticalSlop).contains(globalPos);
@@ -1055,16 +1055,16 @@ namespace mps::host
 
 	bool ShellWindow::isStripDropTarget(const QObject* watched) const
 	{
-		if (!watched || !titleBar_)
+		if (!watched || !m_titleBar)
 		{
 			return false;
 		}
-		if (watched == tabDropTrail_)
+		if (watched == m_tabDropTrail)
 		{
 			return true;
 		}
 		// While yielding, titleBar catches drops in the open gap under the ghost.
-		if (stripDragLayoutActive_ && watched == titleBar_)
+		if (m_stripDragLayoutActive && watched == m_titleBar)
 		{
 			return true;
 		}
@@ -1074,7 +1074,7 @@ namespace mps::host
 			return false;
 		}
 		// Tab buttons only — not window min/max/close, not the whole title bar.
-		for (auto* btn : tabButtons_)
+		for (auto* btn : m_tabButtons)
 		{
 			if (btn == w || (btn && btn->isAncestorOf(w)))
 			{
@@ -1086,41 +1086,41 @@ namespace mps::host
 
 	void ShellWindow::installStripDropFilter(QObject* filter)
 	{
-		stripDropFilter_ = filter;
+		m_stripDropFilter = filter;
 		setAcceptDrops(false);
-		if (titleBar_)
+		if (m_titleBar)
 		{
-			titleBar_->setAcceptDrops(false);
+			m_titleBar->setAcceptDrops(false);
 		}
 		reinstallStripDropTargets();
 	}
 
 	void ShellWindow::reinstallStripDropTargets()
 	{
-		if (!stripDropFilter_ || !titleBar_)
+		if (!m_stripDropFilter || !m_titleBar)
 		{
 			return;
 		}
 		// Narrow hot zone: tabs + trailing strip only.
-		if (tabDropTrail_)
+		if (m_tabDropTrail)
 		{
-			tabDropTrail_->setAcceptDrops(true);
-			tabDropTrail_->installEventFilter(stripDropFilter_);
+			m_tabDropTrail->setAcceptDrops(true);
+			m_tabDropTrail->installEventFilter(m_stripDropFilter);
 		}
-		for (auto* btn : tabButtons_)
+		for (auto* btn : m_tabButtons)
 		{
 			if (!btn)
 			{
 				continue;
 			}
 			btn->setAcceptDrops(true);
-			btn->installEventFilter(stripDropFilter_);
+			btn->installEventFilter(m_stripDropFilter);
 		}
 	}
 
 	void ShellWindow::addTab(const TabInfo& info)
 	{
-		insertTab(info, tabs_.size());
+		insertTab(info, m_tabs.size());
 	}
 
 	void ShellWindow::insertTab(const TabInfo& info, int insertIndex)
@@ -1130,8 +1130,8 @@ namespace mps::host
 			return;
 		}
 		// Home stays at index 0; client tabs occupy [1, size].
-		insertIndex = tab_strip::clampClientInsertIndex(insertIndex, tabs_.size());
-		tabs_.insert(insertIndex, info);
+		insertIndex = tab_strip::clampClientInsertIndex(insertIndex, m_tabs.size());
+		m_tabs.insert(insertIndex, info);
 		setActiveTab(info.tabId);
 		rebuildTabs();
 	}
@@ -1143,27 +1143,27 @@ namespace mps::host
 			return;
 		}
 		int from = -1;
-		for (int i = 0; i < tabs_.size(); ++i)
+		for (int i = 0; i < m_tabs.size(); ++i)
 		{
-			if (tabs_[i].tabId == tabId)
+			if (m_tabs[i].tabId == tabId)
 			{
 				from = i;
 				break;
 			}
 		}
-		if (from < 0 || tabs_[from].isHome)
+		if (from < 0 || m_tabs[from].isHome)
 		{
 			return;
 		}
-		insertIndex = tab_strip::clampClientInsertIndex(insertIndex, tabs_.size());
+		insertIndex = tab_strip::clampClientInsertIndex(insertIndex, m_tabs.size());
 		if (tab_strip::isNoOpMove(from, insertIndex))
 		{
 			return; // same slot (before/after self)
 		}
-		const TabInfo moved = tabs_.takeAt(from);
+		const TabInfo moved = m_tabs.takeAt(from);
 		insertIndex = tab_strip::adjustInsertAfterTake(from, insertIndex);
-		insertIndex = tab_strip::clampClientInsertIndex(insertIndex, tabs_.size());
-		tabs_.insert(insertIndex, moved);
+		insertIndex = tab_strip::clampClientInsertIndex(insertIndex, m_tabs.size());
+		m_tabs.insert(insertIndex, moved);
 		rebuildTabs();
 		setActiveTab(tabId);
 	}
@@ -1171,25 +1171,25 @@ namespace mps::host
 	int ShellWindow::tabInsertIndexAt(QPoint globalPos) const
 	{
 		// Midpoint insert: based on cursor X vs packed tab midpoints (not hit-tests).
-		if (!titleBar_ || tabs_.isEmpty())
+		if (!m_titleBar || m_tabs.isEmpty())
 		{
 			return 1;
 		}
 		std::vector<int> widths;
-		widths.reserve(static_cast<size_t>(tabs_.size()));
+		widths.reserve(static_cast<size_t>(m_tabs.size()));
 		QHash<qint64, int> byId;
-		for (auto* btn : tabButtons_)
+		for (auto* btn : m_tabButtons)
 		{
 			if (btn)
 			{
 				byId.insert(btn->info().tabId, btn->width());
 			}
 		}
-		for (const auto& t : tabs_)
+		for (const auto& t : m_tabs)
 		{
 			widths.push_back(byId.value(t.tabId, 80));
 		}
-		const int localX = titleBar_->mapFromGlobal(globalPos).x();
+		const int localX = m_titleBar->mapFromGlobal(globalPos).x();
 		return tab_strip::midpointInsertIndex(localX, widths);
 	}
 
@@ -1199,16 +1199,16 @@ namespace mps::host
 		{
 			return;
 		}
-		const bool wasActive = (activeTabId_ == tabId);
-		for (int i = 0; i < tabs_.size(); ++i)
+		const bool wasActive = (m_activeTabId == tabId);
+		for (int i = 0; i < m_tabs.size(); ++i)
 		{
-			if (tabs_[i].tabId == tabId)
+			if (m_tabs[i].tabId == tabId)
 			{
-				tabs_.removeAt(i);
+				m_tabs.removeAt(i);
 				break;
 			}
 		}
-		activationHistory_.removeAll(tabId);
+		m_activationHistory.removeAll(tabId);
 		if (wasActive)
 		{
 			const qint64 next = previousActivationTarget(tabId);
@@ -1227,8 +1227,8 @@ namespace mps::host
 			tabId = kHomeTabId;
 		}
 		pushActivationHistory(tabId);
-		activeTabId_ = tabId;
-		for (auto* b : tabButtons_)
+		m_activeTabId = tabId;
+		for (auto* b : m_tabButtons)
 		{
 			b->setActive(b->info().tabId == tabId);
 		}
@@ -1244,30 +1244,30 @@ namespace mps::host
 	void ShellWindow::pushActivationHistory(qint64 tabId)
 	{
 		std::vector<int64_t> hist;
-		hist.reserve(static_cast<size_t>(activationHistory_.size()));
-		for (qint64 id : activationHistory_)
+		hist.reserve(static_cast<size_t>(m_activationHistory.size()));
+		for (qint64 id : m_activationHistory)
 		{
 			hist.push_back(id);
 		}
 		tab_strip::pushMru(hist, tabId);
-		activationHistory_.clear();
+		m_activationHistory.clear();
 		for (int64_t id : hist)
 		{
-			activationHistory_.push_back(id);
+			m_activationHistory.push_back(id);
 		}
 	}
 
 	qint64 ShellWindow::previousActivationTarget(qint64 closingTabId) const
 	{
 		std::vector<int64_t> hist;
-		hist.reserve(static_cast<size_t>(activationHistory_.size()));
-		for (qint64 id : activationHistory_)
+		hist.reserve(static_cast<size_t>(m_activationHistory.size()));
+		for (qint64 id : m_activationHistory)
 		{
 			hist.push_back(id);
 		}
 		std::vector<int64_t> existing;
-		existing.reserve(static_cast<size_t>(tabs_.size()));
-		for (const auto& t : tabs_)
+		existing.reserve(static_cast<size_t>(m_tabs.size()));
+		for (const auto& t : m_tabs)
 		{
 			existing.push_back(t.tabId);
 		}
@@ -1276,7 +1276,7 @@ namespace mps::host
 
 	TabInfo* ShellWindow::findTab(qint64 tabId)
 	{
-		for (auto& t : tabs_)
+		for (auto& t : m_tabs)
 		{
 			if (t.tabId == tabId)
 			{
@@ -1288,7 +1288,7 @@ namespace mps::host
 
 	const TabInfo* ShellWindow::findTab(qint64 tabId) const
 	{
-		for (const auto& t : tabs_)
+		for (const auto& t : m_tabs)
 		{
 			if (t.tabId == tabId)
 			{
@@ -1305,7 +1305,7 @@ namespace mps::host
 
 	void ShellWindow::rebuildTabs()
 	{
-		while (QLayoutItem* item = tabRow_->takeAt(0))
+		while (QLayoutItem* item = m_tabRow->takeAt(0))
 		{
 			if (auto* w = item->widget())
 			{
@@ -1313,13 +1313,13 @@ namespace mps::host
 			}
 			delete item;
 		}
-		tabButtons_.clear();
-		for (const auto& t : tabs_)
+		m_tabButtons.clear();
+		for (const auto& t : m_tabs)
 		{
-			auto* btn = new TabButton(t, titleBar_);
-			tabButtons_.push_back(btn);
-			tabRow_->addWidget(btn);
-			btn->setActive(t.tabId == activeTabId_);
+			auto* btn = new TabButton(t, m_titleBar);
+			m_tabButtons.push_back(btn);
+			m_tabRow->addWidget(btn);
+			btn->setActive(t.tabId == m_activeTabId);
 			connect(btn, &TabButton::activated, this, &ShellWindow::tabActivated);
 			connect(btn, &TabButton::closeRequested, this, &ShellWindow::tabCloseRequested);
 			if (!t.isHome)
@@ -1327,9 +1327,9 @@ namespace mps::host
 				connect(btn, &TabButton::dragStarted, this,
 						[this](qint64 tabId, QPoint localHotSpot)
 						{
-							if (app_)
+							if (m_app)
 							{
-								app_->beginTabDrag(this, tabId, localHotSpot);
+								m_app->beginTabDrag(this, tabId, localHotSpot);
 							}
 							auto* mime = new QMimeData;
 							mime->setData(QString::fromUtf8(kTabMimeType), QByteArray::number(tabId));
@@ -1348,17 +1348,17 @@ namespace mps::host
 							const auto drop = drag->exec(Qt::MoveAction);
 							QApplication::restoreOverrideCursor();
 							const QRect previewGeom =
-								app_ ? app_->tearOutPreviewGeometry() : QRect(QCursor::pos() - QPoint(40, 20), size());
+								m_app ? m_app->tearOutPreviewGeometry() : QRect(QCursor::pos() - QPoint(40, 20), size());
 							emit dropIndicatorsClearRequested();
 							clearDropInsertIndicator();
 							if (drop == Qt::IgnoreAction)
 							{
-								const bool cancelled = app_ && app_->consumeDragCancelled();
+								const bool cancelled = m_app && m_app->consumeDragCancelled();
 								const QPoint releasePos = QCursor::pos();
-								ShellWindow* zoneShell = app_ ? app_->tabDropZoneShellAtGlobal(releasePos) : nullptr;
+								ShellWindow* zoneShell = m_app ? m_app->tabDropZoneShellAtGlobal(releasePos) : nullptr;
 								// Release in the open yield gap has no drop widget → IgnoreAction.
 								// Same-shell: commit live reorder. Foreign strip: merge.
-								if (!cancelled && zoneShell == this && app_)
+								if (!cancelled && zoneShell == this && m_app)
 								{
 									if (!(hasTabYieldPreview() && commitTabYieldPreview()))
 									{
@@ -1369,48 +1369,48 @@ namespace mps::host
 										}
 										moveTab(tabId, insertIndex);
 									}
-									app_->noteTabDragDropHandled();
-									app_->endTabDrag(/*tearOrMerge=*/false);
+									m_app->noteTabDragDropHandled();
+									m_app->endTabDrag(/*tearOrMerge=*/false);
 								}
-								else if (!cancelled && zoneShell && zoneShell != this && app_)
+								else if (!cancelled && zoneShell && zoneShell != this && m_app)
 								{
 									int insertIndex = zoneShell->yieldInsertIndex();
 									if (insertIndex < 0)
 									{
 										insertIndex = zoneShell->tabInsertIndexAt(releasePos);
 									}
-									app_->noteTabDragDropHandled();
-									app_->endTabDrag(/*tearOrMerge=*/false);
-									app_->mergeTab(tabId, zoneShell, insertIndex);
+									m_app->noteTabDragDropHandled();
+									m_app->endTabDrag(/*tearOrMerge=*/false);
+									m_app->mergeTab(tabId, zoneShell, insertIndex);
 								}
-								else if (!cancelled && hasTabYieldPreview() && app_
-										 && app_->shouldSuppressTearOutAt(releasePos))
+								else if (!cancelled && hasTabYieldPreview() && m_app
+										 && m_app->shouldSuppressTearOutAt(releasePos))
 								{
 									// Near the strip with a live yield preview — keep the new order.
 									commitTabYieldPreview();
-									app_->noteTabDragDropHandled();
-									app_->endTabDrag(/*tearOrMerge=*/false);
+									m_app->noteTabDragDropHandled();
+									m_app->endTabDrag(/*tearOrMerge=*/false);
 								}
-								else if (cancelled || (app_ && app_->shouldSuppressTearOutAt(releasePos)))
+								else if (cancelled || (m_app && m_app->shouldSuppressTearOutAt(releasePos)))
 								{
 									// Esc, or released near strip without a commit path → restore.
-									if (app_)
+									if (m_app)
 									{
-										app_->endTabDrag(/*tearOrMerge=*/false);
+										m_app->endTabDrag(/*tearOrMerge=*/false);
 									}
 								}
 								else
 								{
-									if (app_)
+									if (m_app)
 									{
-										app_->endTabDrag(/*tearOrMerge=*/true); // keeps preview until tearOut
+										m_app->endTabDrag(/*tearOrMerge=*/true); // keeps preview until tearOut
 									}
 									emit tabTearOutRequested(tabId, previewGeom);
 								}
 							}
-							else if (app_)
+							else if (m_app)
 							{
-								app_->endTabDrag(/*tearOrMerge=*/false);
+								m_app->endTabDrag(/*tearOrMerge=*/false);
 							}
 						});
 			}
@@ -1426,18 +1426,18 @@ namespace mps::host
 			{
 				continue;
 			}
-			for (int i = 0; i < other->tabs_.size(); ++i)
+			for (int i = 0; i < other->m_tabs.size(); ++i)
 			{
-				if (other->tabs_[i].tabId == id)
+				if (other->m_tabs[i].tabId == id)
 				{
-					tabs_.push_back(other->tabs_[i]);
-					other->tabs_.removeAt(i);
-					other->activationHistory_.removeAll(id);
+					m_tabs.push_back(other->m_tabs[i]);
+					other->m_tabs.removeAt(i);
+					other->m_activationHistory.removeAll(id);
 					break;
 				}
 			}
 		}
-		if (!other->findTab(other->activeTabId_))
+		if (!other->findTab(other->m_activeTabId))
 		{
 			other->setActiveTab(other->previousActivationTarget(0));
 		}
@@ -1449,7 +1449,7 @@ namespace mps::host
 		rebuildTabs();
 		if (clientTabCount() > 0)
 		{
-			setActiveTab(tabs_.last().tabId);
+			setActiveTab(m_tabs.last().tabId);
 		}
 		else
 		{
@@ -1459,18 +1459,18 @@ namespace mps::host
 
 	void ShellWindow::forceClose()
 	{
-		forceClosing_ = true;
+		m_forceClosing = true;
 		clearDropInsertIndicator();
-		if (embed_)
+		if (m_embed)
 		{
-			embed_->releaseForeignWindow();
+			m_embed->releaseForeignWindow();
 		}
 		close();
 	}
 
 	void ShellWindow::closeEvent(QCloseEvent* event)
 	{
-		if (forceClosing_)
+		if (m_forceClosing)
 		{
 			QMainWindow::closeEvent(event);
 			return;
@@ -1483,7 +1483,7 @@ namespace mps::host
 	bool ShellWindow::eventFilter(QObject* watched, QEvent* event)
 	{
 		// System-move on the trailing tab strip (not on Tab buttons / window buttons).
-		if (watched == tabDropTrail_ && event->type() == QEvent::MouseButtonPress)
+		if (watched == m_tabDropTrail && event->type() == QEvent::MouseButtonPress)
 		{
 			auto* me = static_cast<QMouseEvent*>(event);
 			if (me->button() == Qt::LeftButton)

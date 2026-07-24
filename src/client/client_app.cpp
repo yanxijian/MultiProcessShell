@@ -15,7 +15,7 @@ namespace mps::client
 {
 	PageWindow::PageWindow(qint64 tabId, QString title, QWidget* parent)
 		: QWidget(parent, Qt::Window | Qt::FramelessWindowHint)
-		, tabId_(tabId)
+		, m_tabId(tabId)
 	{
 		setAttribute(Qt::WA_DeleteOnClose, false);
 		setAttribute(Qt::WA_NativeWindow);
@@ -50,27 +50,27 @@ namespace mps::client
 
 	ClientApp::ClientApp(QString endpoint, QString token, QObject* parent)
 		: QObject(parent)
-		, endpoint_(std::move(endpoint))
-		, token_(std::move(token))
+		, m_endpoint(std::move(endpoint))
+		, m_token(std::move(token))
 	{
 	}
 
 	bool ClientApp::connectToHost()
 	{
-		socket_ = new QLocalSocket(this);
-		socket_->connectToServer(endpoint_);
-		if (!socket_->waitForConnected(5000))
+		m_socket = new QLocalSocket(this);
+		m_socket->connectToServer(m_endpoint);
+		if (!m_socket->waitForConnected(5000))
 		{
-			qWarning("connect failed: %s", qPrintable(socket_->errorString()));
+			qWarning("connect failed: %s", qPrintable(m_socket->errorString()));
 			return false;
 		}
-		channel_ = std::make_unique<mps::ipc::EnvelopeChannel>(socket_, this);
-		channel_->setHandler(
+		m_channel = std::make_unique<mps::ipc::EnvelopeChannel>(m_socket, this);
+		m_channel->setHandler(
 			[this](shell::ipc::v1::Envelope env)
 			{
 				onEnvelope(std::move(env));
 			});
-		connect(channel_.get(), &mps::ipc::EnvelopeChannel::disconnected, qApp, &QCoreApplication::quit);
+		connect(m_channel.get(), &mps::ipc::EnvelopeChannel::disconnected, qApp, &QCoreApplication::quit);
 		sendHello();
 		return true;
 	}
@@ -97,16 +97,16 @@ namespace mps::client
 		caps->set_heartbeat(true);
 		caps->set_invoke(true);
 		caps->set_multi_sub_window(true);
-		channel_->send(env);
+		m_channel->send(env);
 	}
 
 	void ClientApp::ensureMainReported()
 	{
-		if (mainReported_ || pages_.isEmpty())
+		if (m_mainReported || m_pages.isEmpty())
 		{
 			return;
 		}
-		auto* first = pages_.begin().value();
+		auto* first = m_pages.begin().value();
 		first->winId();
 		shell::ipc::v1::Envelope env;
 		env.set_protocol(1);
@@ -121,14 +121,14 @@ namespace mps::client
 		added->set_pid(static_cast<uint32_t>(QCoreApplication::applicationPid()));
 #endif
 		added->set_visible(true);
-		channel_->send(env);
-		mainReported_ = true;
+		m_channel->send(env);
+		m_mainReported = true;
 	}
 
 	void ClientApp::createPage(qint64 tabId, const QString& title)
 	{
 		auto* page = new PageWindow(tabId, title);
-		pages_.insert(tabId, page);
+		m_pages.insert(tabId, page);
 		connect(page, &PageWindow::requestNewWindow, this,
 				[this, tabId]
 				{
@@ -139,12 +139,12 @@ namespace mps::client
 					env.set_tab_id(tabId);
 					env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
 					env.mutable_invoke()->set_method("demo.request_new_window");
-					channel_->send(env);
+					m_channel->send(env);
 				});
 		page->show();
 		page->winId();
 
-		if (!mainReported_)
+		if (!m_mainReported)
 		{
 			ensureMainReported();
 		}
@@ -158,21 +158,21 @@ namespace mps::client
 		auto* added = env.mutable_sub_window_added();
 		added->set_title(title.toStdString());
 		added->set_wid(static_cast<uint64_t>(page->winId()));
-		channel_->send(env);
+		m_channel->send(env);
 
 		activatePage(tabId);
 	}
 
 	void ClientApp::closePage(qint64 tabId)
 	{
-		auto* page = pages_.take(tabId);
+		auto* page = m_pages.take(tabId);
 		if (!page)
 		{
 			return;
 		}
-		if (active_ == page)
+		if (m_active == page)
 		{
-			active_ = nullptr;
+			m_active = nullptr;
 		}
 		page->hide();
 		page->deleteLater();
@@ -183,12 +183,12 @@ namespace mps::client
 		env.set_tab_id(tabId);
 		env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
 		env.mutable_sub_window_removed();
-		channel_->send(env);
+		m_channel->send(env);
 	}
 
 	void ClientApp::activatePage(qint64 tabId)
 	{
-		auto* page = pages_.value(tabId, nullptr);
+		auto* page = m_pages.value(tabId, nullptr);
 		if (!page)
 		{
 			return;
@@ -196,7 +196,7 @@ namespace mps::client
 		// Do NOT hide other pages: each may be SetParent'd into a different Host shell.
 		// Visibility of non-active embeds is owned by the Host (ShowWindow / clearForeignWindow).
 		page->show();
-		active_ = page;
+		m_active = page;
 	}
 
 	void ClientApp::onEnvelope(shell::ipc::v1::Envelope env)
@@ -224,7 +224,7 @@ namespace mps::client
 			res.set_tab_id(env.tab_id());
 			res.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
 			res.mutable_query_close_sub_window_result()->set_accept(true);
-			channel_->send(res);
+			m_channel->send(res);
 			closePage(env.tab_id());
 			return;
 		}
@@ -242,7 +242,7 @@ namespace mps::client
 			auto* err = res.mutable_error();
 			err->set_code(shell::ipc::v1::ERROR_UNIMPLEMENTED);
 			err->set_message("unimplemented");
-			channel_->send(res);
+			m_channel->send(res);
 			return;
 		}
 		if (env.has_ping())
@@ -253,7 +253,7 @@ namespace mps::client
 			res.set_dir(shell::ipc::v1::DIR_RES);
 			res.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
 			res.mutable_pong();
-			channel_->send(res);
+			m_channel->send(res);
 		}
 	}
 } // namespace mps::client

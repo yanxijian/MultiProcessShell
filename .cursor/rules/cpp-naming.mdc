@@ -1,0 +1,32 @@
+---
+description: C++ naming and container conventions (Qt-oriented)
+globs: "**/*.{h,hpp,hxx,hh,c,cc,cpp,cxx}"
+alwaysApply: false
+---
+
+# Naming & containers
+
+## Members
+
+- Data members use Qt-style **`m_` + camelCase**: `m_shellId`, `m_tabs`.
+- Do **not** use trailing-underscore Google style (`shellId_`).
+- Do **not** invent a second prefix (`m_foo_`).
+
+## Functions / parameters
+
+- Keep Qt API style: **lowerCamelCase** (`createShell`, `tabId`).
+
+## Constants
+
+- `kCamelCase` is allowed (`kHomeTabId`, `kTabSpacing`).
+- Prefer `inline constexpr` over macros.
+
+## Containers
+
+- **UI / signals / slots / Host-Client orchestration APIs**: prefer Qt (`QString`, `QVector`, `QHash`, `QList`, …).
+- **Core algorithms (`tab_strip`), frame codecs, peelable modules**: prefer STL (`std::vector`, `std::string`, …).
+
+## Include guards
+
+- Keep `__{TARGET}_{FILE}_H__` (see `cpp-include-guards.mdc`).
+- Formatting stays in `.clang-format` (do not change for naming).

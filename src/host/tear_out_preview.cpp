@@ -18,14 +18,14 @@ namespace mps::host
 		setAttribute(Qt::WA_ShowWithoutActivating, true);
 		setAttribute(Qt::WA_TransparentForMouseEvents, true);
 		setFocusPolicy(Qt::NoFocus);
-		resize(contentSize_ + QSize(contentOrigin_.x() * 2, 8));
+		resize(m_contentSize + QSize(m_contentOrigin.x() * 2, 8));
 	}
 
 	void TabDragGhost::setTabPixmap(const QPixmap& pm, QSize logicalContentSize)
 	{
 		if (pm.isNull())
 		{
-			pm_ = pm;
+			m_pm = pm;
 		}
 		else
 		{
@@ -47,19 +47,19 @@ namespace mps::host
 				rp.setClipPath(clip);
 				rp.drawImage(QPointF(0, 0), src);
 			}
-			pm_ = QPixmap::fromImage(masked);
-			pm_.setDevicePixelRatio(dpr);
+			m_pm = QPixmap::fromImage(masked);
+			m_pm.setDevicePixelRatio(dpr);
 		}
 		if (logicalContentSize.isValid() && logicalContentSize.width() > 0)
 		{
-			contentSize_ = logicalContentSize;
+			m_contentSize = logicalContentSize;
 		}
-		else if (!pm_.isNull())
+		else if (!m_pm.isNull())
 		{
-			const qreal dpr = qMax(qreal(1), pm_.devicePixelRatio());
-			contentSize_ = QSize(qRound(pm_.width() / dpr), qRound(pm_.height() / dpr));
+			const qreal dpr = qMax(qreal(1), m_pm.devicePixelRatio());
+			m_contentSize = QSize(qRound(m_pm.width() / dpr), qRound(m_pm.height() / dpr));
 		}
-		resize(contentSize_ + QSize(contentOrigin_.x() * 2, 8));
+		resize(m_contentSize + QSize(m_contentOrigin.x() * 2, 8));
 		update();
 	}
 
@@ -80,7 +80,7 @@ namespace mps::host
 		p.setRenderHint(QPainter::Antialiasing, true);
 		p.setRenderHint(QPainter::SmoothPixmapTransform, true);
 
-		const QRectF content(contentOrigin_.x(), contentOrigin_.y(), contentSize_.width(), contentSize_.height());
+		const QRectF content(m_contentOrigin.x(), m_contentOrigin.y(), m_contentSize.width(), m_contentSize.height());
 		// Match TabButton stylesheet border-radius: 4px.
 		constexpr qreal kRadius = 4.0;
 
@@ -95,9 +95,9 @@ namespace mps::host
 		clip.addRoundedRect(content, kRadius, kRadius);
 		p.setClipPath(clip);
 		p.setOpacity(0.96);
-		if (!pm_.isNull())
+		if (!m_pm.isNull())
 		{
-			p.drawPixmap(content.toRect(), pm_);
+			p.drawPixmap(content.toRect(), m_pm);
 		}
 		else
 		{
@@ -119,7 +119,7 @@ namespace mps::host
 
 	void TearOutPreview::setContentPixmap(const QPixmap& pm)
 	{
-		content_ = pm;
+		m_content = pm;
 		update();
 	}
 
@@ -185,11 +185,11 @@ namespace mps::host
 		p.drawText(homeChip, Qt::AlignCenter, QStringLiteral("Home"));
 
 		const QRectF body = r.adjusted(8, kTitleBarHeight + 2, -8, -8);
-		if (!content_.isNull())
+		if (!m_content.isNull())
 		{
 			p.setOpacity(0.92);
 			const QPixmap scaled =
-				content_.scaled(body.size().toSize(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+				m_content.scaled(body.size().toSize(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
 			const QRect src((scaled.width() - body.width()) / 2, (scaled.height() - body.height()) / 2,
 							int(body.width()), int(body.height()));
 			p.drawPixmap(body.toRect(), scaled, src.intersected(scaled.rect()));

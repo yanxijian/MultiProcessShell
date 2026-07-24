@@ -19,14 +19,14 @@ namespace mps::client
 		PageWindow(qint64 tabId, QString title, QWidget* parent = nullptr);
 		[[nodiscard]] qint64 tabId() const
 		{
-			return tabId_;
+			return m_tabId;
 		}
 
 	signals:
 		void requestNewWindow();
 
 	private:
-		qint64 tabId_ = 0;
+		qint64 m_tabId = 0;
 	};
 
 	class ClientApp final : public QObject
@@ -44,13 +44,13 @@ namespace mps::client
 		void closePage(qint64 tabId);
 		void activatePage(qint64 tabId);
 
-		QString endpoint_;
-		QString token_;
-		QLocalSocket* socket_ = nullptr;
-		std::unique_ptr<mps::ipc::EnvelopeChannel> channel_;
-		bool mainReported_ = false;
-		QHash<qint64, PageWindow*> pages_;
-		PageWindow* active_ = nullptr;
+		QString m_endpoint;
+		QString m_token;
+		QLocalSocket* m_socket = nullptr;
+		std::unique_ptr<mps::ipc::EnvelopeChannel> m_channel;
+		bool m_mainReported = false;
+		QHash<qint64, PageWindow*> m_pages;
+		PageWindow* m_active = nullptr;
 	};
 } // namespace mps::client
 

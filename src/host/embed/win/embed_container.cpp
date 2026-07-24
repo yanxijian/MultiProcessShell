@@ -17,22 +17,22 @@ namespace mps::host
 	bool EmbedContainer::foreignAlive() const
 	{
 #ifdef Q_OS_WIN
-		if (!foreignWid_)
+		if (!m_foreignWid)
 		{
 			return false;
 		}
-		return IsWindow(reinterpret_cast<HWND>(foreignWid_)) != FALSE;
+		return IsWindow(reinterpret_cast<HWND>(m_foreignWid)) != FALSE;
 #else
-		return foreignWid_ != 0;
+		return m_foreignWid != 0;
 #endif
 	}
 
 	void EmbedContainer::clearForeignWindow(bool hide)
 	{
 #ifdef Q_OS_WIN
-		if (foreignWid_ && IsWindow(reinterpret_cast<HWND>(foreignWid_)))
+		if (m_foreignWid && IsWindow(reinterpret_cast<HWND>(m_foreignWid)))
 		{
-			const HWND child = reinterpret_cast<HWND>(foreignWid_);
+			const HWND child = reinterpret_cast<HWND>(m_foreignWid);
 			SetParent(child, nullptr);
 			if (hide)
 			{
@@ -42,13 +42,13 @@ namespace mps::host
 #else
 		Q_UNUSED(hide);
 #endif
-		foreignWid_ = 0;
+		m_foreignWid = 0;
 	}
 
 	void EmbedContainer::releaseForeignWindow()
 	{
 		// Caller will reparent; avoid Hide to reduce flash during tear-out/merge.
-		foreignWid_ = 0;
+		m_foreignWid = 0;
 	}
 
 	void EmbedContainer::setForeignWindow(quintptr wid)
@@ -59,7 +59,7 @@ namespace mps::host
 			wid = 0;
 		}
 #endif
-		if (foreignWid_ == wid)
+		if (m_foreignWid == wid)
 		{
 			if (wid)
 			{
@@ -67,11 +67,11 @@ namespace mps::host
 			}
 			return;
 		}
-		if (foreignWid_)
+		if (m_foreignWid)
 		{
 			clearForeignWindow(true);
 		}
-		foreignWid_ = wid;
+		m_foreignWid = wid;
 		applyEmbed();
 	}
 
@@ -91,7 +91,7 @@ namespace mps::host
 	{
 		if (!foreignAlive())
 		{
-			foreignWid_ = 0;
+			m_foreignWid = 0;
 			return;
 		}
 		applyEmbed();
@@ -122,12 +122,12 @@ namespace mps::host
 #ifdef Q_OS_WIN
 		if (!foreignAlive())
 		{
-			foreignWid_ = 0;
+			m_foreignWid = 0;
 			return;
 		}
 		winId(); // ensure native handle
 		const HWND host = reinterpret_cast<HWND>(winId());
-		const HWND child = reinterpret_cast<HWND>(foreignWid_);
+		const HWND child = reinterpret_cast<HWND>(m_foreignWid);
 		LONG_PTR style = GetWindowLongPtrW(child, GWL_STYLE);
 		style |= WS_CHILD;
 		style &= ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_BORDER
@@ -146,7 +146,7 @@ namespace mps::host
 		UpdateWindow(child);
 		InvalidateRect(host, nullptr, TRUE);
 #else
-		Q_UNUSED(foreignWid_);
+		Q_UNUSED(m_foreignWid);
 #endif
 	}
 
@@ -155,12 +155,12 @@ namespace mps::host
 #ifdef Q_OS_WIN
 		if (!foreignAlive())
 		{
-			foreignWid_ = 0;
+			m_foreignWid = 0;
 			return;
 		}
 		winId();
 		const HWND host = reinterpret_cast<HWND>(winId());
-		const HWND child = reinterpret_cast<HWND>(foreignWid_);
+		const HWND child = reinterpret_cast<HWND>(m_foreignWid);
 		RECT rc{};
 		GetClientRect(host, &rc);
 		const int w = qMax(1, static_cast<int>(rc.right - rc.left));

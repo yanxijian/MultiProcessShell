@@ -19,22 +19,22 @@ namespace mps::host
 		/// Offset of content origin inside the widget (for hotspot adjustment).
 		[[nodiscard]] QPoint contentOrigin() const
 		{
-			return contentOrigin_;
+			return m_contentOrigin;
 		}
 		[[nodiscard]] QSize contentSize() const
 		{
-			return contentSize_;
+			return m_contentSize;
 		}
 
 	protected:
 		void paintEvent(QPaintEvent* event) override;
 
 	private:
-		QPixmap pm_;
-		QSize contentSize_{120, 28};
+		QPixmap m_pm;
+		QSize m_contentSize{120, 28};
 		// Soft drop shadow below/right only (no top pad) so content top == widget top
 		// and strip pinning does not look vertically biased.
-		QPoint contentOrigin_{6, 0};
+		QPoint m_contentOrigin{6, 0};
 	};
 
 	/// Frameless translucent stand-in window that follows the cursor during tear-out
@@ -62,7 +62,7 @@ namespace mps::host
 		void paintEvent(QPaintEvent* event) override;
 
 	private:
-		QPixmap content_;
+		QPixmap m_content;
 	};
 
 	[[nodiscard]] QPixmap captureWindowPixmap(quintptr wid, QSize maxSize);
