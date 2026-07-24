@@ -11,6 +11,7 @@ MIT 许可的 C++/Qt 多进程壳：Host 壳框 + Client 原生窗嵌入 + Proto
 | 内容 | 中文（主） | English |
 |------|------------|---------|
 | 产品技术规格 | [docs/zh/multiprocess-shell-spec.md](docs/zh/multiprocess-shell-spec.md) | [docs/en/multiprocess-shell-spec.md](docs/en/multiprocess-shell-spec.md) |
+| 开发计划 | [docs/zh/dev-plan.md](docs/zh/dev-plan.md) | [docs/en/dev-plan.md](docs/en/dev-plan.md) |
 | Demo 形态 | [docs/zh/demo-morphology.md](docs/zh/demo-morphology.md) | [docs/en/demo-morphology.md](docs/en/demo-morphology.md) |
 | Demo 验收清单 | [docs/zh/demo-acceptance.md](docs/zh/demo-acceptance.md) | [docs/en/demo-acceptance.md](docs/en/demo-acceptance.md) |
 | Demo IPC 合约 | [docs/zh/demo-ipc.md](docs/zh/demo-ipc.md) | [docs/en/demo-ipc.md](docs/en/demo-ipc.md) |
