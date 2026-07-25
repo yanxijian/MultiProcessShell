@@ -5,7 +5,7 @@ Skips cmake reconfigure when the existing build tree already matches the
 requested options, so FetchContent protobuf/abseil are not rebuilt needlessly.
 
 On Windows with demos enabled, runs scripts/deploy_demo.py after a successful
-build so dist/Demo/mps_demo_host.exe is double-clickable.
+build so build/demos/mps_demo_host.exe is double-clickable (Qt runtime beside it).
 """
 
 from __future__ import annotations

@@ -26,10 +26,10 @@ CMake defaults: `MPS_BUILD_SRC=ON`, `MPS_BUILD_DEMOS=ON`, `MPS_BUILD_TESTS=ON`.
 ```bat
 python scripts\build_repo.py
 :: double-click (no console):
-dist\Demo\mps_demo_host.exe
+build\demos\mps_demo_host.exe
 ```
 
-On Windows, a successful `build_repo.py` runs `scripts/deploy_demo.py` (`windeployqt`), copies Qt/CRT next to the exes, and syncs `dist/Demo/`. You can also run:
+On Windows, a successful `build_repo.py` runs `scripts/deploy_demo.py` (`windeployqt`) and copies Qt/CRT next to the exes. You can also run:
 
 ```bat
 python scripts\deploy_demo.py

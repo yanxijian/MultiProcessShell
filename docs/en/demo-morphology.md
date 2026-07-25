@@ -130,7 +130,6 @@ Manual checklist: [demo-acceptance.md](demo-acceptance.md).
 | `src/host/` | Shell, tabs, sessions, Win embed; tear-out: `tear_out_preview.*` |
 | `src/client/` | Client process and pages |
 | `src/common/` + `proto/` | Framing and IDL |
-| `dist/Demo/` | Windows double-click bundle (generated) |
 
 ## 9. Decisions
 

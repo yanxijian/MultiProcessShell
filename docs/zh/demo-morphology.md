@@ -138,7 +138,6 @@ Client{N}-Window{M}
 | `src/host/` | 壳、Tab、会话、Win embed；拖出：`tear_out_preview.*` |
 | `src/client/` | Client 进程与 page |
 | `src/common/` + `proto/` | 帧与 IDL |
-| `dist/Demo/` | Windows 可双击运行包（生成物） |
 
 ## 9. 已决议摘要
 

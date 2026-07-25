@@ -13,10 +13,10 @@
 :: 在 vcvars x64 环境，并设置 QTDIR
 python scripts\build_repo.py
 :: 双击（GUI 子系统，无控制台）：
-dist\Demo\mps_demo_host.exe
+build\demos\mps_demo_host.exe
 ```
 
-Windows 上 `build_repo.py` 会自动跑 `scripts/deploy_demo.py`（`windeployqt`），把 Qt/CRT 拷到 exe 旁并同步到 `dist/Demo/`。
+Windows 上 `build_repo.py` 会自动跑 `scripts/deploy_demo.py`（`windeployqt`），把 Qt/CRT 拷到 exe 旁。
 
 ## 当前体验
 

@@ -13,10 +13,10 @@ Morphology / IPC: [demo-morphology.md](demo-morphology.md), [demo-ipc.md](demo-i
 :: vcvars x64 shell, QTDIR set
 python scripts\build_repo.py
 :: double-click (GUI subsystem, no console):
-dist\Demo\mps_demo_host.exe
+build\demos\mps_demo_host.exe
 ```
 
-On Windows, `build_repo.py` auto-runs `scripts/deploy_demo.py` (`windeployqt`) and syncs `dist/Demo/`.
+On Windows, `build_repo.py` auto-runs `scripts/deploy_demo.py` (`windeployqt`) beside the demos.
 
 ## Current UX
 

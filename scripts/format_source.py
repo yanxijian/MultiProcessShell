@@ -39,7 +39,7 @@ def find_clang_format() -> Path | None:
 
 def is_excluded(rel: Path) -> bool:
     parts = {p.lower() for p in rel.parts}
-    if "build" in parts or "_deps" in parts or "dist" in parts:
+    if "build" in parts or "_deps" in parts:
         return True
     if any(p.endswith("_autogen") for p in parts):
         return True

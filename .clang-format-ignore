@@ -1,7 +1,6 @@
 # Paths ignored by clang-format (also honored by scripts/format_source.py)
 
 build/
-dist/
 **/_deps/
 **/*_autogen/
 **/*.pb.cc

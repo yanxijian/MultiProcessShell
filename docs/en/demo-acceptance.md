@@ -2,7 +2,7 @@
 
 > **中文主文档**：[../zh/demo-acceptance.md](../zh/demo-acceptance.md)  
 > **Companion**: [demo-morphology.md](demo-morphology.md), [demo-ipc.md](demo-ipc.md)  
-> **Run**: `dist/Demo/mps_demo_host.exe` (build/deploy per [build.md](build.md))
+> **Run**: `build/demos/mps_demo_host.exe` (build/deploy per [build.md](build.md))
 
 Manual regression. Finish this list before later polish (tab overflow, REQ timeout, build-script ergonomics).
 

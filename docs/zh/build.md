@@ -27,10 +27,10 @@ CMake 默认：`MPS_BUILD_SRC=ON`、`MPS_BUILD_DEMOS=ON`、`MPS_BUILD_TESTS=ON`�
 ```bat
 python scripts\build_repo.py
 :: 双击运行（无控制台）：
-dist\Demo\mps_demo_host.exe
+build\demos\mps_demo_host.exe
 ```
 
-Windows 上 `build_repo.py` 成功后会调用 `scripts/deploy_demo.py`（`windeployqt`），把 Qt/CRT 拷到 exe 旁并同步到 `dist/Demo/`。也可单独：
+Windows 上 `build_repo.py` 成功后会调用 `scripts/deploy_demo.py`（`windeployqt`），把 Qt/CRT 拷到 exe 旁。也可单独：
 
 ```bat
 python scripts\deploy_demo.py

@@ -15,7 +15,7 @@ C++/Qt 多进程壳：**Host 壳框 + Client 原生窗嵌入 + Protobuf IPC**。
 - **可撕出 Tab**：拖出 / 合入、MRU 关 Tab、空壳规则（纯规则模块 + 单测）
 - **Protobuf IPC**：权威 IDL 为 `proto/shell/ipc/v1/ipc.proto`，Demo 合约见文档
 - **`wid` 在 embed seam**：Tab 模型只认 `tabId`；平台句柄由 `EmbedContainer` / `TabEmbedMap` 持有
-- **一键 Demo 包**：Windows 上自动 `windeployqt`，`dist/Demo` 可双击运行
+- **一键 Demo 部署**：Windows 上自动 `windeployqt`，可直接运行 `build/demos/mps_demo_host.exe`
 
 ## 要求
 
@@ -39,7 +39,7 @@ python scripts\build_repo.py
 4. 双击运行（无额外控制台）：
 
 ```text
-dist\Demo\mps_demo_host.exe
+build\demos\mps_demo_host.exe
 ```
 
 默认编 Host / Client Demo；Windows 上会自动跑 `scripts/deploy_demo.py`（`windeployqt`）。
@@ -63,7 +63,6 @@ tests/            协议单测 + Tab 条规则单测
 scripts/          build_repo / build_qt / deploy_demo
 clients/python/   M4b Python Hello 烟测
 docs/zh|en/       中英文文档
-dist/Demo/        Windows 可双击包（生成物，不入库）
 ```
 
 ## 文档

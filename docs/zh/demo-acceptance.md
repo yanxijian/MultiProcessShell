@@ -2,7 +2,7 @@
 
 > **English**：[../en/demo-acceptance.md](../en/demo-acceptance.md)  
 > **配套**：[demo-morphology.md](demo-morphology.md)、[demo-ipc.md](demo-ipc.md)  
-> **运行**：`dist/Demo/mps_demo_host.exe`（先按 [build.md](build.md) 构建部署）
+> **运行**：`build/demos/mps_demo_host.exe`（先按 [build.md](build.md) 构建部署）
 
 手工回归用。每条勾选通过后再谈后续打磨（Tab 溢出、REQ 超时、构建脚本等）。
 

@@ -73,20 +73,7 @@ def main() -> int:
     deploy(host)
     deploy(client)
 
-    # Convenience copy for double-click outside the build tree.
-    dist = ROOT / "dist" / "Demo"
-    dist.mkdir(parents=True, exist_ok=True)
-    # Copy entire demo_dir contents (exe + Qt deps)
-    for item in demo_dir.iterdir():
-        dest = dist / item.name
-        if item.is_file():
-            shutil.copy2(item, dest)
-        elif item.is_dir():
-            if dest.exists():
-                shutil.rmtree(dest)
-            shutil.copytree(item, dest)
-
-    print(f"OK: deployed. Double-click:\n  {dist / 'mps_demo_host.exe'}", flush=True)
+    print(f"OK: deployed. Double-click:\n  {host}", flush=True)
     return 0
 
 

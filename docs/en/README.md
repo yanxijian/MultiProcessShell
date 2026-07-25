@@ -15,7 +15,7 @@ Phase-1 platform: **Windows (form A)**; macOS / Linux directories are placeholde
 - **Detachable tabs**: tear-out / merge, close-tab MRU, empty-shell rules (pure rule modules + tests)
 - **Protobuf IPC**: authoritative IDL at `proto/shell/ipc/v1/ipc.proto`
 - **`wid` behind the embed seam**: tab model is `tabId`-only; platform handles live in `EmbedContainer` / `TabEmbedMap`
-- **One-click Demo bundle**: Windows `windeployqt` into `dist/Demo`
+- **One-click Demo deploy**: Windows `windeployqt` beside `build/demos`
 
 ## Requirements
 
@@ -30,7 +30,7 @@ Phase-1 platform: **Windows (form A)**; macOS / Linux directories are placeholde
 
 ```bat
 python scripts\build_repo.py
-dist\Demo\mps_demo_host.exe
+build\demos\mps_demo_host.exe
 ```
 
 Protocol / tab-strip tests only (Qt optional):
