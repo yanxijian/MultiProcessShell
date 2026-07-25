@@ -40,7 +40,8 @@ Manual regression. Finish this list before later polish (tab overflow, REQ timeo
 - [ ] Drag Client tab outside → new top-level shell with that tab; no long black/empty flash
 - [ ] If source has no remaining Client tabs (Home only) and is not the last shell → source destroyed
 - [ ] Drop onto another shell’s tabs / trailing strip → merge (yield shows slot); source rules as above
-- [ ] Over min / max / close → forbidden cursor; no merge
+- [ ] Over min / max / close → forbidden cursor; no merge; **release does not tear-out** (cancel)
+- [ ] During tear-out, Client「新建窗口」→ new tab appears only after drag ends (Create queued)
 - [ ] After tear-out/merge, embed fills area and shell focuses
 
 ## Close shell / kill process

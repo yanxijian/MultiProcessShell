@@ -34,6 +34,7 @@ namespace mps::host
 		void noteTabDragDropHandled();
 		[[nodiscard]] bool consumeDragCancelled();
 		[[nodiscard]] bool shouldSuppressTearOutAt(QPoint globalPos) const;
+		[[nodiscard]] bool isReleaseOverWindowButtons(QPoint globalPos) const;
 		[[nodiscard]] QRect tearOutPreviewGeometry() const;
 		void endTabDrag(bool tearOrMerge);
 		[[nodiscard]] ShellWindow* shellForTab(qint64 tabId) const;
@@ -57,7 +58,16 @@ namespace mps::host
 		void pollEscapeCancel();
 		void startGhostSnapBack();
 		void finishGhostSnapBack();
+		void flushCreatesDeferredDuringDrag();
 		[[nodiscard]] QString makeTitle(int clientIndex, int windowIndex) const;
+
+		struct DeferredCreate
+		{
+			ClientSession* session = nullptr;
+			qint64 tabId = 0;
+			QString title;
+			ShellWindow* preferredShell = nullptr;
+		};
 
 		QString m_clientExe;
 		QString m_endpoint;
@@ -71,6 +81,8 @@ namespace mps::host
 		QHash<int, int> m_nextWindowIndex; // clientIndex -> next M
 		// Queued first CreateSubWindow per session after ready
 		QHash<ClientSession*, ShellWindow*> m_pendingFirstShell;
+		// Spec S5: CreateSubWindow deferred while tear-out drag is active
+		std::vector<DeferredCreate> m_deferredCreatesDuringDrag;
 
 		// Detachable-tab tear-out drag session
 		TearOutPreview* m_tearOutPreview = nullptr;

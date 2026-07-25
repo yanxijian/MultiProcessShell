@@ -42,3 +42,15 @@ TEST(TabStripTearOut, LeaveSlopWiderThanReturn)
 	EXPECT_GT(kTearOutLeaveSlopV, kTearOutReturnSlopV);
 	EXPECT_GT(kTearOutLeaveSlopH, kTearOutReturnSlopH);
 }
+
+TEST(TabStripTearOut, DeferCreateDuringDrag)
+{
+	EXPECT_TRUE(shouldDeferCreateDuringDrag(true));
+	EXPECT_FALSE(shouldDeferCreateDuringDrag(false));
+}
+
+TEST(TabStripTearOut, CancelOverWindowButtons)
+{
+	EXPECT_TRUE(shouldCancelTearOutOverWindowButtons(true));
+	EXPECT_FALSE(shouldCancelTearOutOverWindowButtons(false));
+}

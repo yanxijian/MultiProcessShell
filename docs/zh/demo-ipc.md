@@ -66,6 +66,7 @@
 | Client「新建窗口」 | 收到 `Invoke("demo.request_new_window")` → `CreateSubWindow(ClientN-WindowM)` | Invoke + CreateSubWindow |
 | 关 Tab | `QueryCloseSubWindow` → accept → 拆 Tab；Client `SubWindowRemoved` 幂等兜底 | §3 |
 | 拖出/合入 | 改归属 + reattach | `SetDragSuppress` + `NotifyMainWindowReattachment` |
+| 拖出中点「新建窗口」 | Host **排队** `CreateSubWindow`，`endTabDrag` 后再发（规格 S5） | Invoke 仍立即 ACK |
 
 ## 5. 双向交互预留（框架）
 
@@ -98,4 +99,5 @@ Host 维护 `client_index` / 每 Client 的 `window_index`，生成 `Client{N}-W
 ## 8. 实现
 
 - IDL：`proto/shell/ipc/v1/ipc.proto`  
-- Host：`src/host/`；Client：`src/client/`；Demo 入口：`demos/`
+- Host：`src/host/`；Client：`src/client/`；Demo 入口：`demos/`  
+- **Demo Client 限制（接受）**：收到 `SetDragSuppress` / `NotifyMainWindowReattachment` 后 **no-op**；Host 仍按合约发送。见 [m5-gap-audit.md](m5-gap-audit.md)。

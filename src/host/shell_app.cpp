@@ -320,6 +320,12 @@ namespace mps::host
 					{
 						shell = m_shells.back().get();
 					}
+					// Spec S5: do not CreateSubWindow while a tear-out drag is in flight.
+					if (tab_strip::shouldDeferCreateDuringDrag(m_dragActive))
+					{
+						m_deferredCreatesDuringDrag.push_back(DeferredCreate{session, tabId, title, shell});
+						return;
+					}
 					if (shell)
 					{
 						m_pendingFirstShell.insert(session, shell);
@@ -468,6 +474,12 @@ namespace mps::host
 			}
 		}
 		m_pendingFirstShell.remove(session);
+		m_deferredCreatesDuringDrag.erase(std::remove_if(m_deferredCreatesDuringDrag.begin(), m_deferredCreatesDuringDrag.end(),
+														 [&](const DeferredCreate& d)
+														 {
+															 return d.session == session;
+														 }),
+										  m_deferredCreatesDuringDrag.end());
 		m_sessions.erase(std::remove_if(m_sessions.begin(), m_sessions.end(),
 										[&](const std::unique_ptr<ClientSession>& p)
 										{
@@ -742,6 +754,40 @@ namespace mps::host
 		return tab_strip::shouldSuppressTearOut(overAny, nearLeave);
 	}
 
+	bool ShellApp::isReleaseOverWindowButtons(QPoint globalPos) const
+	{
+		for (const auto& s : m_shells)
+		{
+			if (s && s->isOverWindowButtons(globalPos))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	void ShellApp::flushCreatesDeferredDuringDrag()
+	{
+		if (m_deferredCreatesDuringDrag.empty())
+		{
+			return;
+		}
+		const auto pending = std::move(m_deferredCreatesDuringDrag);
+		m_deferredCreatesDuringDrag.clear();
+		for (const auto& item : pending)
+		{
+			if (!item.session || item.session->isDead())
+			{
+				continue;
+			}
+			if (item.preferredShell)
+			{
+				m_pendingFirstShell.insert(item.session, item.preferredShell);
+			}
+			item.session->requestCreateSubWindow(item.tabId, item.title);
+		}
+	}
+
 	void ShellApp::beginTabDrag(ShellWindow* source, qint64 tabId, QPoint localHotSpot)
 	{
 		if (!source || tabId == kHomeTabId)
@@ -1007,6 +1053,7 @@ namespace mps::host
 
 		if (!source)
 		{
+			flushCreatesDeferredDuringDrag();
 			return;
 		}
 
@@ -1036,6 +1083,8 @@ namespace mps::host
 			}
 		}
 		clearAllDropIndicators();
+		// Spec S5: emit deferred CreateSubWindow after drag ends (and suppress is cleared).
+		flushCreatesDeferredDuringDrag();
 	}
 
 	void ShellApp::updateTabDragVisuals()
@@ -1061,15 +1110,7 @@ namespace mps::host
 		const QPoint g = QCursor::pos();
 
 		// Forbidden cursor over window min/max/close (not a drop target).
-		bool forbidden = false;
-		for (auto& s : m_shells)
-		{
-			if (s && s->isOverWindowButtons(g))
-			{
-				forbidden = true;
-				break;
-			}
-		}
+		const bool forbidden = isReleaseOverWindowButtons(g);
 		if (forbidden != m_dragForbiddenCursor)
 		{
 			m_dragForbiddenCursor = forbidden;

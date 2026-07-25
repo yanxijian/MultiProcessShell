@@ -66,6 +66,7 @@ Tear-out/merge: **Host tab model + embed reattach**; no HWND in mime.
 | Client **新建窗口** | `Invoke("demo.request_new_window")` → `CreateSubWindow(ClientN-WindowM)` | Invoke + CreateSubWindow |
 | Close tab | `QueryCloseSubWindow` → accept → remove tab; Client `SubWindowRemoved` idempotent backup | §3 |
 | Tear-out / merge | Reassign + reattach | `SetDragSuppress` + `NotifyMainWindowReattachment` |
+| 「新建窗口」during tear-out | Host **queues** `CreateSubWindow` until `endTabDrag` (spec S5) | Invoke still ACKs immediately |
 
 ## 5. Bidirectional reserve
 
@@ -98,4 +99,5 @@ Host keeps `client_index` / per-Client `window_index`, writes `Client{N}-Window{
 ## 8. Implementation
 
 - IDL: `proto/shell/ipc/v1/ipc.proto`  
-- Host: `src/host/`; Client: `src/client/`; Demo entry: `demos/`
+- Host: `src/host/`; Client: `src/client/`; Demo entry: `demos/`  
+- **Demo Client limit (accepted):** `SetDragSuppress` / `NotifyMainWindowReattachment` are **no-ops** on the Client; Host still emits them. See [m5-gap-audit.md](../zh/m5-gap-audit.md).

@@ -237,6 +237,18 @@ namespace mps::tab_strip
 		return overAnyStrip || nearSourceLeaveSlop;
 	}
 
+	/// Spec S5 / §7.3.9: while a tear-out drag is active, defer CreateSubWindow until drag ends.
+	inline bool shouldDeferCreateDuringDrag(bool dragActive)
+	{
+		return dragActive;
+	}
+
+	/// Release over min/max/close is not a merge target and must not create a new shell.
+	inline bool shouldCancelTearOutOverWindowButtons(bool overWindowButtons)
+	{
+		return overWindowButtons;
+	}
+
 	// --- Merge / empty shell ----------------------------------------------------
 
 	inline bool canMergeTab(int64_t tabId, bool isHome, bool sourceExists, bool sameShell)

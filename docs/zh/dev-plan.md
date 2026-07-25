@@ -2,7 +2,7 @@
 
 > **English**：[../en/dev-plan.md](../en/dev-plan.md)  
 > **地位**：近中期投入与架构姿态的备忘；产品愿景与里程碑仍以 [multiprocess-shell-spec.md](multiprocess-shell-spec.md) 为准，Demo 合约以 [demo-ipc.md](demo-ipc.md) / `.proto` 为准。  
-> **更新**：2026-07-25（M4b：Python Hello 烟测 + Envelope helper）
+> **更新**：2026-07-26（M5 差距审计：[m5-gap-audit.md](m5-gap-audit.md)）
 
 ---
 
@@ -11,8 +11,8 @@
 | 结论 | 说明 |
 |------|------|
 | **不做整仓重构** | Win Demo 主路径已可验收；`frame` / `EnvelopeChannel` / `tab_strip` / `TabEmbedMap` 已是可用的深模块缝 |
-| **主线按规格里程碑推进** | 见规格 §12.4；**M4b 已落地**（`clients/python` + `mps_m4b_python_hello`） |
-| **加深绑在下一功能上** | 下一优先：M6 心跳/超时；tear-out 规则模块化随改动发生 |
+| **主线按规格里程碑推进** | **M4b 已落地**；**M5 Win Demo 可关账**（见 [m5-gap-audit.md](m5-gap-audit.md)）；下一优先 **M6 心跳** |
+| **加深绑在下一功能上** | tear-out 规则模块化（G6）择机；不挡 M6 |
 
 已有好模式：`src/common/tab_strip.hpp`、`tab_embed_map.hpp`、`envelope_builder.hpp`（纯规则 / 薄 helper + Host·Client / 单测共用）。
 
@@ -46,6 +46,7 @@
 | 方向 | 建议姿态 |
 |------|----------|
 | ~~M4b Python Hello~~ | **完成**：`hello_client.py` + 离线 `test_frame_envelope.py` + Qt 烟测 `mps_m4b_python_hello` |
+| M5 拖出 / 合入 | **可关账**（G1/G4 已修；G2/G3 Demo Client no-op）— [m5-gap-audit.md](m5-gap-audit.md) |
 | x11 / inproc / 多类型 Client | 前：~~wid 后置 +~~ `IEmbedBackend`（wid 已后置） |
 | M6 心跳 / 无响应 UI | 在 Session 侧扩展 helper / 定时器，避免再散落调用方 |
 | 接入 QThemeEngine | **集成当天再谈** Host 如何接 `qtheme::Engine`；现在不为集成预重构 |

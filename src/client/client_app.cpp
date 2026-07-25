@@ -207,6 +207,8 @@ namespace mps::client
 		}
 		if (env.has_set_drag_suppress() || env.has_notify_main_window_reattachment())
 		{
+			// Demo Client intentionally ignores these EVTs (Host still emits for contract).
+			// See docs/zh/m5-gap-audit.md G2/G3 — accepted Demo limit.
 			return;
 		}
 		if (env.has_invoke())

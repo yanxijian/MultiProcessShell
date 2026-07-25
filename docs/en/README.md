@@ -47,6 +47,7 @@ See [build.md](build.md) and [ci.md](ci.md).
 |-------|------|---------|
 | Product spec | [../zh/multiprocess-shell-spec.md](../zh/multiprocess-shell-spec.md) | [multiprocess-shell-spec.md](multiprocess-shell-spec.md) |
 | Dev plan | [../zh/dev-plan.md](../zh/dev-plan.md) | [dev-plan.md](dev-plan.md) |
+| M5 gap audit | [../zh/m5-gap-audit.md](../zh/m5-gap-audit.md) | [m5-gap-audit.md](m5-gap-audit.md) |
 | Demo morphology | [../zh/demo-morphology.md](../zh/demo-morphology.md) | [demo-morphology.md](demo-morphology.md) |
 | Demo acceptance | [../zh/demo-acceptance.md](../zh/demo-acceptance.md) | [demo-acceptance.md](demo-acceptance.md) |
 | Demo IPC | [../zh/demo-ipc.md](../zh/demo-ipc.md) | [demo-ipc.md](demo-ipc.md) |
@@ -64,7 +65,9 @@ See [build.md](build.md) and [ci.md](ci.md).
 | Detachable tab-strip rule tests | Done |
 | Windows Demo (Home / Create Client / tear-out / embed) | Done |
 | `wid` behind embed seam | Done |
-| M4b / multi-backend / heartbeat | See spec + [dev-plan](dev-plan.md) |
+| M4b Python Hello | Done |
+| M5 tear-out / merge | Closable — [gap audit](../zh/m5-gap-audit.md) |
+| M6 heartbeat / multi-backend | See spec + [dev-plan](dev-plan.md) |
 
 ## License
 

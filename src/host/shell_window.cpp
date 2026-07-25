@@ -1324,94 +1324,96 @@ namespace mps::host
 			connect(btn, &TabButton::closeRequested, this, &ShellWindow::tabCloseRequested);
 			if (!t.isHome)
 			{
-				connect(btn, &TabButton::dragStarted, this,
-						[this](qint64 tabId, QPoint localHotSpot)
+				connect(
+					btn, &TabButton::dragStarted, this,
+					[this](qint64 tabId, QPoint localHotSpot)
+					{
+						if (m_app)
 						{
-							if (m_app)
+							m_app->beginTabDrag(this, tabId, localHotSpot);
+						}
+						auto* mime = new QMimeData;
+						mime->setData(QString::fromUtf8(kTabMimeType), QByteArray::number(tabId));
+						auto* drag = new QDrag(this);
+						drag->setMimeData(mime);
+						// Invisible drag pixmap — tab ghost / tear-out preview drawn separately.
+						QPixmap empty(1, 1);
+						empty.fill(Qt::transparent);
+						drag->setPixmap(empty);
+						drag->setHotSpot(QPoint(0, 0));
+						// Keep normal arrow cursor; blank drag cursors + override.
+						drag->setDragCursor(empty, Qt::MoveAction);
+						drag->setDragCursor(empty, Qt::CopyAction);
+						drag->setDragCursor(empty, Qt::IgnoreAction);
+						QApplication::setOverrideCursor(Qt::ArrowCursor);
+						const auto drop = drag->exec(Qt::MoveAction);
+						QApplication::restoreOverrideCursor();
+						const QRect previewGeom = m_app ? m_app->tearOutPreviewGeometry() : QRect(QCursor::pos() - QPoint(40, 20), size());
+						emit dropIndicatorsClearRequested();
+						clearDropInsertIndicator();
+						if (drop == Qt::IgnoreAction)
+						{
+							const bool cancelled = m_app && m_app->consumeDragCancelled();
+							const QPoint releasePos = QCursor::pos();
+							ShellWindow* zoneShell = m_app ? m_app->tabDropZoneShellAtGlobal(releasePos) : nullptr;
+							// Release in the open yield gap has no drop widget → IgnoreAction.
+							// Same-shell: commit live reorder. Foreign strip: merge.
+							if (!cancelled && zoneShell == this && m_app)
 							{
-								m_app->beginTabDrag(this, tabId, localHotSpot);
-							}
-							auto* mime = new QMimeData;
-							mime->setData(QString::fromUtf8(kTabMimeType), QByteArray::number(tabId));
-							auto* drag = new QDrag(this);
-							drag->setMimeData(mime);
-							// Invisible drag pixmap — tab ghost / tear-out preview drawn separately.
-							QPixmap empty(1, 1);
-							empty.fill(Qt::transparent);
-							drag->setPixmap(empty);
-							drag->setHotSpot(QPoint(0, 0));
-							// Keep normal arrow cursor; blank drag cursors + override.
-							drag->setDragCursor(empty, Qt::MoveAction);
-							drag->setDragCursor(empty, Qt::CopyAction);
-							drag->setDragCursor(empty, Qt::IgnoreAction);
-							QApplication::setOverrideCursor(Qt::ArrowCursor);
-							const auto drop = drag->exec(Qt::MoveAction);
-							QApplication::restoreOverrideCursor();
-							const QRect previewGeom =
-								m_app ? m_app->tearOutPreviewGeometry() : QRect(QCursor::pos() - QPoint(40, 20), size());
-							emit dropIndicatorsClearRequested();
-							clearDropInsertIndicator();
-							if (drop == Qt::IgnoreAction)
-							{
-								const bool cancelled = m_app && m_app->consumeDragCancelled();
-								const QPoint releasePos = QCursor::pos();
-								ShellWindow* zoneShell = m_app ? m_app->tabDropZoneShellAtGlobal(releasePos) : nullptr;
-								// Release in the open yield gap has no drop widget → IgnoreAction.
-								// Same-shell: commit live reorder. Foreign strip: merge.
-								if (!cancelled && zoneShell == this && m_app)
+								if (!(hasTabYieldPreview() && commitTabYieldPreview()))
 								{
-									if (!(hasTabYieldPreview() && commitTabYieldPreview()))
-									{
-										int insertIndex = yieldInsertIndex();
-										if (insertIndex < 0)
-										{
-											insertIndex = tabInsertIndexAt(releasePos);
-										}
-										moveTab(tabId, insertIndex);
-									}
-									m_app->noteTabDragDropHandled();
-									m_app->endTabDrag(/*tearOrMerge=*/false);
-								}
-								else if (!cancelled && zoneShell && zoneShell != this && m_app)
-								{
-									int insertIndex = zoneShell->yieldInsertIndex();
+									int insertIndex = yieldInsertIndex();
 									if (insertIndex < 0)
 									{
-										insertIndex = zoneShell->tabInsertIndexAt(releasePos);
+										insertIndex = tabInsertIndexAt(releasePos);
 									}
-									m_app->noteTabDragDropHandled();
-									m_app->endTabDrag(/*tearOrMerge=*/false);
-									m_app->mergeTab(tabId, zoneShell, insertIndex);
+									moveTab(tabId, insertIndex);
 								}
-								else if (!cancelled && hasTabYieldPreview() && m_app && m_app->shouldSuppressTearOutAt(releasePos))
-								{
-									// Near the strip with a live yield preview — keep the new order.
-									commitTabYieldPreview();
-									m_app->noteTabDragDropHandled();
-									m_app->endTabDrag(/*tearOrMerge=*/false);
-								}
-								else if (cancelled || (m_app && m_app->shouldSuppressTearOutAt(releasePos)))
-								{
-									// Esc, or released near strip without a commit path → restore.
-									if (m_app)
-									{
-										m_app->endTabDrag(/*tearOrMerge=*/false);
-									}
-								}
-								else
-								{
-									if (m_app)
-									{
-										m_app->endTabDrag(/*tearOrMerge=*/true); // keeps preview until tearOut
-									}
-									emit tabTearOutRequested(tabId, previewGeom);
-								}
-							}
-							else if (m_app)
-							{
+								m_app->noteTabDragDropHandled();
 								m_app->endTabDrag(/*tearOrMerge=*/false);
 							}
-						});
+							else if (!cancelled && zoneShell && zoneShell != this && m_app)
+							{
+								int insertIndex = zoneShell->yieldInsertIndex();
+								if (insertIndex < 0)
+								{
+									insertIndex = zoneShell->tabInsertIndexAt(releasePos);
+								}
+								m_app->noteTabDragDropHandled();
+								m_app->endTabDrag(/*tearOrMerge=*/false);
+								m_app->mergeTab(tabId, zoneShell, insertIndex);
+							}
+							else if (!cancelled && hasTabYieldPreview() && m_app && m_app->shouldSuppressTearOutAt(releasePos))
+							{
+								// Near the strip with a live yield preview — keep the new order.
+								commitTabYieldPreview();
+								m_app->noteTabDragDropHandled();
+								m_app->endTabDrag(/*tearOrMerge=*/false);
+							}
+							else if (cancelled || (m_app && m_app->shouldSuppressTearOutAt(releasePos))
+									 || (m_app
+										 && tab_strip::shouldCancelTearOutOverWindowButtons(m_app->isReleaseOverWindowButtons(releasePos))))
+							{
+								// Esc, near strip without commit, or over min/max/close → restore.
+								if (m_app)
+								{
+									m_app->endTabDrag(/*tearOrMerge=*/false);
+								}
+							}
+							else
+							{
+								if (m_app)
+								{
+									m_app->endTabDrag(/*tearOrMerge=*/true); // keeps preview until tearOut
+								}
+								emit tabTearOutRequested(tabId, previewGeom);
+							}
+						}
+						else if (m_app)
+						{
+							m_app->endTabDrag(/*tearOrMerge=*/false);
+						}
+					});
 			}
 		}
 		reinstallStripDropTargets();
