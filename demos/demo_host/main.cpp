@@ -4,8 +4,16 @@
 #include <QDir>
 #include <QFileInfo>
 
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
+
 int main(int argc, char* argv[])
 {
+#ifdef Q_OS_WIN
+	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+	SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+#endif
 	QApplication app(argc, argv);
 	QString clientExe = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("mps_demo_client.exe"));
 #ifndef Q_OS_WIN

@@ -11,6 +11,7 @@ target_link_libraries(mps_client
     Qt6::Gui
     Qt6::Widgets
     Qt6::Network
+    ${MPS_QFR_TARGET}
 )
 set_target_properties(mps_client PROPERTIES AUTOMOC ON)
 if(WIN32)

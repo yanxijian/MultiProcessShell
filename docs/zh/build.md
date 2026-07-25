@@ -6,6 +6,7 @@
 
 - Windows：MSVC（x64）、CMake ≥ 3.21、Ninja（推荐）、Python 3.10+、Git（FetchContent）
 - Qt：开源 **6.8+**（默认编 Host/Client/Demo 时需要；**只跑 M0 单测可不装 Qt**）
+- **QFluentRibbon + QThemeEngine**：默认 Demo 需要 sibling `../QFluentRibbon`（其再找 `../QThemeEngine`），或 `-DMPS_QFR_SOURCE_DIR=...`；见 [qfr-demo-client.md](qfr-demo-client.md)
 - Protobuf / GoogleTest：CMake **FetchContent**
 
 ## 环境变量
@@ -80,5 +81,5 @@ cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH="%QTDIR%" -DCMAKE_BUILD_TYPE=Re
 cmake --build build
 ```
 
-相关文档：[产品规格](multiprocess-shell-spec.md)、[Demo 形态](demo-morphology.md)、[Demo IPC](demo-ipc.md)、[CI](ci.md)  
+相关文档：[产品规格](multiprocess-shell-spec.md)、[Demo 形态](demo-morphology.md)、[Demo IPC](demo-ipc.md)、[QFR Demo Client](qfr-demo-client.md)、[CI](ci.md)  
 仓库 IDL：`proto/shell/ipc/v1/ipc.proto`

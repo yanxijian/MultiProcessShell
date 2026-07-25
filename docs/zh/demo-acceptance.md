@@ -13,9 +13,10 @@
 
 ## 创建与标题
 
-- [ ] Home →「创建 Client」→ 出现 `Client1-Window1`，客户区嵌入正常、铺满
-- [ ] Client 内「新建窗口」→ `Client1-Window2`，同进程多 Tab
-- [ ] 再回 Home「创建 Client」→ `Client2-Window1`，Tab 强调色可区分
+- [ ] Home →「创建 Client」→ 出现 `Client1-Window1`，客户区为 **无系统标题栏的 Ribbon 页**、铺满
+- [ ] Ribbon「New Window」→ `Client1-Window2`，同进程多 Tab
+- [ ] Ribbon Theme Light/Dark 可切换（仅该 Client）
+- [ ] 再回 Home「创建 Client」→ `Client2-Window1`
 
 ## 关 Tab / MRU
 
@@ -60,6 +61,7 @@
 ## 基本稳定
 
 - [ ] 连续：创建两 Client → 各建两窗 → 重排 → 拖出 → 合回 → 关 Tab → 关壳，无崩溃
+- [ ] （可选）Alt KeyTip / Backstage：记录是否被宿主裁切；失败不阻断主路径（见 [qfr-demo-client.md](qfr-demo-client.md)）
 
 ## M4b（多语言 Hello，可选）
 

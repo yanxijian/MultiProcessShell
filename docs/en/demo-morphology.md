@@ -34,14 +34,13 @@ Phase-1 platform: **Windows (form A)**.
 
 ### 2.3 Same Client, new child window
 
-- Client page content has **新建窗口** / New Window.  
-- Click → IPC `Invoke("demo.request_new_window")` → Host sends another `CreateSubWindow` in the **same Client process** and adds a tab.  
+- Client page is a **frameless QFluentRibbon** `RibbonWindow`; Ribbon **New Window** → IPC `Invoke("demo.request_new_window")` → Host `CreateSubWindow` in the **same Client process**. See Chinese [qfr-demo-client.md](../zh/qfr-demo-client.md).  
 - Titles: `Client1-Window2`, `Client1-Window3`, …
 
 ### 2.4 Multiple Clients
 
 - Create Client again from Home → `Client2-Window1`, …  
-- Different Clients = different processes (form A); tabs may share one shell (optional accent colors).
+- Different Clients = different processes (form A); tabs may share one shell. Theme Light/Dark is per Client process.
 
 ## 3. Tab title rules
 

@@ -34,14 +34,19 @@
 
 ### 2.3 同 Client 再建子窗口
 
-- **Client 窗口（page）客户区中央** 有按钮「新建窗口」。  
-- 点击后经 IPC `Invoke("demo.request_new_window")`，由 Host 再发 `CreateSubWindow`，在 **同一 Client 进程** 内再建子窗口并新增 Tab。  
+- **Client 窗口（page）**：无系统标题栏的 **QFluentRibbon** 页（`RibbonWindow`）；Ribbon「New Window」经 IPC `Invoke("demo.request_new_window")`，由 Host 再发 `CreateSubWindow`。详见 [qfr-demo-client.md](qfr-demo-client.md)。  
+- 点击后在 **同一 Client 进程** 内再建子窗口并新增 Tab。  
 - 标题递增：`Client1-Window2`、`Client1-Window3`、…
 
 ### 2.4 多 Client
 
 - 再次在 Home「创建 Client」→ `Client2-Window1`、…  
-- 不同 Client = 不同进程（形态 A）；Tab 可同壳并列（示意上可用不同强调色区分）。
+- 不同 Client = 不同进程（形态 A）；Tab 可同壳并列。  
+- 页内可用 Ribbon Theme 组切 Light/Dark（仅该 Client 进程）。
+
+### 2.5 QFR 嵌入页
+
+Demo Client 页为 frameless `qfluentribbon::RibbonWindow`；构建与嵌入态限制见 [qfr-demo-client.md](qfr-demo-client.md)。
 
 ## 3. 标题（Tab 名）规则
 
@@ -66,7 +71,7 @@ Client{N}-Window{M}
 │  [Home] [Client1-Window1 ×] [Client2-Window1 ×]  _ □ × │
 ├────────────────────────────────────────────────────────┤
 │  Home 激活：中央「创建 Client」                          │
-│  Client Tab 激活：嵌入该 Client 原生窗（内有「新建窗口」） │
+│  Client Tab 激活：嵌入 QFR Ribbon 页（无系统标题栏；「New Window」在 Ribbon） │
 └────────────────────────────────────────────────────────┘
 ```
 

@@ -3,8 +3,17 @@
 #include <QApplication>
 #include <QCommandLineParser>
 
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
+
 int main(int argc, char* argv[])
 {
+#ifdef Q_OS_WIN
+	// Align with Qt PMV2 before QApplication; keeps Host/Client embed DPI contexts matched.
+	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+	SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+#endif
 	QApplication app(argc, argv);
 	QCommandLineParser parser;
 	parser.addHelpOption();
