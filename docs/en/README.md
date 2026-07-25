@@ -1,92 +1,71 @@
 # MultiProcessShell
 
-> **中文主文档**: [`../../README.md`](../../README.md)
+[![CI](https://github.com/yanxijian/MultiProcessShell/actions/workflows/ci.yml/badge.svg)](https://github.com/yanxijian/MultiProcessShell/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE)
 
-MIT-licensed C++/Qt multi-process shell: Host shell UI + Client native-window embed + Protobuf IPC.
+C++/Qt multi-process shell: **Host chrome + Client native-window embed + Protobuf IPC**.
 
 Phase-1 platform: **Windows (form A)**; macOS / Linux directories are placeholders.
 
-## Documentation
+> Canonical docs are Chinese — start at the [root README](../../README.md).
 
-| Topic | 中文主文档 | English |
-|-------|-------------|---------|
-| Product spec | [../zh/multiprocess-shell-spec.md](../zh/multiprocess-shell-spec.md) | [multiprocess-shell-spec.md](multiprocess-shell-spec.md) |
-| Development plan | [../zh/dev-plan.md](../zh/dev-plan.md) | [dev-plan.md](dev-plan.md) |
-| Demo morphology | [../zh/demo-morphology.md](../zh/demo-morphology.md) | [demo-morphology.md](demo-morphology.md) |
-| Demo acceptance | [../zh/demo-acceptance.md](../zh/demo-acceptance.md) | [demo-acceptance.md](demo-acceptance.md) |
-| Demo IPC | [../zh/demo-ipc.md](../zh/demo-ipc.md) | [demo-ipc.md](demo-ipc.md) |
-| IPC alternatives (future) | [../zh/ipc-alternatives.md](../zh/ipc-alternatives.md) | [ipc-alternatives.md](ipc-alternatives.md) |
-| Build | [../zh/build.md](../zh/build.md) | [build.md](build.md) |
-| CI (GitHub Actions) | [../zh/ci.md](../zh/ci.md) | [ci.md](ci.md) |
-| demos / scripts / src / … | folder `README.md`（中文） | [demos.md](demos.md), [scripts.md](scripts.md), [src.md](src.md), … |
+## Features
 
-**Policy:** Prefer Chinese docs day-to-day; English is a synced mirror. Cross-link labels use the **target** language (**English** / **中文主文档**). Demo IDL authority is `proto/shell/ipc/v1/ipc.proto` + Demo IPC. If the long-form product sketch disagrees with `.proto`, prefer `.proto` / Demo IPC.
+- **Multi-process UI shell**: Host owns tabs / lifecycle; Clients embed via native HWND (`SetParent`)
+- **Detachable tabs**: tear-out / merge, close-tab MRU, empty-shell rules (pure rule modules + tests)
+- **Protobuf IPC**: authoritative IDL at `proto/shell/ipc/v1/ipc.proto`
+- **`wid` behind the embed seam**: tab model is `tabId`-only; platform handles live in `EmbedContainer` / `TabEmbedMap`
+- **One-click Demo bundle**: Windows `windeployqt` into `dist/Demo`
 
-## Layout
+## Requirements
 
-```text
-MultiProcessShell/
-  cmake/           Qt / Protobuf helpers
-  proto/           shell.ipc.v1 IDL
-  src/             Host / Client / common / ipc_qt
-  demos/           Demo (mps_demo_host / mps_demo_client)
-  tests/           M0 protocol tests + detachable tab-strip rule tests
-  clients/python/  M4b smoke (later)
-  docs/zh|en/      Chinese + English docs
-  scripts/         build_repo / build_qt / deploy_demo
-  dist/Demo/       Windows double-click bundle (generated; gitignored)
-```
+| Item | Notes |
+|------|--------|
+| Qt | **6.8+** for Demo / Host (protocol-only tests can skip Qt) |
+| Toolchain | CMake, Ninja, Python 3; MSVC x64 (`vcvars`) on Windows |
+| Deps | Protobuf (optionally via CMake FetchContent) |
+| Optional | `clang-format` 20 for local format checks |
 
 ## Quick start (Windows)
 
-1. Open an **x64 Native Tools / vcvars** shell.  
-2. Set `QTDIR` to Qt **6.8+**; put `%QTDIR%\bin` on `PATH`.  
-3. Build and deploy:
-
 ```bat
 python scripts\build_repo.py
-```
-
-4. Double-click (no extra console):
-
-```text
 dist\Demo\mps_demo_host.exe
 ```
 
-Default build includes Host/Client Demo; on Windows `deploy_demo.py` runs automatically (`windeployqt`).
-
-M0 tests only (Qt optional):
+Protocol / tab-strip tests only (Qt optional):
 
 ```bat
 python scripts\build_repo.py --no-demos --test
 ```
 
+See [build.md](build.md) and [ci.md](ci.md).
+
+## Documentation
+
+| Topic | 中文 | English |
+|-------|------|---------|
+| Product spec | [../zh/multiprocess-shell-spec.md](../zh/multiprocess-shell-spec.md) | [multiprocess-shell-spec.md](multiprocess-shell-spec.md) |
+| Dev plan | [../zh/dev-plan.md](../zh/dev-plan.md) | [dev-plan.md](dev-plan.md) |
+| Demo morphology | [../zh/demo-morphology.md](../zh/demo-morphology.md) | [demo-morphology.md](demo-morphology.md) |
+| Demo acceptance | [../zh/demo-acceptance.md](../zh/demo-acceptance.md) | [demo-acceptance.md](demo-acceptance.md) |
+| Demo IPC | [../zh/demo-ipc.md](../zh/demo-ipc.md) | [demo-ipc.md](demo-ipc.md) |
+| IPC alternatives | [../zh/ipc-alternatives.md](../zh/ipc-alternatives.md) | [ipc-alternatives.md](ipc-alternatives.md) |
+| Build | [../zh/build.md](../zh/build.md) | [build.md](build.md) |
+| CI | [../zh/ci.md](../zh/ci.md) | [ci.md](ci.md) |
+
+**Policy:** Prefer Chinese docs day-to-day. If the long-form product sketch disagrees with `.proto`, prefer `.proto` / Demo IPC.
+
 ## Status
 
-- Specs, Demo morphology/IPC, and scripts are in-tree.  
-- **M0 done**: framing + `shell.ipc.v1` + `mps_ipc_tests`.  
-- **Detachable tab-strip rule tests**: `mps_tab_strip_tests` (MRU / yield / tear-out hysteresis / empty shell).
-- **Windows Demo done**: Home tab, Create Client, same-Client New Window, close-tab MRU history, tear-out/merge hooks, `SetParent` embed, GUI subsystem (no console).
-
-## English mirror index
-
-| File | Mirrors |
-|------|---------|
-| [build.md](build.md) | [../zh/build.md](../zh/build.md) |
-| [demo-morphology.md](demo-morphology.md) | [../zh/demo-morphology.md](../zh/demo-morphology.md) |
-| [demo-ipc.md](demo-ipc.md) | [../zh/demo-ipc.md](../zh/demo-ipc.md) |
-| [ipc-alternatives.md](ipc-alternatives.md) | [../zh/ipc-alternatives.md](../zh/ipc-alternatives.md) |
-| [multiprocess-shell-spec.md](multiprocess-shell-spec.md) | [../zh/multiprocess-shell-spec.md](../zh/multiprocess-shell-spec.md) (summary) |
-| [demos.md](demos.md) | [../../demos/README.md](../../demos/README.md) |
-| [scripts.md](scripts.md) | [../../scripts/README.md](../../scripts/README.md) |
-| [src.md](src.md) | [../../src/README.md](../../src/README.md) |
-| [tests.md](tests.md) | [../../tests/README.md](../../tests/README.md) |
-| [proto-ipc.md](proto-ipc.md) | [../../proto/shell/ipc/v1/README.md](../../proto/shell/ipc/v1/README.md) |
-| [clients-python.md](clients-python.md) | [../../clients/python/README.md](../../clients/python/README.md) |
-| [embed-win.md](embed-win.md) | [../../src/host/embed/win/README.md](../../src/host/embed/win/README.md) |
-| [embed-x11.md](embed-x11.md) | [../../src/host/embed/x11/README.md](../../src/host/embed/x11/README.md) |
-| [embed-inproc.md](embed-inproc.md) | [../../src/host/embed/inproc/README.md](../../src/host/embed/inproc/README.md) |
+| Capability | Status |
+|------------|--------|
+| Framing + `shell.ipc.v1` + `mps_ipc_tests` (M0) | Done |
+| Detachable tab-strip rule tests | Done |
+| Windows Demo (Home / Create Client / tear-out / embed) | Done |
+| `wid` behind embed seam | Done |
+| M4b / multi-backend / heartbeat | See spec + [dev-plan](dev-plan.md) |
 
 ## License
 
-[MIT](../../LICENSE)
+Released under the [MIT License](../../LICENSE).
