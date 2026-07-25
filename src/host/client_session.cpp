@@ -1,5 +1,7 @@
 #include "client_session.hpp"
 
+#include "envelope_builder.hpp"
+
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QHash>
@@ -78,11 +80,7 @@ namespace mps::host
 
 	void ClientSession::sendHelloAck()
 	{
-		shell::ipc::v1::Envelope env;
-		env.set_protocol(1);
-		env.set_id(mps::ipc::newCorrelationId());
-		env.set_dir(shell::ipc::v1::DIR_EVT);
-		env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
+		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch());
 		auto* ack = env.mutable_hello_ack();
 		ack->set_protocol(1);
 		ack->set_session_id(QString::number(m_pageId).toStdString());
@@ -102,13 +100,8 @@ namespace mps::host
 			return;
 		}
 		m_pendingTabs.push_back(tabId);
-		shell::ipc::v1::Envelope env;
-		env.set_protocol(1);
-		env.set_id(mps::ipc::newCorrelationId());
-		env.set_dir(shell::ipc::v1::DIR_REQ);
-		env.set_page_id(m_pageId);
-		env.set_tab_id(tabId);
-		env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
+		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(),
+										  m_pageId, tabId);
 		env.mutable_create_sub_window()->set_title(title.toStdString());
 		m_channel->send(env);
 	}
@@ -119,13 +112,8 @@ namespace mps::host
 		{
 			return;
 		}
-		shell::ipc::v1::Envelope env;
-		env.set_protocol(1);
-		env.set_id(mps::ipc::newCorrelationId());
-		env.set_dir(shell::ipc::v1::DIR_EVT);
-		env.set_page_id(m_pageId);
-		env.set_tab_id(tabId);
-		env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
+		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(),
+										  m_pageId, tabId);
 		env.mutable_active_sub_window();
 		m_channel->send(env);
 	}
@@ -136,13 +124,8 @@ namespace mps::host
 		{
 			return;
 		}
-		shell::ipc::v1::Envelope env;
-		env.set_protocol(1);
-		env.set_id(mps::ipc::newCorrelationId());
-		env.set_dir(shell::ipc::v1::DIR_REQ);
-		env.set_page_id(m_pageId);
-		env.set_tab_id(tabId);
-		env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
+		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(),
+										  m_pageId, tabId);
 		env.mutable_query_close_sub_window();
 		m_channel->send(env);
 	}
@@ -153,12 +136,8 @@ namespace mps::host
 		{
 			return;
 		}
-		shell::ipc::v1::Envelope env;
-		env.set_protocol(1);
-		env.set_id(mps::ipc::newCorrelationId());
-		env.set_dir(shell::ipc::v1::DIR_EVT);
-		env.set_page_id(m_pageId);
-		env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
+		auto env =
+			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(), m_pageId);
 		env.mutable_notify_main_window_reattachment()->set_shell_id(shellId);
 		m_channel->send(env);
 	}
@@ -169,12 +148,8 @@ namespace mps::host
 		{
 			return;
 		}
-		shell::ipc::v1::Envelope env;
-		env.set_protocol(1);
-		env.set_id(mps::ipc::newCorrelationId());
-		env.set_dir(shell::ipc::v1::DIR_EVT);
-		env.set_page_id(m_pageId);
-		env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
+		auto env =
+			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(), m_pageId);
 		env.mutable_set_drag_suppress()->set_suppress(on);
 		m_channel->send(env);
 	}
@@ -237,20 +212,12 @@ namespace mps::host
 			if (env.invoke().method() == "demo.request_new_window")
 			{
 				emit invokeNewWindow(this, env.tab_id());
-				shell::ipc::v1::Envelope res;
-				res.set_protocol(1);
-				res.set_id(env.id());
-				res.set_dir(shell::ipc::v1::DIR_RES);
-				res.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
+				auto res = mps::ipc::makeResponse(1, env.id(), QDateTime::currentMSecsSinceEpoch());
 				res.mutable_invoke_result()->set_payload("ok");
 				m_channel->send(res);
 				return;
 			}
-			shell::ipc::v1::Envelope res;
-			res.set_protocol(1);
-			res.set_id(env.id());
-			res.set_dir(shell::ipc::v1::DIR_RES);
-			res.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
+			auto res = mps::ipc::makeResponse(1, env.id(), QDateTime::currentMSecsSinceEpoch());
 			auto* err = res.mutable_error();
 			err->set_code(shell::ipc::v1::ERROR_UNIMPLEMENTED);
 			err->set_message("Invoke not implemented in Demo Host");

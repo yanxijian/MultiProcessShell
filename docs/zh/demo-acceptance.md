@@ -52,3 +52,8 @@
 ## 基本稳定
 
 - [ ] 连续：创建两 Client → 各建两窗 → 重排 → 拖出 → 合回 → 关 Tab → 关壳，无崩溃
+
+## M4b（多语言 Hello，可选）
+
+- [ ] `python clients/python/test_frame_envelope.py` 通过
+- [ ] `ctest -R M4bPythonHello`（或跑 `mps_m4b_python_hello`）通过：Python `Hello(EMBED_NONE)` ↔ Host 侧 `HelloAck`

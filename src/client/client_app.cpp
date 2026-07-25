@@ -1,5 +1,7 @@
 #include "client_app.hpp"
 
+#include "envelope_builder.hpp"
+
 #include <QApplication>
 #include <QCoreApplication>
 #include <QDateTime>
@@ -77,11 +79,7 @@ namespace mps::client
 
 	void ClientApp::sendHello()
 	{
-		shell::ipc::v1::Envelope env;
-		env.set_protocol(1);
-		env.set_id(mps::ipc::newCorrelationId());
-		env.set_dir(shell::ipc::v1::DIR_EVT);
-		env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
+		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch());
 		auto* hello = env.mutable_hello();
 		hello->set_min_protocol(1);
 		hello->set_max_protocol(1);
@@ -108,11 +106,7 @@ namespace mps::client
 		}
 		auto* first = m_pages.begin().value();
 		first->winId();
-		shell::ipc::v1::Envelope env;
-		env.set_protocol(1);
-		env.set_id(mps::ipc::newCorrelationId());
-		env.set_dir(shell::ipc::v1::DIR_EVT);
-		env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
+		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch());
 		auto* added = env.mutable_main_window_added();
 		added->set_wid(static_cast<uint64_t>(first->winId()));
 #ifdef Q_OS_WIN
@@ -132,12 +126,8 @@ namespace mps::client
 		connect(page, &PageWindow::requestNewWindow, this,
 				[this, tabId]
 				{
-					shell::ipc::v1::Envelope env;
-					env.set_protocol(1);
-					env.set_id(mps::ipc::newCorrelationId());
-					env.set_dir(shell::ipc::v1::DIR_REQ);
-					env.set_tab_id(tabId);
-					env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
+					auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ,
+													  QDateTime::currentMSecsSinceEpoch(), 0, tabId);
 					env.mutable_invoke()->set_method("demo.request_new_window");
 					m_channel->send(env);
 				});
@@ -149,12 +139,8 @@ namespace mps::client
 			ensureMainReported();
 		}
 
-		shell::ipc::v1::Envelope env;
-		env.set_protocol(1);
-		env.set_id(mps::ipc::newCorrelationId());
-		env.set_dir(shell::ipc::v1::DIR_EVT);
-		env.set_tab_id(tabId);
-		env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
+		auto env =
+			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(), 0, tabId);
 		auto* added = env.mutable_sub_window_added();
 		added->set_title(title.toStdString());
 		added->set_wid(static_cast<uint64_t>(page->winId()));
@@ -176,12 +162,8 @@ namespace mps::client
 		}
 		page->hide();
 		page->deleteLater();
-		shell::ipc::v1::Envelope env;
-		env.set_protocol(1);
-		env.set_id(mps::ipc::newCorrelationId());
-		env.set_dir(shell::ipc::v1::DIR_EVT);
-		env.set_tab_id(tabId);
-		env.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
+		auto env =
+			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(), 0, tabId);
 		env.mutable_sub_window_removed();
 		m_channel->send(env);
 	}
@@ -217,12 +199,7 @@ namespace mps::client
 		}
 		if (env.has_query_close_sub_window())
 		{
-			shell::ipc::v1::Envelope res;
-			res.set_protocol(1);
-			res.set_id(env.id());
-			res.set_dir(shell::ipc::v1::DIR_RES);
-			res.set_tab_id(env.tab_id());
-			res.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
+			auto res = mps::ipc::makeResponse(1, env.id(), QDateTime::currentMSecsSinceEpoch(), env.tab_id());
 			res.mutable_query_close_sub_window_result()->set_accept(true);
 			m_channel->send(res);
 			closePage(env.tab_id());
@@ -234,11 +211,7 @@ namespace mps::client
 		}
 		if (env.has_invoke())
 		{
-			shell::ipc::v1::Envelope res;
-			res.set_protocol(1);
-			res.set_id(env.id());
-			res.set_dir(shell::ipc::v1::DIR_RES);
-			res.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
+			auto res = mps::ipc::makeResponse(1, env.id(), QDateTime::currentMSecsSinceEpoch());
 			auto* err = res.mutable_error();
 			err->set_code(shell::ipc::v1::ERROR_UNIMPLEMENTED);
 			err->set_message("unimplemented");
@@ -247,11 +220,7 @@ namespace mps::client
 		}
 		if (env.has_ping())
 		{
-			shell::ipc::v1::Envelope res;
-			res.set_protocol(1);
-			res.set_id(env.id());
-			res.set_dir(shell::ipc::v1::DIR_RES);
-			res.set_ts_ms(QDateTime::currentMSecsSinceEpoch());
+			auto res = mps::ipc::makeResponse(1, env.id(), QDateTime::currentMSecsSinceEpoch());
 			res.mutable_pong();
 			m_channel->send(res);
 		}

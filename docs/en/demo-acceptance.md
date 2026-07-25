@@ -52,3 +52,8 @@ Manual regression. Finish this list before later polish (tab overflow, REQ timeo
 ## Smoke stability
 
 - [ ] Sequence: two Clients → two windows each → reorder → tear out → merge back → close tabs → close shell — no crash
+
+## M4b (multi-language Hello, optional)
+
+- [ ] `python clients/python/test_frame_envelope.py` passes
+- [ ] `ctest -R M4bPythonHello` (or `mps_m4b_python_hello`) passes: Python `Hello(EMBED_NONE)` ↔ `HelloAck`

@@ -21,6 +21,11 @@ namespace mps::ipc
 	void EnvelopeChannel::setHandler(Handler handler)
 	{
 		m_handler = std::move(handler);
+		// Data may already be buffered if the peer wrote before the handler was set.
+		if (m_device && m_device->bytesAvailable() > 0)
+		{
+			onReadyRead();
+		}
 	}
 
 	bool EnvelopeChannel::send(const shell::ipc::v1::Envelope& env)

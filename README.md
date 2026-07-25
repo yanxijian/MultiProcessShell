@@ -61,7 +61,7 @@ src/              Host / Client / common / ipc_qt
 demos/            mps_demo_host / mps_demo_client
 tests/            协议单测 + Tab 条规则单测
 scripts/          build_repo / build_qt / deploy_demo
-clients/python/   M4b 烟测（后续）
+clients/python/   M4b Python Hello 烟测
 docs/zh|en/       中英文文档
 dist/Demo/        Windows 可双击包（生成物，不入库）
 ```
@@ -89,7 +89,7 @@ dist/Demo/        Windows 可双击包（生成物，不入库）
 | 可撕出 Tab 规则单测（`mps_tab_strip_tests`） | 完成 |
 | Windows Demo（Home / 创建 Client / 拖出合入 / 嵌入） | 完成 |
 | `wid` 收到 embed seam（Tab 模型 tabId-only） | 完成 |
-| M4b 多语言 Client、多 Backend、心跳等 | 见规格与 [dev-plan](docs/zh/dev-plan.md) |
+| M6 心跳 / 无响应 UI、多 Backend 等 | 见规格与 [dev-plan](docs/zh/dev-plan.md) |
 
 ## License
 
