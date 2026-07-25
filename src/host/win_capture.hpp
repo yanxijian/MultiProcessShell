@@ -3,7 +3,6 @@
 
 #include <QPixmap>
 #include <QSize>
-
 #include <QtGlobal>
 
 namespace mps::host
