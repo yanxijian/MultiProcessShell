@@ -80,5 +80,5 @@ cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH="%QTDIR%" -DCMAKE_BUILD_TYPE=Re
 cmake --build build
 ```
 
-Related: [product spec](multiprocess-shell-spec.md), [Demo morphology](demo-morphology.md), [Demo IPC](demo-ipc.md)  
+Related: [product spec](multiprocess-shell-spec.md), [Demo morphology](demo-morphology.md), [Demo IPC](demo-ipc.md), [CI](ci.md)  
 IDL: `proto/shell/ipc/v1/ipc.proto`

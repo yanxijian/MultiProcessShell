@@ -17,6 +17,7 @@ Phase-1 platform: **Windows (form A)**; macOS / Linux directories are placeholde
 | Demo IPC | [../zh/demo-ipc.md](../zh/demo-ipc.md) | [demo-ipc.md](demo-ipc.md) |
 | IPC alternatives (future) | [../zh/ipc-alternatives.md](../zh/ipc-alternatives.md) | [ipc-alternatives.md](ipc-alternatives.md) |
 | Build | [../zh/build.md](../zh/build.md) | [build.md](build.md) |
+| CI (GitHub Actions) | [../zh/ci.md](../zh/ci.md) | [ci.md](ci.md) |
 | demos / scripts / src / … | folder `README.md`（中文） | [demos.md](demos.md), [scripts.md](scripts.md), [src.md](src.md), … |
 
 **Policy:** Prefer Chinese docs day-to-day; English is a synced mirror. Cross-link labels use the **target** language (**English** / **中文主文档**). Demo IDL authority is `proto/shell/ipc/v1/ipc.proto` + Demo IPC. If the long-form product sketch disagrees with `.proto`, prefer `.proto` / Demo IPC.

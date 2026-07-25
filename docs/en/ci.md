@@ -1,0 +1,14 @@
+# CI (GitHub Actions)
+
+> **中文**：[../zh/ci.md](../zh/ci.md)
+
+Workflow: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)
+
+| Job | Runner | What |
+|-----|--------|------|
+| `clang-format` | ubuntu | `scripts/format_source.py --check` |
+| `protocol + tab_strip` | ubuntu | No Qt: demos/src off; run IPC + tab_strip tests |
+| `Windows MSVC + Qt` | windows-latest | Qt 6.8.3 + `build_repo.py --test` |
+
+Triggers: push/PR to default branches, plus `workflow_dispatch`.  
+Dependabot updates Actions weekly.

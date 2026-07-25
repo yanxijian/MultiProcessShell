@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: mps-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    name: clang-format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check formatting
+        run: python scripts/format_source.py --check
+
+  protocol-tests:
+    name: protocol + tab_strip (no Qt)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Ninja
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - name: Cache FetchContent deps
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: mps-deps-ubuntu-${{ hashFiles('cmake/**', 'CMakeLists.txt', 'src/common/CMakeLists.txt') }}
+      - name: Configure (tests only)
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DMPS_FETCH_PROTOBUF=ON \
+            -DFETCHCONTENT_UPDATES_DISCONNECTED=ON \
+            -DMPS_BUILD_TESTS=ON \
+            -DMPS_BUILD_DEMOS=OFF \
+            -DMPS_BUILD_SRC=OFF
+      - name: Build
+        run: cmake --build build --config Release
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --no-tests=error
+
+  windows-qt:
+    name: Windows MSVC + Qt (Demo + tests)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - uses: seanmiddleditch/gha-setup-ninja@v5
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          cache: true
+          arch: win64_msvc2022_64
+      - name: Cache FetchContent deps
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: mps-deps-win-${{ hashFiles('cmake/**', 'CMakeLists.txt', 'src/common/CMakeLists.txt') }}
+      - name: Build and test
+        shell: cmd
+        env:
+          QTDIR: ${{ env.QT_ROOT_DIR }}
+        run: |
+          where cl
+          where ninja
+          python scripts\build_repo.py --test

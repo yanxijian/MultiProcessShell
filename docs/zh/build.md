@@ -80,5 +80,5 @@ cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH="%QTDIR%" -DCMAKE_BUILD_TYPE=Re
 cmake --build build
 ```
 
-相关文档：[产品规格](multiprocess-shell-spec.md)、[Demo 形态](demo-morphology.md)、[Demo IPC](demo-ipc.md)  
+相关文档：[产品规格](multiprocess-shell-spec.md)、[Demo 形态](demo-morphology.md)、[Demo IPC](demo-ipc.md)、[CI](ci.md)  
 仓库 IDL：`proto/shell/ipc/v1/ipc.proto`

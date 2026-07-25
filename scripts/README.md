@@ -9,6 +9,8 @@
 | `deploy_demo.py` | Windows：`windeployqt` 到 Demo 旁，并同步 `dist/Demo/` |
 | `format_source.py` | 按根目录 `.clang-format` 格式化手写 C/C++（排除 `build/`、`_deps/`、`*.pb.*`） |
 
+CI 说明见 [docs/zh/ci.md](../docs/zh/ci.md)。
+
 ## Windows 注意
 
 - 请在 **MSVC x64 Developer / vcvars** 环境中运行（`PATH` 上要有 `cl`、`rc`、`mt`）。  
