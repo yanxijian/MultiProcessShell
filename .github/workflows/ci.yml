@@ -36,7 +36,7 @@ jobs:
       - name: Install Python protobuf
         run: python -m pip install -r clients/python/requirements.txt
       - name: Cache FetchContent deps
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: build/_deps
           key: mps-deps-ubuntu-${{ hashFiles('cmake/**', 'CMakeLists.txt', 'src/common/CMakeLists.txt') }}
@@ -89,7 +89,7 @@ jobs:
           cache: true
           arch: win64_msvc2022_64
       - name: Cache FetchContent deps
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: MultiProcessShell/build/_deps
           key: mps-deps-win-${{ hashFiles('MultiProcessShell/cmake/**', 'MultiProcessShell/CMakeLists.txt', 'MultiProcessShell/src/common/CMakeLists.txt') }}
