@@ -64,8 +64,6 @@ namespace mps::host
 	private:
 		QPixmap m_content;
 	};
-
-	[[nodiscard]] QPixmap captureWindowPixmap(quintptr wid, QSize maxSize);
 } // namespace mps::host
 
 #endif // __MPS_HOST_TEAR_OUT_PREVIEW_H__

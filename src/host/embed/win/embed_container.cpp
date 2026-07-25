@@ -1,8 +1,14 @@
 #include "embed_container.hpp"
 
+#include "win_capture.hpp"
+
 #include <QResizeEvent>
 #include <QShowEvent>
 #include <QTimer>
+
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
 
 namespace mps::host
 {
@@ -25,6 +31,138 @@ namespace mps::host
 #else
 		return m_foreignWid != 0;
 #endif
+	}
+
+	void EmbedContainer::bind(qint64 tabId, quintptr wid)
+	{
+#ifdef Q_OS_WIN
+		if (wid && !IsWindow(reinterpret_cast<HWND>(wid)))
+		{
+			wid = 0;
+		}
+#endif
+		m_bindings.bind(tabId, static_cast<uint64_t>(wid));
+		if (m_activeTabId == tabId)
+		{
+			activate(tabId);
+		}
+	}
+
+	void EmbedContainer::unbind(qint64 tabId)
+	{
+		if (m_activeTabId == tabId)
+		{
+			clearActive(true);
+		}
+		m_bindings.unbind(tabId);
+	}
+
+	bool EmbedContainer::has(qint64 tabId) const
+	{
+		return m_bindings.has(tabId);
+	}
+
+	quintptr EmbedContainer::takeBinding(qint64 tabId)
+	{
+		const quintptr wid = static_cast<quintptr>(m_bindings.take(tabId));
+		if (wid && m_foreignWid == wid)
+		{
+			releaseForeignWindow();
+			m_activeTabId = 0;
+		}
+		else if (m_activeTabId == tabId)
+		{
+			m_activeTabId = 0;
+		}
+		return wid;
+	}
+
+	quintptr EmbedContainer::transferBinding(EmbedContainer* from, EmbedContainer* to, qint64 tabId)
+	{
+		if (!from)
+		{
+			return 0;
+		}
+		const quintptr wid = from->takeBinding(tabId);
+		if (to && wid)
+		{
+			to->bind(tabId, wid);
+		}
+		return wid;
+	}
+
+	void EmbedContainer::activate(qint64 tabId)
+	{
+		m_activeTabId = tabId;
+		const quintptr wid = static_cast<quintptr>(m_bindings.peek(tabId));
+		if (!wid)
+		{
+			clearForeignWindow(true);
+			return;
+		}
+		setForeignWindow(wid);
+	}
+
+	void EmbedContainer::clearActive(bool hide)
+	{
+		clearForeignWindow(hide);
+		m_activeTabId = 0;
+	}
+
+	void EmbedContainer::releaseActive()
+	{
+		releaseForeignWindow();
+		m_activeTabId = 0;
+	}
+
+	void EmbedContainer::releaseActiveIfTab(qint64 tabId)
+	{
+		if (m_activeTabId == tabId || (m_foreignWid && m_bindings.peek(tabId) == static_cast<uint64_t>(m_foreignWid)))
+		{
+			releaseActive();
+		}
+	}
+
+	void EmbedContainer::reset()
+	{
+		releaseActive();
+		m_bindings.clear();
+	}
+
+	void EmbedContainer::resyncActive()
+	{
+		if (!foreignAlive())
+		{
+			m_foreignWid = 0;
+			return;
+		}
+		applyEmbed();
+		QTimer::singleShot(0, this,
+						   [this]
+						   {
+							   if (foreignAlive())
+							   {
+								   syncForeignGeometry();
+							   }
+						   });
+	}
+
+	QPixmap EmbedContainer::grabContent(qint64 tabId, QSize maxSize)
+	{
+		const quintptr wid = static_cast<quintptr>(m_bindings.peek(tabId));
+		if (wid && m_foreignWid == wid)
+		{
+			const QPixmap live = grab();
+			if (!live.isNull())
+			{
+				return live;
+			}
+		}
+		if (wid)
+		{
+			return captureWindowPixmap(wid, maxSize);
+		}
+		return {};
 	}
 
 	void EmbedContainer::clearForeignWindow(bool hide)
@@ -63,7 +201,7 @@ namespace mps::host
 		{
 			if (wid)
 			{
-				resyncForeignWindow();
+				resyncActive();
 			}
 			return;
 		}
@@ -86,24 +224,6 @@ namespace mps::host
 		EnableWindow(hwnd, TRUE);
 	}
 #endif
-
-	void EmbedContainer::resyncForeignWindow()
-	{
-		if (!foreignAlive())
-		{
-			m_foreignWid = 0;
-			return;
-		}
-		applyEmbed();
-		QTimer::singleShot(0, this,
-						   [this]
-						   {
-							   if (foreignAlive())
-							   {
-								   syncForeignGeometry();
-							   }
-						   });
-	}
 
 	void EmbedContainer::resizeEvent(QResizeEvent* event)
 	{
@@ -165,6 +285,8 @@ namespace mps::host
 		const int w = qMax(1, static_cast<int>(rc.right - rc.left));
 		const int h = qMax(1, static_cast<int>(rc.bottom - rc.top));
 		SetWindowPos(child, nullptr, 0, 0, w, h, SWP_NOZORDER | SWP_SHOWWINDOW);
+#else
+		Q_UNUSED(this);
 #endif
 	}
 } // namespace mps::host

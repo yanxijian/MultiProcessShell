@@ -25,6 +25,7 @@ __{TARGET}_{FILENAME}_H__
 | `src/client/**` | `MPS_CLIENT` |
 | `src/ipc_qt/**` | `MPS_IPC_QT` |
 | `src/common/tab_strip.hpp` | `MPS_TAB_STRIP` |
+| `src/common/tab_embed_map.hpp` | `MPS_TAB_STRIP` |
 | `src/common/**` (else) | `MPS_IPC` |
 
 ## Example

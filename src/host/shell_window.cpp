@@ -250,16 +250,16 @@ namespace mps::host
 			return;
 		}
 		const TabInfo* active = findTab(m_activeTabId);
-		const bool showHome = !active || active->isHome || active->wid == 0;
+		const bool showHome = !active || active->isHome || !m_embed || !m_embed->has(m_activeTabId);
 		if (showHome)
 		{
-			m_embed->clearForeignWindow(true);
+			m_embed->clearActive(true);
 			m_stack->setCurrentWidget(m_emptyPage);
 		}
 		else
 		{
 			m_stack->setCurrentWidget(m_embed);
-			m_embed->setForeignWindow(active->wid);
+			m_embed->activate(m_activeTabId);
 			scheduleEmbedResync();
 		}
 	}
@@ -269,21 +269,21 @@ namespace mps::host
 		QTimer::singleShot(0, this,
 						   [this]
 						   {
-							   if (auto* t = findTab(m_activeTabId); t && !t->isHome && t->wid)
+							   if (m_embed && m_embed->has(m_activeTabId))
 							   {
-								   m_embed->setForeignWindow(t->wid);
-								   m_embed->resyncForeignWindow();
+								   m_embed->activate(m_activeTabId);
+								   m_embed->resyncActive();
 							   }
 						   });
 	}
 
 	void ShellWindow::releaseEmbedOwnershipForTab(qint64 tabId)
 	{
-		if (m_activeTabId != tabId || !m_embed)
+		if (!m_embed)
 		{
 			return;
 		}
-		m_embed->releaseForeignWindow();
+		m_embed->releaseActiveIfTab(tabId);
 	}
 
 	void ShellWindow::setTabDragHidden(qint64 tabId, bool hidden)
@@ -1195,6 +1195,10 @@ namespace mps::host
 		{
 			return;
 		}
+		if (m_embed)
+		{
+			m_embed->unbind(tabId);
+		}
 		const bool wasActive = (m_activeTabId == tabId);
 		for (int i = 0; i < m_tabs.size(); ++i)
 		{
@@ -1425,6 +1429,7 @@ namespace mps::host
 			{
 				if (other->m_tabs[i].tabId == id)
 				{
+					EmbedContainer::transferBinding(other->embed(), m_embed, id);
 					m_tabs.push_back(other->m_tabs[i]);
 					other->m_tabs.removeAt(i);
 					other->m_activationHistory.removeAll(id);
@@ -1458,7 +1463,7 @@ namespace mps::host
 		clearDropInsertIndicator();
 		if (m_embed)
 		{
-			m_embed->releaseForeignWindow();
+			m_embed->reset();
 		}
 		close();
 	}

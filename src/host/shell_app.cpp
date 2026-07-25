@@ -399,13 +399,24 @@ namespace mps::host
 		info.tabId = tabId;
 		info.clientIndex = session->clientIndex();
 		info.title = title;
-		info.wid = wid;
 		info.session = session;
 		// parse window index from title ClientN-WindowM
 		const auto parts = title.split(QLatin1Char('-'));
 		if (parts.size() == 2 && parts[1].startsWith(QStringLiteral("Window")))
 		{
 			info.windowIndex = parts[1].mid(6).toInt();
+		}
+		if (!shell->embed() || !wid)
+		{
+			session->requestClose(tabId);
+			return;
+		}
+		shell->embed()->bind(tabId, wid);
+		if (!shell->embed()->has(tabId))
+		{
+			// Invalid / dead HWND — do not leave a permanent Home-only client tab.
+			session->requestClose(tabId);
+			return;
 		}
 		m_tabToShell.insert(tabId, shell);
 		shell->addTab(info);
@@ -568,14 +579,7 @@ namespace mps::host
 		clearAllDropIndicators();
 		clearAllTabYieldPreviews();
 		// Keep HWND visible for reparent; preview still covers the transition.
-		if (source->embed() && source->embed()->foreignWindow() == moved.wid)
-		{
-			source->embed()->releaseForeignWindow();
-		}
-		else
-		{
-			source->releaseEmbedOwnershipForTab(tabId);
-		}
+		const quintptr wid = EmbedContainer::transferBinding(source->embed(), nullptr, tabId);
 		source->removeTab(tabId);
 		m_tabToShell.remove(tabId);
 
@@ -593,16 +597,19 @@ namespace mps::host
 		// Create hidden, embed first, then show — preview stays on top until first paints.
 		auto* neu = createShell(pos, sz, /*showNow=*/false);
 		m_tabToShell.insert(tabId, neu);
+		if (neu->embed() && wid)
+		{
+			neu->embed()->bind(tabId, wid);
+		}
 		neu->addTab(moved);
 		if (moved.session)
 		{
 			moved.session->notifyReattachment(neu->shellId());
 			moved.session->requestActivate(tabId);
 		}
-		if (neu->embed() && moved.wid)
+		if (neu->embed() && wid)
 		{
-			neu->embed()->setForeignWindow(moved.wid);
-			neu->embed()->resyncForeignWindow();
+			neu->embed()->resyncActive();
 		}
 		if (m_tearOutPreview)
 		{
@@ -622,7 +629,7 @@ namespace mps::host
 		neu->activateWindow();
 		if (neu->embed())
 		{
-			neu->embed()->resyncForeignWindow();
+			neu->embed()->resyncActive();
 			QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 		}
 		// Keep the preview covering the new shell briefly so the first embed paint
@@ -673,14 +680,7 @@ namespace mps::host
 		}
 		clearAllDropIndicators();
 		// Detach from source embed without Hide — target will reparent immediately.
-		if (source->embed() && source->embed()->foreignWindow() == moved.wid)
-		{
-			source->embed()->releaseForeignWindow();
-		}
-		else
-		{
-			source->releaseEmbedOwnershipForTab(tabId);
-		}
+		const quintptr wid = EmbedContainer::transferBinding(source->embed(), target->embed(), tabId);
 		source->removeTab(tabId);
 		m_tabToShell.insert(tabId, target);
 		if (insertIndex < 0)
@@ -696,11 +696,9 @@ namespace mps::host
 			moved.session->notifyReattachment(target->shellId());
 			moved.session->requestActivate(tabId);
 		}
-		// Force HWND into the target embed (content must follow the tab).
-		if (target->embed() && moved.wid)
+		if (target->embed() && wid)
 		{
-			target->embed()->setForeignWindow(moved.wid);
-			target->embed()->resyncForeignWindow();
+			target->embed()->resyncActive();
 		}
 		target->raise();
 		target->activateWindow();
@@ -766,12 +764,10 @@ namespace mps::host
 		GetAsyncKeyState(VK_ESCAPE);
 #endif
 
-		quintptr wid = 0;
 		for (const auto& t : source->tabs())
 		{
 			if (t.tabId == tabId)
 			{
-				wid = t.wid;
 				if (t.session)
 				{
 					t.session->setDragSuppress(true);
@@ -785,13 +781,9 @@ namespace mps::host
 		m_dragTabWidth = tabLogicalSize.width() > 0 ? tabLogicalSize.width() : 80;
 		const QPixmap tabGhostPm = source->grabTabButton(tabId);
 		QPixmap contentSnap;
-		if (source->activeTabId() == tabId && source->embed())
+		if (source->embed())
 		{
-			contentSnap = source->embed()->grab();
-		}
-		if (contentSnap.isNull() && wid)
-		{
-			contentSnap = captureWindowPixmap(wid, m_dragPreviewSize);
+			contentSnap = source->embed()->grabContent(tabId, m_dragPreviewSize);
 		}
 
 		source->setTabDragHidden(tabId, true);

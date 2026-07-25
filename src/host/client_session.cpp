@@ -211,7 +211,6 @@ namespace mps::host
 			{
 				wid = m_mainWid;
 			}
-			m_tabWids.insert(tabId, wid);
 			const QString title = QString::fromStdString(env.sub_window_added().title());
 			emit subWindowAdded(this, tabId, title, wid);
 			return;
@@ -219,7 +218,6 @@ namespace mps::host
 		if (env.has_sub_window_removed())
 		{
 			const qint64 tabId = env.tab_id();
-			m_tabWids.remove(tabId);
 			emit subWindowRemoved(this, tabId);
 			return;
 		}
@@ -229,7 +227,6 @@ namespace mps::host
 			if (env.query_close_sub_window_result().accept())
 			{
 				const qint64 tabId = env.tab_id();
-				m_tabWids.remove(tabId);
 				emit subWindowRemoved(this, tabId);
 			}
 			return;

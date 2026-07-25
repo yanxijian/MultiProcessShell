@@ -4,7 +4,6 @@
 #include "envelope_channel.hpp"
 #include "tab_info.hpp"
 
-#include <QHash>
 #include <QLocalSocket>
 #include <QObject>
 #include <QProcess>
@@ -75,7 +74,6 @@ namespace mps::host
 		std::unique_ptr<mps::ipc::EnvelopeChannel> m_channel;
 		// pending CreateSubWindow tab ids awaiting SubWindowAdded (same order)
 		QList<qint64> m_pendingTabs;
-		QHash<qint64, quintptr> m_tabWids;
 		quintptr m_mainWid = 0;
 	};
 } // namespace mps::host

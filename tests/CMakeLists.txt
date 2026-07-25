@@ -19,6 +19,7 @@ add_executable(mps_tab_strip_tests
   test_tab_strip_yield.cpp
   test_tab_strip_tearout.cpp
   test_tab_strip_lifecycle.cpp
+  test_tab_embed_map.cpp
 )
 
 target_link_libraries(mps_tab_strip_tests

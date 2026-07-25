@@ -7,6 +7,8 @@ add_library(mps_host STATIC
   shell_window.hpp
   tear_out_preview.cpp
   tear_out_preview.hpp
+  win_capture.cpp
+  win_capture.hpp
   tab_info.hpp
   embed/win/embed_container.cpp
   embed/win/embed_container.hpp
