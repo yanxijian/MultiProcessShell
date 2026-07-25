@@ -22,13 +22,35 @@ option(MPS_FETCH_PROTOBUF "Fetch protobuf via FetchContent" ON)
 option(MPS_REQUIRE_QT "Require Qt (needed for Host/Client/Demo)" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
-include(MPSQt)
 include(MPSProtobuf)
 
 if(MPS_REQUIRE_QT OR MPS_BUILD_SRC OR MPS_BUILD_DEMOS)
   set(MPS_REQUIRE_QT ON)
-  mps_find_qt()
+
+  # Prefer QTDIR when set. On Windows use a 64-bit CMake kit: Qt *64 packages set
+  # PACKAGE_VERSION_UNSUITABLE if CMAKE_SIZEOF_VOID_P is 4 (often mis-read as a version mismatch).
+  if(DEFINED ENV{QTDIR} AND NOT "$ENV{QTDIR}" STREQUAL "")
+    file(TO_CMAKE_PATH "$ENV{QTDIR}" _mps_qtdir)
+    set(CMAKE_PREFIX_PATH "${_mps_qtdir};${CMAKE_PREFIX_PATH}")
+  endif()
+
+  if(WIN32 AND DEFINED CMAKE_SIZEOF_VOID_P AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+    message(FATAL_ERROR
+      "MultiProcessShell needs a 64-bit configure (CMAKE_SIZEOF_VOID_P=8), but this one is 32-bit.\n"
+      "Pick an x64 CMake kit / preset \"windows-x64\", run vcvars64, then reconfigure.\n"
+      "QTDIR=$ENV{QTDIR}")
+  endif()
+
+  find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network)
+  if(Qt6_VERSION VERSION_LESS "6.8")
+    message(FATAL_ERROR "Qt 6.8+ required, found ${Qt6_VERSION}")
+  endif()
+
+  set(CMAKE_AUTOMOC ON)
+  set(CMAKE_AUTORCC ON)
+  set(CMAKE_AUTOUIC ON)
+  set(MPS_QT_VERSION "${Qt6_VERSION}")
+  message(STATUS "Found Qt ${Qt6_VERSION}")
 else()
   set(MPS_QT_VERSION "not-required")
 endif()
