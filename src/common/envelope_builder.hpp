@@ -30,10 +30,10 @@ namespace mps::ipc
 	}
 
 	/// RES that reuses the request correlation id (and optional tab).
-	[[nodiscard]] inline shell::ipc::v1::Envelope makeResponse(std::uint32_t protocol, const std::string& requestId, std::int64_t tsMs,
+	[[nodiscard]] inline shell::ipc::v1::Envelope makeResponse(std::uint32_t protocol, std::string requestId, std::int64_t tsMs,
 															   std::int64_t tabId = 0)
 	{
-		return makeEnvelope(protocol, requestId, shell::ipc::v1::DIR_RES, tsMs, 0, tabId);
+		return makeEnvelope(protocol, std::move(requestId), shell::ipc::v1::DIR_RES, tsMs, 0, tabId);
 	}
 } // namespace mps::ipc
 
