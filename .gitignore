@@ -26,6 +26,9 @@ _deps/
 **/*\.pb\.h
 **/*_pb2.py
 **/*_pb2.pyi
+# M4b ships checked-in Python stubs for offline/CI smoke.
+!clients/python/shell/**/*_pb2.py
+!clients/python/shell/**/*_pb2.pyi
 
 # Python
 __pycache__/
