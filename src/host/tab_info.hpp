@@ -21,6 +21,7 @@ namespace mps::host
 		QString title;
 		class ClientSession* session = nullptr;
 		bool isHome = false;
+		bool unhealthy = false;
 
 		static TabInfo makeHome()
 		{
@@ -29,6 +30,15 @@ namespace mps::host
 			t.title = QStringLiteral("Home");
 			t.isHome = true;
 			return t;
+		}
+
+		[[nodiscard]] QString displayTitle() const
+		{
+			if (unhealthy && !isHome)
+			{
+				return title + QStringLiteral("（无响应）");
+			}
+			return title;
 		}
 	};
 } // namespace mps::host

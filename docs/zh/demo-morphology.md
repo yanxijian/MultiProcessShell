@@ -114,13 +114,14 @@ Client{N}-Window{M}
 - 关 Tab（激活历史）、同窗重排、拖出新壳、合入他壳、无 Client Tab 时毁多余壳  
 - 关壳清理 / 杀 Client 后 Host 不崩  
 - Windows `SetParent` 嵌入 + 精简 Protobuf 合约  
+- **心跳**：Client 2s `Heartbeat`；Host 约 6s 无响应 → Tab「无响应」；右键「终止进程」（不自动杀）  
 
 手工验收步骤见 [demo-acceptance.md](demo-acceptance.md)。
 
 ### 7.2 可后置或简化
 
 - Tab 幽灵 ↔ 窗口预览的连续形变、更强磁吸合入  
-- 心跳定时器 / 无响应 UI（协议已预留）  
+- REQ 通用超时 UI（与心跳 Unhealthy 独立）  
 - macOS / Linux 嵌入  
 - 完整 `EmbedHelper` 多语言  
 

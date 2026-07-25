@@ -112,13 +112,14 @@ Host notes: `TabDragGhost` + `TearOutPreview::alignToTabContent`; `previewTabYie
 - Close tab (history), same-shell reorder, tear-out, merge, destroy spare shells with no Client tabs  
 - Shell close cleanup / Host survives Client kill  
 - Windows `SetParent` embed + minimal Protobuf contract  
+- **Heartbeat**: Client 2s `Heartbeat`; Host ~6s silence → Tab「无响应」; right-click「终止进程」(no auto-kill)  
 
 Manual checklist: [demo-acceptance.md](demo-acceptance.md).
 
 ### 7.2 Deferred / simplified
 
 - Continuous tab-ghost ↔ window-preview morph, stronger magnetic merge  
-- Heartbeat timer / unhealthy UI (protocol reserved)  
+- Generic REQ timeout UI (separate from heartbeat Unhealthy)  
 - macOS / Linux embed  
 - Full multi-language EmbedHelper  
 

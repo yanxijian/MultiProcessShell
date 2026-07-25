@@ -50,6 +50,13 @@ Manual regression. Finish this list before later polish (tab overflow, REQ timeo
 - [ ] Close the **last** top-level shell → Demo exits
 - [ ] End a `mps_demo_client` in Task Manager → its tabs disappear; Host stays up; other Clients OK
 
+## M6 heartbeat / unresponsive
+
+- [ ] Healthy Client: tab title has no「无响应」suffix
+- [ ] Start Host with `MPS_CLIENT_NO_HEARTBEAT=1` → within ~6s tabs show「…（无响应）」; Host stays up; no auto-kill
+- [ ] Right-click unresponsive tab →「终止进程」→ that session’s tabs disappear
+- [ ] Optional: heartbeats resume → suffix clears
+
 ## Smoke stability
 
 - [ ] Sequence: two Clients → two windows each → reorder → tear out → merge back → close tabs → close shell — no crash

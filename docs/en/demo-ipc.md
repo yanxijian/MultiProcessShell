@@ -13,7 +13,7 @@
 | 2 | **No** `ApplicationConnected` |
 | 3 | **Yes** `NotifyMainWindowReattachment` |
 | 4 | Bidirectional IPC; reserve `Invoke` / `InvokeResult` |
-| 5 | Heartbeat in the protocol; Demo **does not** run a periodic timer yet (caps negotiable; runtime later) |
+| 5 | Heartbeat in the protocol; Demo **enables** periodic Heartbeat (2s / ~6s timeout → Tab「无响应」; no auto-kill) |
 
 ## 2. Framing and direction
 
@@ -36,7 +36,7 @@
 | `SubWindowAdded` | EVT | Echo `title` (same as Host-assigned) |
 | `SubWindowRemoved` | EVT | Child destroyed |
 | `Invoke` | REQ | Demo: `demo.request_new_window` |
-| `Heartbeat` | EVT | Protocol reserved; Demo does not send by default |
+| `Heartbeat` | EVT | Client→Host every 2s when negotiated |
 
 ### 3.2 Host → Client
 
@@ -89,8 +89,9 @@ InvokeResult {
 | Item | Rule |
 |------|------|
 | Protocol | `Heartbeat` (C→H) + optional `Ping`/`Pong` |
-| Demo | Periodic heartbeat **off**; Hello caps may declare `heartbeat` |
-| Timeout | Mark unhealthy; do not auto-kill by default |
+| Demo | **On**: Client every **2s**; Host marks Unhealthy after ~**6s** silence |
+| Timeout | Mark unhealthy; **no** auto-kill; right-click Tab →「终止进程」 |
+| Repro | Host env `MPS_CLIENT_NO_HEARTBEAT=1` or Client `--no-heartbeat` |
 
 ## 7. Title scheme A
 

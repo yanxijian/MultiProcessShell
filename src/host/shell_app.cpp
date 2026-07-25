@@ -104,6 +104,7 @@ namespace mps::host
 				});
 		connect(shell, &ShellWindow::shellCloseRequested, this, &ShellApp::closeShell);
 		connect(shell, &ShellWindow::dropIndicatorsClearRequested, this, &ShellApp::clearAllDropIndicators);
+		connect(shell, &ShellWindow::terminateSessionRequested, this, &ShellApp::terminateSession);
 
 		shell->installStripDropFilter(this);
 	}
@@ -294,6 +295,8 @@ namespace mps::host
 		connect(raw, &ClientSession::subWindowAdded, this, &ShellApp::onSubWindowAdded);
 		connect(raw, &ClientSession::subWindowRemoved, this, &ShellApp::onSubWindowRemoved);
 		connect(raw, &ClientSession::sessionDead, this, &ShellApp::onSessionDead);
+		connect(raw, &ClientSession::sessionUnhealthy, this, &ShellApp::onSessionUnhealthy);
+		connect(raw, &ClientSession::sessionHealthy, this, &ShellApp::onSessionHealthy);
 		connect(raw, &ClientSession::invokeNewWindow, this,
 				[this](ClientSession* session, qint64 sourceTabId)
 				{
@@ -406,6 +409,7 @@ namespace mps::host
 		info.clientIndex = session->clientIndex();
 		info.title = title;
 		info.session = session;
+		info.unhealthy = session->isUnhealthy();
 		// parse window index from title ClientN-WindowM
 		const auto parts = title.split(QLatin1Char('-'));
 		if (parts.size() == 2 && parts[1].startsWith(QStringLiteral("Window")))
@@ -486,6 +490,45 @@ namespace mps::host
 											return p.get() == session;
 										}),
 						 m_sessions.end());
+	}
+
+	void ShellApp::onSessionUnhealthy(ClientSession* session)
+	{
+		if (!session)
+		{
+			return;
+		}
+		for (auto& shell : m_shells)
+		{
+			if (shell)
+			{
+				shell->setSessionUnhealthy(session, true);
+			}
+		}
+	}
+
+	void ShellApp::onSessionHealthy(ClientSession* session)
+	{
+		if (!session)
+		{
+			return;
+		}
+		for (auto& shell : m_shells)
+		{
+			if (shell)
+			{
+				shell->setSessionUnhealthy(session, false);
+			}
+		}
+	}
+
+	void ShellApp::terminateSession(ClientSession* session)
+	{
+		if (!session || session->isDead())
+		{
+			return;
+		}
+		session->terminateProcess();
 	}
 
 	void ShellApp::closeShell(ShellWindow* shell)

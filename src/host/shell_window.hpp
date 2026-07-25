@@ -37,6 +37,7 @@ namespace mps::host
 	signals:
 		void closeRequested(qint64 tabId);
 		void activated(qint64 tabId);
+		void terminateSessionRequested(ClientSession* session);
 		/// localHotSpot: press position inside the tab (for grab offset).
 		void dragStarted(qint64 tabId, QPoint localHotSpot);
 
@@ -130,6 +131,8 @@ namespace mps::host
 		void takeTabsFrom(ShellWindow* other, const QList<qint64>& tabIds);
 		/// Close without emitting shellCloseRequested (app-driven teardown).
 		void forceClose();
+		/// Refresh tab labels / styles for a session's health (M6).
+		void setSessionUnhealthy(ClientSession* session, bool unhealthy);
 
 	signals:
 		void createClientClicked();
@@ -137,6 +140,7 @@ namespace mps::host
 		void tabActivated(qint64 tabId);
 		void tabTearOutRequested(qint64 tabId, QRect suggestedGeometry);
 		void tabMergeRequested(qint64 tabId, ShellWindow* target, int insertIndex);
+		void terminateSessionRequested(ClientSession* session);
 		void shellCloseRequested(ShellWindow* self);
 		void dropIndicatorsClearRequested();
 

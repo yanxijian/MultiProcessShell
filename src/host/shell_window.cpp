@@ -3,6 +3,7 @@
 #include "shell_app.hpp"
 #include "tab_strip.hpp"
 
+#include <QAction>
 #include <QApplication>
 #include <QCloseEvent>
 #include <QCursor>
@@ -11,6 +12,7 @@
 #include <QEvent>
 #include <QGraphicsOpacityEffect>
 #include <QHash>
+#include <QMenu>
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QPainter>
@@ -43,7 +45,7 @@ namespace mps::host
 		auto* lay = new QHBoxLayout(this);
 		lay->setContentsMargins(10, 4, 6, 4);
 		lay->setSpacing(6);
-		m_title = new QLabel(m_info.title, this);
+		m_title = new QLabel(m_info.displayTitle(), this);
 		m_title->setAttribute(Qt::WA_TransparentForMouseEvents, true);
 		lay->addWidget(m_title);
 		if (!m_info.isHome)
@@ -78,7 +80,15 @@ namespace mps::host
 	void TabButton::setInfo(const TabInfo& info)
 	{
 		m_info = info;
-		m_title->setText(m_info.title);
+		m_title->setText(m_info.displayTitle());
+		if (!m_info.isHome)
+		{
+			const QColor accent =
+				m_info.unhealthy ? QColor(180, 120, 20) : ((m_info.clientIndex % 2 == 0) ? QColor(200, 60, 60) : QColor(120, 70, 180));
+			setStyleSheet(QStringLiteral("#TabButton { border: 2px solid %1; border-radius: 4px; background: %2; }"
+										 "#TabButton[active=\"true\"] { background: #ffffff; }")
+							  .arg(accent.name(), m_info.unhealthy ? QStringLiteral("#fff4e0") : QStringLiteral("#f3f3f3")));
+		}
 	}
 
 	void TabButton::setActive(bool on)
@@ -96,6 +106,20 @@ namespace mps::host
 			if (!m_info.isHome)
 			{
 				emit closeRequested(m_info.tabId);
+			}
+			event->accept();
+			return;
+		}
+		if (event->button() == Qt::RightButton)
+		{
+			if (!m_info.isHome && m_info.unhealthy && m_info.session)
+			{
+				QMenu menu(this);
+				QAction* terminate = menu.addAction(QStringLiteral("终止进程"));
+				if (menu.exec(event->globalPosition().toPoint()) == terminate)
+				{
+					emit terminateSessionRequested(m_info.session);
+				}
 			}
 			event->accept();
 			return;
@@ -1322,6 +1346,7 @@ namespace mps::host
 			btn->setActive(t.tabId == m_activeTabId);
 			connect(btn, &TabButton::activated, this, &ShellWindow::tabActivated);
 			connect(btn, &TabButton::closeRequested, this, &ShellWindow::tabCloseRequested);
+			connect(btn, &TabButton::terminateSessionRequested, this, &ShellWindow::terminateSessionRequested);
 			if (!t.isHome)
 			{
 				connect(
@@ -1456,6 +1481,31 @@ namespace mps::host
 		else
 		{
 			setActiveTab(kHomeTabId);
+		}
+	}
+
+	void ShellWindow::setSessionUnhealthy(ClientSession* session, bool unhealthy)
+	{
+		if (!session)
+		{
+			return;
+		}
+		for (auto& t : m_tabs)
+		{
+			if (t.session == session)
+			{
+				t.unhealthy = unhealthy;
+			}
+		}
+		for (auto* btn : m_tabButtons)
+		{
+			if (!btn || btn->info().session != session)
+			{
+				continue;
+			}
+			TabInfo info = btn->info();
+			info.unhealthy = unhealthy;
+			btn->setInfo(info);
 		}
 	}
 

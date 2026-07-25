@@ -7,6 +7,7 @@
 #include <QLocalSocket>
 #include <QObject>
 #include <QProcess>
+#include <QTimer>
 
 #include <memory>
 
@@ -49,6 +50,12 @@ namespace mps::host
 		{
 			return m_dead;
 		}
+		[[nodiscard]] bool isUnhealthy() const
+		{
+			return m_unhealthy;
+		}
+		/// User-confirmed kill of the Client process (M6). Existing sessionDead path cleans tabs.
+		void terminateProcess();
 
 	signals:
 		void sessionHelloOk(ClientSession* self);
@@ -56,12 +63,18 @@ namespace mps::host
 		void subWindowAdded(ClientSession* self, qint64 tabId, QString title, quintptr wid);
 		void subWindowRemoved(ClientSession* self, qint64 tabId);
 		void sessionDead(ClientSession* self);
+		void sessionUnhealthy(ClientSession* self);
+		void sessionHealthy(ClientSession* self);
 		void invokeNewWindow(ClientSession* self, qint64 sourceTabId);
 
 	private:
 		void onEnvelope(shell::ipc::v1::Envelope env);
 		void sendHelloAck();
 		void markDead();
+		void noteHeartbeat();
+		void startHeartbeatWatch();
+		void stopHeartbeatWatch();
+		void onHeartbeatWatchTick();
 
 		int m_clientIndex = 0;
 		qint64 m_pageId = 0;
@@ -69,6 +82,10 @@ namespace mps::host
 		bool m_ready = false;
 		bool m_helloSeen = false;
 		bool m_dead = false;
+		bool m_unhealthy = false;
+		bool m_heartbeatNegotiated = false;
+		qint64 m_lastHeartbeatMs = 0;
+		QTimer* m_heartbeatWatch = nullptr;
 		QProcess* m_process = nullptr;
 		QLocalSocket* m_socket = nullptr;
 		std::unique_ptr<mps::ipc::EnvelopeChannel> m_channel;

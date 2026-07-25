@@ -1,11 +1,13 @@
 #include "client_session.hpp"
 
 #include "envelope_builder.hpp"
+#include "heartbeat_policy.hpp"
 
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QHash>
 #include <QLocalSocket>
+#include <QTimer>
 
 namespace mps::host
 {
@@ -24,6 +26,7 @@ namespace mps::host
 
 	ClientSession::~ClientSession()
 	{
+		stopHeartbeatWatch();
 		if (m_process)
 		{
 			m_process->disconnect(this);
@@ -48,6 +51,10 @@ namespace mps::host
 		QStringList args;
 		args << QStringLiteral("--from-host") << QStringLiteral("--endpoint=%1").arg(m_endpoint)
 			 << QStringLiteral("--pipe-token=%1").arg(token) << QStringLiteral("--protocol=1");
+		if (qEnvironmentVariableIsSet("MPS_CLIENT_NO_HEARTBEAT"))
+		{
+			args << QStringLiteral("--no-heartbeat");
+		}
 		m_process->start(clientExe, args);
 	}
 
@@ -75,7 +82,72 @@ namespace mps::host
 			return;
 		}
 		m_dead = true;
+		stopHeartbeatWatch();
 		emit sessionDead(this);
+	}
+
+	void ClientSession::terminateProcess()
+	{
+		if (m_dead)
+		{
+			return;
+		}
+		if (m_process)
+		{
+			m_process->kill();
+		}
+		else
+		{
+			markDead();
+		}
+	}
+
+	void ClientSession::noteHeartbeat()
+	{
+		m_lastHeartbeatMs = QDateTime::currentMSecsSinceEpoch();
+		if (m_unhealthy)
+		{
+			m_unhealthy = false;
+			emit sessionHealthy(this);
+		}
+	}
+
+	void ClientSession::startHeartbeatWatch()
+	{
+		if (!m_heartbeatNegotiated || m_dead)
+		{
+			return;
+		}
+		if (!m_heartbeatWatch)
+		{
+			m_heartbeatWatch = new QTimer(this);
+			m_heartbeatWatch->setInterval(static_cast<int>(mps::ipc::kHeartbeatWatchTickMs));
+			connect(m_heartbeatWatch, &QTimer::timeout, this, &ClientSession::onHeartbeatWatchTick);
+		}
+		m_lastHeartbeatMs = QDateTime::currentMSecsSinceEpoch();
+		m_heartbeatWatch->start();
+	}
+
+	void ClientSession::stopHeartbeatWatch()
+	{
+		if (m_heartbeatWatch)
+		{
+			m_heartbeatWatch->stop();
+		}
+	}
+
+	void ClientSession::onHeartbeatWatchTick()
+	{
+		if (m_dead || !m_heartbeatNegotiated || m_unhealthy)
+		{
+			return;
+		}
+		const qint64 now = QDateTime::currentMSecsSinceEpoch();
+		if (mps::ipc::isHeartbeatTimedOut(m_lastHeartbeatMs, now))
+		{
+			m_unhealthy = true;
+			emit sessionUnhealthy(this);
+		}
 	}
 
 	void ClientSession::sendHelloAck()
@@ -91,6 +163,10 @@ namespace mps::host
 		caps->set_invoke(true);
 		caps->set_multi_sub_window(true);
 		m_channel->send(env);
+		if (m_heartbeatNegotiated)
+		{
+			startHeartbeatWatch();
+		}
 	}
 
 	void ClientSession::requestCreateSubWindow(qint64 tabId, const QString& title)
@@ -159,6 +235,7 @@ namespace mps::host
 		if (env.has_hello() && !m_helloSeen)
 		{
 			m_helloSeen = true;
+			m_heartbeatNegotiated = env.hello().caps().heartbeat();
 			sendHelloAck();
 			emit sessionHelloOk(this);
 			return;
@@ -226,6 +303,10 @@ namespace mps::host
 		}
 		if (env.has_heartbeat())
 		{
+			if (m_heartbeatNegotiated)
+			{
+				noteHeartbeat();
+			}
 			return;
 		}
 	}

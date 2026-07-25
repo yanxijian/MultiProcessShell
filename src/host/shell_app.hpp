@@ -53,6 +53,9 @@ namespace mps::host
 		void onSubWindowAdded(ClientSession* session, qint64 tabId, QString title, quintptr wid);
 		void onSubWindowRemoved(ClientSession* session, qint64 tabId);
 		void onSessionDead(ClientSession* session);
+		void onSessionUnhealthy(ClientSession* session);
+		void onSessionHealthy(ClientSession* session);
+		void terminateSession(ClientSession* session);
 		void updateTabDragVisuals();
 		void clearAllTabYieldPreviews();
 		void pollEscapeCancel();

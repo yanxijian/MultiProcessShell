@@ -6,6 +6,7 @@
 #include <QHash>
 #include <QLocalSocket>
 #include <QObject>
+#include <QTimer>
 #include <QWidget>
 
 #include <memory>
@@ -33,12 +34,15 @@ namespace mps::client
 	{
 		Q_OBJECT
 	public:
-		ClientApp(QString endpoint, QString token, QObject* parent = nullptr);
+		ClientApp(QString endpoint, QString token, bool enableHeartbeat = true, QObject* parent = nullptr);
 		[[nodiscard]] bool connectToHost();
 
 	private:
 		void onEnvelope(shell::ipc::v1::Envelope env);
 		void sendHello();
+		void sendHeartbeat();
+		void startHeartbeatTimer();
+		void stopHeartbeatTimer();
 		void ensureMainReported();
 		void createPage(qint64 tabId, const QString& title);
 		void closePage(qint64 tabId);
@@ -46,8 +50,11 @@ namespace mps::client
 
 		QString m_endpoint;
 		QString m_token;
+		bool m_enableHeartbeat = true;
+		bool m_heartbeatArmed = false;
 		QLocalSocket* m_socket = nullptr;
 		std::unique_ptr<mps::ipc::EnvelopeChannel> m_channel;
+		QTimer* m_heartbeatTimer = nullptr;
 		bool m_mainReported = false;
 		QHash<qint64, PageWindow*> m_pages;
 		PageWindow* m_active = nullptr;

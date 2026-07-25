@@ -110,6 +110,26 @@ TEST(EnvelopeProto, CreateSubWindowTitleSchemeA)
 	EXPECT_EQ(parsed.tab_id(), 7);
 }
 
+TEST(EnvelopeProto, HeartbeatRoundTrip)
+{
+	shell::ipc::v1::Envelope env;
+	env.set_protocol(1);
+	env.set_id("hb-1");
+	env.set_dir(shell::ipc::v1::DIR_EVT);
+	env.mutable_heartbeat();
+
+	std::string bytes;
+	ASSERT_TRUE(env.SerializeToString(&bytes));
+	const auto frame = encodeFrame(bytes);
+	FrameDecoder dec;
+	dec.append(frame.data(), frame.size());
+	std::string payload;
+	ASSERT_EQ(dec.tryPop(payload), FrameError::Ok);
+	shell::ipc::v1::Envelope parsed;
+	ASSERT_TRUE(parsed.ParseFromString(payload));
+	EXPECT_TRUE(parsed.has_heartbeat());
+}
+
 TEST(EnvelopeProto, InvokeReserveRoundTrip)
 {
 	shell::ipc::v1::Envelope req;

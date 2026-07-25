@@ -13,7 +13,7 @@
 | 2 | **不要** `ApplicationConnected` |
 | 3 | **要** `NotifyMainWindowReattachment` |
 | 4 | IPC **双向**：框架预留 `Invoke` / `InvokeResult` |
-| 5 | **心跳**纳入协议；Demo **未开**周期定时器（caps 可协商；实现后置） |
+| 5 | **心跳**纳入协议；Demo **已启用**周期 Heartbeat（2s / 超时 6s → Tab「无响应」；不自动杀进程） |
 
 ## 2. 帧与方向
 
@@ -89,8 +89,9 @@ InvokeResult {
 | 项 | 约定 |
 |----|------|
 | 协议 | `Heartbeat`（C→H）+ 可选 `Ping`/`Pong` |
-| Demo | **未启用**周期心跳；Hello caps 可声明 `heartbeat` |
-| 超时策略 | 与规格一致：标记 unhealthy，默认不自动杀进程 |
+| Demo | **已启用**：Client 每 **2s** 发 `Heartbeat`；Host **约 6s** 无心跳 → 会话 Unhealthy |
+| 超时策略 | 标记 unhealthy，**不**自动杀进程；用户右键 Tab「终止进程」 |
+| 复现 | Host 环境变量 `MPS_CLIENT_NO_HEARTBEAT=1` 或 Client `--no-heartbeat` |
 
 ## 7. 标题方案 A
 

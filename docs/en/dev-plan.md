@@ -11,8 +11,8 @@
 | Conclusion | Note |
 |------------|------|
 | **No whole-repo rewrite** | Windows Demo path works; `frame` / `EnvelopeChannel` / `tab_strip` / `TabEmbedMap` are already deep seams |
-| **Advance by spec milestones** | **M4b done**; **M5 Win Demo closable** ([gap audit](../zh/m5-gap-audit.md)); next **M6 heartbeat** |
-| **Deepen with the next feature** | Tear-out rule extraction (G6) opportunistic; does not block M6 |
+| **Advance by spec milestones** | **M4b / M5 / M6 done** (heartbeat 2s / 6s timeout /「无响应」+ terminate); next multi-backend / optional M7 |
+| **Deepen with the next feature** | Tear-out rule extraction (G6) and REQ timeouts opportunistic |
 
 Reuse `tab_strip` / `tab_embed_map` / `envelope_builder.hpp` (pure rules / thin helpers; Host·Client + tests share).
 
@@ -39,6 +39,6 @@ Scan top recommendation: ~~**wid → embed** first~~ **done**; peel Shell rules 
 |-----------|---------|
 | ~~M4b Python Hello~~ | **Done** — `hello_client.py`, offline `test_frame_envelope.py`, Qt harness `mps_m4b_python_hello` |
 | M5 tear-out / merge | **Closable** (G1/G4 fixed; G2/G3 Demo Client no-op) — [gap audit](../zh/m5-gap-audit.md) |
+| ~~M6 heartbeat / unhealthy UI~~ | **Done** — `heartbeat_policy.hpp`; Client 2s EVT; Host 6s Unhealthy; tab suffix + terminate |
 | x11 / inproc / multi-client | `IEmbedBackend` next (`wid` already localized) |
-| M6 heartbeat / unhealthy UI | Extend Session-side helper / timers |
 | QThemeEngine in Host | Discuss at integration time — do not pre-refactor now |

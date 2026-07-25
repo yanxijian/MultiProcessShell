@@ -1,12 +1,14 @@
 #include "client_app.hpp"
 
 #include "envelope_builder.hpp"
+#include "heartbeat_policy.hpp"
 
 #include <QApplication>
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QLabel>
 #include <QPushButton>
+#include <QTimer>
 #include <QVBoxLayout>
 
 #ifdef Q_OS_WIN
@@ -50,10 +52,11 @@ namespace mps::client
 		connect(btn, &QPushButton::clicked, this, &PageWindow::requestNewWindow);
 	}
 
-	ClientApp::ClientApp(QString endpoint, QString token, QObject* parent)
+	ClientApp::ClientApp(QString endpoint, QString token, bool enableHeartbeat, QObject* parent)
 		: QObject(parent)
 		, m_endpoint(std::move(endpoint))
 		, m_token(std::move(token))
+		, m_enableHeartbeat(enableHeartbeat)
 	{
 	}
 
@@ -72,9 +75,51 @@ namespace mps::client
 			{
 				onEnvelope(std::move(env));
 			});
-		connect(m_channel.get(), &mps::ipc::EnvelopeChannel::disconnected, qApp, &QCoreApplication::quit);
+		connect(m_channel.get(), &mps::ipc::EnvelopeChannel::disconnected, this,
+				[this]
+				{
+					stopHeartbeatTimer();
+					qApp->quit();
+				});
 		sendHello();
 		return true;
+	}
+
+	void ClientApp::startHeartbeatTimer()
+	{
+		if (!m_enableHeartbeat || m_heartbeatArmed || !m_channel)
+		{
+			return;
+		}
+		m_heartbeatArmed = true;
+		if (!m_heartbeatTimer)
+		{
+			m_heartbeatTimer = new QTimer(this);
+			m_heartbeatTimer->setInterval(static_cast<int>(mps::ipc::kHeartbeatIntervalMs));
+			connect(m_heartbeatTimer, &QTimer::timeout, this, &ClientApp::sendHeartbeat);
+		}
+		sendHeartbeat();
+		m_heartbeatTimer->start();
+	}
+
+	void ClientApp::stopHeartbeatTimer()
+	{
+		if (m_heartbeatTimer)
+		{
+			m_heartbeatTimer->stop();
+		}
+		m_heartbeatArmed = false;
+	}
+
+	void ClientApp::sendHeartbeat()
+	{
+		if (!m_channel)
+		{
+			return;
+		}
+		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch());
+		env.mutable_heartbeat();
+		m_channel->send(env);
 	}
 
 	void ClientApp::sendHello()
@@ -92,7 +137,7 @@ namespace mps::client
 		auto* caps = hello->mutable_caps();
 		caps->set_embed(shell::ipc::v1::EMBED_HWND);
 		caps->set_tab_drag(true);
-		caps->set_heartbeat(true);
+		caps->set_heartbeat(m_enableHeartbeat);
 		caps->set_invoke(true);
 		caps->set_multi_sub_window(true);
 		m_channel->send(env);
@@ -185,6 +230,10 @@ namespace mps::client
 	{
 		if (env.has_hello_ack())
 		{
+			if (m_enableHeartbeat && env.hello_ack().host_caps().heartbeat())
+			{
+				startHeartbeatTimer();
+			}
 			return;
 		}
 		if (env.has_create_sub_window())

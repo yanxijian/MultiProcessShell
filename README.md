@@ -90,7 +90,8 @@ dist/Demo/        Windows 可双击包（生成物，不入库）
 | Windows Demo（Home / 创建 Client / 拖出合入 / 嵌入） | 完成（M5 可关账） |
 | `wid` 收到 embed seam（Tab 模型 tabId-only） | 完成 |
 | M4b Python Hello | 完成 |
-| M6 心跳 / 无响应 UI、多 Backend 等 | 见规格与 [dev-plan](docs/zh/dev-plan.md) |
+| M6 心跳 / 无响应 UI | 完成 |
+| 多 Backend、可选 M7 等 | 见规格与 [dev-plan](docs/zh/dev-plan.md) |
 
 ## License
 

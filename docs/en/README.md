@@ -67,7 +67,8 @@ See [build.md](build.md) and [ci.md](ci.md).
 | `wid` behind embed seam | Done |
 | M4b Python Hello | Done |
 | M5 tear-out / merge | Closable — [gap audit](../zh/m5-gap-audit.md) |
-| M6 heartbeat / multi-backend | See spec + [dev-plan](dev-plan.md) |
+| M6 heartbeat / unresponsive UI | Done |
+| Multi-backend / optional M7 | See spec + [dev-plan](dev-plan.md) |
 
 ## License
 
