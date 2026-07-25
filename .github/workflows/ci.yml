@@ -6,10 +6,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-concurrency:
-  group: mps-ci-${{ github.workflow }}-${{ github.sha }}
-  cancel-in-progress: false
-
 jobs:
   format:
     name: clang-format
