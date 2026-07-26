@@ -4,7 +4,6 @@
 
 #include <QResizeEvent>
 #include <QShowEvent>
-#include <QTimer>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -15,8 +14,9 @@ namespace mps::host
 	EmbedContainer::EmbedContainer(QWidget* parent)
 		: QWidget(parent)
 	{
-		setAttribute(Qt::WA_NativeWindow);
-		setAttribute(Qt::WA_DontCreateNativeAncestors, false);
+		// Defer WA_NativeWindow until applyEmbed(): an idle native HWND in the
+		// stack steals Home-page clicks. Keep ancestors non-native so chrome stays Qt.
+		setAttribute(Qt::WA_DontCreateNativeAncestors, true);
 		setMinimumSize(200, 150);
 	}
 
@@ -136,15 +136,16 @@ namespace mps::host
 			m_foreignWid = 0;
 			return;
 		}
-		applyEmbed();
-		QTimer::singleShot(0, this,
-						   [this]
-						   {
-							   if (foreignAlive())
-							   {
-								   syncForeignGeometry();
-							   }
-						   });
+#ifdef Q_OS_WIN
+		const HWND host = reinterpret_cast<HWND>(winId());
+		const HWND child = reinterpret_cast<HWND>(m_foreignWid);
+		if (!host || GetParent(child) != host)
+		{
+			applyEmbed();
+			return;
+		}
+#endif
+		syncForeignGeometry();
 	}
 
 	QPixmap EmbedContainer::grabContent(qint64 tabId, QSize maxSize)
@@ -220,7 +221,7 @@ namespace mps::host
 		{
 			return;
 		}
-		ShowWindow(hwnd, SW_SHOW);
+		ShowWindow(hwnd, SW_SHOWNA);
 		EnableWindow(hwnd, TRUE);
 	}
 #endif
@@ -245,7 +246,8 @@ namespace mps::host
 			m_foreignWid = 0;
 			return;
 		}
-		winId(); // ensure native handle
+		setAttribute(Qt::WA_NativeWindow, true);
+		winId();
 		const HWND host = reinterpret_cast<HWND>(winId());
 		const HWND child = reinterpret_cast<HWND>(m_foreignWid);
 		LONG_PTR style = GetWindowLongPtrW(child, GWL_STYLE);
@@ -258,12 +260,10 @@ namespace mps::host
 		SetWindowLongPtrW(child, GWL_EXSTYLE, ex);
 
 		SetParent(child, host);
-		SetWindowPos(child, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+		SetWindowPos(child, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
 		ensureWindowShown(child);
 		syncForeignGeometry();
-		InvalidateRect(child, nullptr, TRUE);
-		UpdateWindow(child);
-		InvalidateRect(host, nullptr, TRUE);
+		InvalidateRect(child, nullptr, FALSE);
 #else
 		Q_UNUSED(m_foreignWid);
 #endif
@@ -277,6 +277,10 @@ namespace mps::host
 			m_foreignWid = 0;
 			return;
 		}
+		if (!testAttribute(Qt::WA_NativeWindow))
+		{
+			return;
+		}
 		winId();
 		const HWND host = reinterpret_cast<HWND>(winId());
 		const HWND child = reinterpret_cast<HWND>(m_foreignWid);
@@ -284,7 +288,7 @@ namespace mps::host
 		GetClientRect(host, &rc);
 		const int w = qMax(1, static_cast<int>(rc.right - rc.left));
 		const int h = qMax(1, static_cast<int>(rc.bottom - rc.top));
-		SetWindowPos(child, nullptr, 0, 0, w, h, SWP_NOZORDER | SWP_SHOWWINDOW);
+		SetWindowPos(child, nullptr, 0, 0, w, h, SWP_NOZORDER | SWP_SHOWWINDOW | SWP_NOACTIVATE);
 #else
 		Q_UNUSED(this);
 #endif

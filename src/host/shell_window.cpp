@@ -5,6 +5,7 @@
 
 #include <QAction>
 #include <QApplication>
+#include <QBitmap>
 #include <QCloseEvent>
 #include <QCursor>
 #include <QDrag>
@@ -20,6 +21,8 @@
 #include <QPainterPath>
 #include <QPalette>
 #include <QPropertyAnimation>
+#include <QResizeEvent>
+#include <QShowEvent>
 #include <QStackedWidget>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -35,6 +38,112 @@ namespace mps::host
 		constexpr int kTabStripTop = 4;
 		constexpr int kTabSlideMs = 120;
 		constexpr int kTabCornerRadius = 4;
+		constexpr int kDefaultWindowRadius = 8;
+		constexpr int kDefaultWindowBorderWidth = 1;
+		constexpr auto kPropWindowRadius = "qtheme.window.radius";
+		constexpr auto kPropWindowBorderWidth = "qtheme.window.borderWidth";
+		constexpr auto kPropWindowBorder = "qtheme.window.border";
+
+		/// Window frame stroke. Prefer theme hint; dark falls back to Fluent `button.border`.
+		[[nodiscard]] QColor windowFrameStroke(const QColor& fill, const QColor& hint = QColor())
+		{
+			const bool dark = fill.lightness() < 128;
+			QColor border = hint.isValid() ? hint : QColor();
+			if (!border.isValid())
+			{
+				// Match QPushButton chrome (`button.border` in Fluent packs).
+				border = dark ? QColor(0x3f, 0x3f, 0x3f) : QColor(0xd1, 0xd1, 0xd1);
+			}
+			border.setAlpha(255);
+			return border;
+		}
+
+		/// Same stroke as QThemeStyle QPushButton (`button.border` in Fluent packs).
+		[[nodiscard]] QColor homeTabStroke(const QColor& windowFill)
+		{
+			return windowFrameStroke(windowFill);
+		}
+
+		/// Tab bar separator — quieter than Home tab / window frame.
+		[[nodiscard]] QColor softDividerStroke(const QColor& fill)
+		{
+			const int g = fill.lightness() < 128 ? fill.lightness() + 28 : fill.lightness() - 18;
+			const int v = qBound(0, g, 255);
+			return QColor(v, v, v);
+		}
+
+		/// 1-bit round silhouette for an opaque (non-layered) top-level HWND.
+		/// Cuts the square-corner fill that otherwise shows past the rounded stroke.
+		[[nodiscard]] QBitmap roundedWindowMask(const QSize& size, int radius)
+		{
+			QBitmap bm(size);
+			bm.fill(Qt::color0);
+			if (size.width() <= 0 || size.height() <= 0)
+			{
+				return bm;
+			}
+			QPainter p(&bm);
+			p.setRenderHint(QPainter::Antialiasing, false);
+			p.setPen(Qt::NoPen);
+			p.setBrush(Qt::color1);
+			p.drawRoundedRect(0, 0, size.width() - 1, size.height() - 1, radius, radius);
+			return bm;
+		}
+
+		/// Central root paints the frame stroke in its own gutter. No sibling overlay:
+		/// a full-window overlay is treated as opaque by Qt and covers the native
+		/// SetParent embed HWND (blank client). Keep shell non-layered (no translucent).
+		class ChromeRoot final : public QWidget
+		{
+		public:
+			explicit ChromeRoot(QWidget* parent)
+				: QWidget(parent)
+			{
+				setAttribute(Qt::WA_TranslucentBackground, false);
+				setAutoFillBackground(true);
+				setBackgroundRole(QPalette::Window);
+			}
+
+			void syncChrome(int newRadius, int newBorderWidth, const QColor& color)
+			{
+				m_radius = newRadius;
+				m_borderWidth = newBorderWidth;
+				m_borderColor = color;
+				update();
+			}
+
+		protected:
+			void paintEvent(QPaintEvent* event) override
+			{
+				QWidget::paintEvent(event);
+				if (m_borderWidth <= 0 || width() <= 0 || height() <= 0)
+				{
+					return;
+				}
+				QPainter painter(this);
+				// No AA: opaque shell cannot blend against desktop; AA fringe looks like leak.
+				painter.setRenderHint(QPainter::Antialiasing, false);
+				const int inset = qMax(0, m_borderWidth - 1);
+				const QRect r = rect().adjusted(inset, inset, -inset - 1, -inset - 1);
+				QPen pen(m_borderColor, 1);
+				pen.setJoinStyle(Qt::MiterJoin);
+				painter.setPen(pen);
+				painter.setBrush(Qt::NoBrush);
+				if (m_radius > 0)
+				{
+					painter.drawRoundedRect(r, m_radius, m_radius);
+				}
+				else
+				{
+					painter.drawRect(r);
+				}
+			}
+
+		private:
+			int m_radius = 0;
+			int m_borderWidth = 0;
+			QColor m_borderColor{0xd1, 0xd1, 0xd1};
+		};
 
 		void clearStyleSheet(QWidget* widget)
 		{
@@ -146,17 +255,25 @@ namespace mps::host
 		const QColor tabBg = pal.color(QPalette::Window);
 		const QColor tabSelected = pal.color(QPalette::Base);
 		const bool dark = tabBg.lightness() < 128;
-		QColor accent = QColor(0x5a, 0x5a, 0x5a);
 		QColor idleBg = tabBg;
-		if (!m_info.isHome)
+		if (!m_info.isHome && m_info.unhealthy)
 		{
-			accent = m_info.unhealthy ? QColor(180, 120, 20) : ((m_info.clientIndex % 2 == 0) ? QColor(200, 60, 60) : QColor(120, 70, 180));
-			if (m_info.unhealthy)
-			{
-				idleBg = dark ? QColor(0x3d, 0x34, 0x20) : QColor(0xff, 0xf4, 0xe0);
-			}
+			idleBg = dark ? QColor(0x3d, 0x34, 0x20) : QColor(0xff, 0xf4, 0xe0);
 		}
 		const QColor fill = m_active ? tabSelected : idleBg;
+
+		QColor accent;
+		qreal penWidth = 1.0;
+		if (m_info.isHome)
+		{
+			accent = homeTabStroke(tabBg);
+			penWidth = 1.0;
+		}
+		else
+		{
+			accent = m_info.unhealthy ? QColor(180, 120, 20) : ((m_info.clientIndex % 2 == 0) ? QColor(200, 60, 60) : QColor(120, 70, 180));
+			penWidth = 1.5;
+		}
 
 		QPainter painter(this);
 		painter.setRenderHint(QPainter::Antialiasing, true);
@@ -164,7 +281,7 @@ namespace mps::host
 		QPainterPath path;
 		path.addRoundedRect(r, kTabCornerRadius, kTabCornerRadius);
 		painter.fillPath(path, fill);
-		painter.setPen(QPen(accent, 2.0));
+		painter.setPen(QPen(accent, penWidth));
 		painter.drawPath(path);
 	}
 
@@ -254,17 +371,24 @@ namespace mps::host
 		, m_shellId(g_nextShellId++)
 	{
 		setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
+		// Opaque top-level only. Layered/translucent + SetParent embed = blank/hang.
+		// Round outer corners use 1-bit setMask (no alpha); stroke is painted by ChromeRoot.
+		setAttribute(Qt::WA_TranslucentBackground, false);
+		setAutoFillBackground(true);
+		setBackgroundRole(QPalette::Window);
+		clearMask();
 		setMinimumSize(720, 480);
 		resize(960, 640);
 		setWindowTitle(QStringLiteral("Shell"));
 
-		auto* root = new QWidget(this);
-		setCentralWidget(root);
-		auto* rootLay = new QVBoxLayout(root);
-		rootLay->setContentsMargins(0, 0, 0, 0);
-		rootLay->setSpacing(0);
+		auto* root = new ChromeRoot(this);
+		m_root = root;
+		setCentralWidget(m_root);
+		m_rootLay = new QVBoxLayout(m_root);
+		m_rootLay->setContentsMargins(0, 0, 0, 0);
+		m_rootLay->setSpacing(0);
 
-		m_titleBar = new QWidget(root);
+		m_titleBar = new QWidget(m_root);
 		m_titleBar->setObjectName(QStringLiteral("TitleBar"));
 		m_titleBar->setFixedHeight(40);
 		auto* titleLay = new QHBoxLayout(m_titleBar);
@@ -280,7 +404,7 @@ namespace mps::host
 		m_tabDropTrail = new QWidget(m_titleBar);
 		m_tabDropTrail->setObjectName(QStringLiteral("TabDropTrail"));
 		m_tabDropTrail->setMinimumWidth(48);
-		m_tabDropTrail->setCursor(Qt::SizeAllCursor);
+		m_tabDropTrail->setCursor(Qt::ArrowCursor);
 		titleLay->addWidget(m_tabDropTrail, 1);
 		m_tabDropTrail->installEventFilter(this);
 
@@ -305,14 +429,13 @@ namespace mps::host
 				});
 		connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
 
-		auto* titleSep = new QFrame(root);
+		auto* titleSep = new QFrame(m_root);
 		titleSep->setObjectName(QStringLiteral("TitleBarSep"));
-		titleSep->setFrameShape(QFrame::HLine);
-		titleSep->setFrameShadow(QFrame::Plain);
+		titleSep->setFrameShape(QFrame::NoFrame);
 		titleSep->setFixedHeight(1);
 		m_titleBarSep = titleSep;
 
-		m_stack = new QStackedWidget(root);
+		m_stack = new QStackedWidget(m_root);
 		m_homeSlot = new QWidget(m_stack);
 		auto* homeLay = new QVBoxLayout(m_homeSlot);
 		homeLay->setContentsMargins(0, 0, 0, 0);
@@ -321,9 +444,9 @@ namespace mps::host
 		m_stack->addWidget(m_homeSlot);
 		m_stack->addWidget(m_embed);
 
-		rootLay->addWidget(m_titleBar);
-		rootLay->addWidget(titleSep);
-		rootLay->addWidget(m_stack, 1);
+		m_rootLay->addWidget(m_titleBar);
+		m_rootLay->addWidget(titleSep);
+		m_rootLay->addWidget(m_stack, 1);
 
 		m_tabs.push_back(TabInfo::makeHome());
 		m_activeTabId = kHomeTabId;
@@ -370,20 +493,30 @@ namespace mps::host
 		const QPalette pal = QApplication::palette();
 		setPalette(pal);
 		clearStyleSheet(this);
-		applyPaletteFill(m_titleBar, pal, QPalette::Button);
+		applyPaletteFill(m_titleBar, pal, QPalette::Window);
 		if (m_titleBarSep)
 		{
 			clearStyleSheet(m_titleBarSep);
-			m_titleBarSep->setPalette(pal);
+			const QColor sep = softDividerStroke(pal.color(QPalette::Window));
+			QPalette sepPal = pal;
+			sepPal.setColor(QPalette::Window, sep);
+			m_titleBarSep->setPalette(sepPal);
+			m_titleBarSep->setBackgroundRole(QPalette::Window);
+			m_titleBarSep->setAutoFillBackground(true);
 		}
 		if (m_tabDropTrail)
 		{
-			clearStyleSheet(m_tabDropTrail);
-			m_tabDropTrail->setPalette(pal);
-			m_tabDropTrail->setAutoFillBackground(false);
+			// Must stay opaque: transparent trail passes clicks through on some platforms.
+			applyPaletteFill(m_tabDropTrail, pal, QPalette::Window);
+			m_tabDropTrail->setCursor(Qt::ArrowCursor);
+		}
+		if (m_root)
+		{
+			applyPaletteFill(m_root, pal, QPalette::Window);
+			m_root->setAttribute(Qt::WA_TranslucentBackground, false);
 		}
 		applyPaletteFill(m_homeSlot, pal, QPalette::Window);
-		applyPaletteFill(centralWidget(), pal, QPalette::Window);
+		applyPaletteFill(m_stack, pal, QPalette::Window);
 		for (auto* b : {m_minBtn, m_maxBtn, m_closeBtn})
 		{
 			if (b)
@@ -408,7 +541,116 @@ namespace mps::host
 				btn->refreshChrome();
 			}
 		}
+		updateFrameChrome();
 		update();
+	}
+
+	int ShellWindow::frameRadius() const
+	{
+		if (isMaximized() || isFullScreen())
+		{
+			return 0;
+		}
+		const QVariant v = qApp->property(kPropWindowRadius);
+		const int radius = v.isValid() ? v.toInt() : kDefaultWindowRadius;
+		return radius > 0 ? radius : kDefaultWindowRadius;
+	}
+
+	int ShellWindow::frameBorderWidth() const
+	{
+		if (isMaximized() || isFullScreen())
+		{
+			return 0;
+		}
+		const QVariant v = qApp->property(kPropWindowBorderWidth);
+		const int width = v.isValid() ? v.toInt() : kDefaultWindowBorderWidth;
+		return width > 0 ? width : kDefaultWindowBorderWidth;
+	}
+
+	QColor ShellWindow::frameBorderColor() const
+	{
+		QColor hint;
+		const QVariant v = qApp->property(kPropWindowBorder);
+		if (v.canConvert<QColor>())
+		{
+			hint = v.value<QColor>();
+		}
+		if (!hint.isValid())
+		{
+			hint = QApplication::palette().color(QPalette::Mid);
+		}
+		return windowFrameStroke(QApplication::palette().color(QPalette::Window), hint);
+	}
+
+	void ShellWindow::updateFrameChrome()
+	{
+		const int bw = frameBorderWidth();
+		const int radius = frameRadius();
+		// Gutter ≥ radius so the corner stroke sits outside title/content.
+		const int pad = radius > 0 ? qMax(bw, radius) : bw;
+		if (m_rootLay)
+		{
+			m_rootLay->setContentsMargins(pad, pad, pad, pad);
+		}
+		if (radius > 0)
+		{
+			setMask(roundedWindowMask(size(), radius));
+		}
+		else
+		{
+			clearMask();
+		}
+		if (auto* root = static_cast<ChromeRoot*>(m_root))
+		{
+			root->syncChrome(radius, bw, frameBorderColor());
+		}
+		if (m_tabDropTrail && QWidget::mouseGrabber() == m_tabDropTrail)
+		{
+			m_tabDropTrail->releaseMouse();
+		}
+		m_captionMoveActive = false;
+		update();
+	}
+
+	void ShellWindow::scheduleEmbedResync()
+	{
+		if (m_embedResyncPending)
+		{
+			return;
+		}
+		m_embedResyncPending = true;
+		QTimer::singleShot(0, this,
+						   [this]
+						   {
+							   m_embedResyncPending = false;
+							   if (m_embed && m_embed->isVisible() && m_embed->has(m_activeTabId))
+							   {
+								   m_embed->resyncActive();
+							   }
+						   });
+	}
+
+	void ShellWindow::showEvent(QShowEvent* event)
+	{
+		QMainWindow::showEvent(event);
+		updateFrameChrome();
+	}
+
+	void ShellWindow::changeEvent(QEvent* event)
+	{
+		QMainWindow::changeEvent(event);
+		if (event && event->type() == QEvent::WindowStateChange)
+		{
+			updateFrameChrome();
+			scheduleEmbedResync();
+		}
+	}
+
+	void ShellWindow::resizeEvent(QResizeEvent* event)
+	{
+		QMainWindow::resizeEvent(event);
+		updateFrameChrome();
+		// Geometry sync is EmbedContainer::resizeEvent — avoid SetParent storms here.
 	}
 
 	void ShellWindow::syncWorkspace()
@@ -423,26 +665,17 @@ namespace mps::host
 		{
 			m_embed->clearActive(true);
 			m_stack->setCurrentWidget(m_homeSlot);
+			m_embed->hide();
+			m_homeSlot->show();
+			m_homeSlot->raise();
 		}
 		else
 		{
 			m_stack->setCurrentWidget(m_embed);
+			m_embed->show();
 			m_embed->activate(m_activeTabId);
 			scheduleEmbedResync();
 		}
-	}
-
-	void ShellWindow::scheduleEmbedResync()
-	{
-		QTimer::singleShot(0, this,
-						   [this]
-						   {
-							   if (m_embed && m_embed->has(m_activeTabId))
-							   {
-								   m_embed->activate(m_activeTabId);
-								   m_embed->resyncActive();
-							   }
-						   });
 	}
 
 	void ShellWindow::releaseEmbedOwnershipForTab(qint64 tabId)
@@ -1682,17 +1915,40 @@ namespace mps::host
 
 	bool ShellWindow::eventFilter(QObject* watched, QEvent* event)
 	{
-		// System-move on the trailing tab strip (not on Tab buttons / window buttons).
-		if (watched == m_tabDropTrail && event->type() == QEvent::MouseButtonPress)
+		// Drag the frameless window from the trailing tab strip (not tabs / window buttons).
+		// Do not grabMouse() — a stuck grab disables Create Client / theme buttons.
+		if (watched == m_tabDropTrail)
 		{
-			auto* me = static_cast<QMouseEvent*>(event);
-			if (me->button() == Qt::LeftButton)
+			if (event->type() == QEvent::MouseButtonPress)
 			{
-				winId();
-				if (windowHandle())
+				auto* me = static_cast<QMouseEvent*>(event);
+				if (me->button() == Qt::LeftButton && !isMaximized() && !isFullScreen())
 				{
-					windowHandle()->startSystemMove();
+					winId();
+					if (QWindow* wh = windowHandle())
+					{
+						wh->startSystemMove();
+					}
+					else
+					{
+						m_captionMoveActive = true;
+						m_captionMoveOffset = me->globalPosition().toPoint() - frameGeometry().topLeft();
+					}
+					return true;
 				}
+			}
+			else if (event->type() == QEvent::MouseMove && m_captionMoveActive)
+			{
+				auto* me = static_cast<QMouseEvent*>(event);
+				if (me->buttons() & Qt::LeftButton)
+				{
+					move(me->globalPosition().toPoint() - m_captionMoveOffset);
+					return true;
+				}
+			}
+			else if (event->type() == QEvent::MouseButtonRelease && m_captionMoveActive)
+			{
+				m_captionMoveActive = false;
 				return true;
 			}
 		}

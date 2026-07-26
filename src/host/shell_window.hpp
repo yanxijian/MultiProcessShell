@@ -13,6 +13,7 @@
 #include <QPropertyAnimation>
 #include <QPushButton>
 #include <QStackedWidget>
+#include <QVBoxLayout>
 #include <QVector>
 
 #include <memory>
@@ -154,6 +155,9 @@ namespace mps::host
 		void dropIndicatorsClearRequested();
 
 	protected:
+		void showEvent(QShowEvent* event) override;
+		void changeEvent(QEvent* event) override;
+		void resizeEvent(QResizeEvent* event) override;
 		void closeEvent(QCloseEvent* event) override;
 		bool eventFilter(QObject* watched, QEvent* event) override;
 
@@ -167,15 +171,21 @@ namespace mps::host
 		void ensureStripDragLayout(qint64 hideTabId, int guestWidth = 0);
 		void animateTabGeometry(TabButton* btn, const QRect& target);
 		void stopTabSlideAnimations();
+		void updateFrameChrome();
+		[[nodiscard]] int frameRadius() const;
+		[[nodiscard]] int frameBorderWidth() const;
+		[[nodiscard]] QColor frameBorderColor() const;
 		TabInfo* findTab(qint64 tabId);
 		[[nodiscard]] const TabInfo* findTab(qint64 tabId) const;
 
 		ShellApp* m_app = nullptr;
 		QObject* m_stripDropFilter = nullptr;
 		qint64 m_shellId = 0;
+		QWidget* m_root = nullptr;
+		QVBoxLayout* m_rootLay = nullptr;
 		QWidget* m_titleBar = nullptr;
 		QFrame* m_titleBarSep = nullptr;
-		QWidget* m_tabDropTrail = nullptr; // trailing strip: drop-to-append + system-move
+		QWidget* m_tabDropTrail = nullptr; // trailing strip: drop-to-append + caption drag
 		QWidget* m_dropIndicator = nullptr;
 		QPushButton* m_minBtn = nullptr;
 		QPushButton* m_maxBtn = nullptr;
@@ -195,6 +205,9 @@ namespace mps::host
 		int m_dragTabWidth = 0;
 		int m_stripDragOriginX = 0;
 		QHash<qint64, QPropertyAnimation*> m_tabSlideAnims;
+		bool m_captionMoveActive = false;
+		QPoint m_captionMoveOffset;
+		bool m_embedResyncPending = false;
 	};
 } // namespace mps::host
 
