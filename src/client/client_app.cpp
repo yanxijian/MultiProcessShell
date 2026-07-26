@@ -5,6 +5,7 @@
 #include "qfluentribbon/qfluentribbon.hpp"
 #include "qtheme/engine.hpp"
 #include "qtheme/types.hpp"
+#include "theme_scheme.hpp"
 
 #include <QAction>
 #include <QApplication>
@@ -319,20 +320,21 @@ namespace mps::client
 		if (engine)
 		{
 			connect(light, &QAction::triggered, this,
-					[engine, status]()
+					[this, status]()
 					{
-						(void)engine->setColorScheme(qtheme::ColorScheme::Light);
-						status->setText(QStringLiteral("Skin: Fluent Light"));
+						emit requestThemeScheme(qtheme::ColorScheme::Light);
+						status->setText(QStringLiteral("Requesting Fluent Light…"));
 					});
 			connect(dark, &QAction::triggered, this,
-					[engine, status]()
+					[this, status]()
 					{
-						(void)engine->setColorScheme(qtheme::ColorScheme::Dark);
-						status->setText(QStringLiteral("Skin: Fluent Dark"));
+						emit requestThemeScheme(qtheme::ColorScheme::Dark);
+						status->setText(QStringLiteral("Requesting Fluent Dark…"));
 					});
 		}
 
 		Q_UNUSED(bridge);
+		Q_UNUSED(engine);
 		qfluentribbon::ScreenTip::install(this);
 	}
 
@@ -361,6 +363,47 @@ namespace mps::client
 		m_engine->apply(app);
 		m_bridge = std::make_unique<qfluentribbon::ThemeBridge>();
 		m_bridge->bind(m_engine.get());
+	}
+
+	void ClientApp::applyThemeScheme(qtheme::ColorScheme scheme)
+	{
+		ensureTheme();
+		if (!m_engine)
+		{
+			return;
+		}
+		if (scheme != qtheme::ColorScheme::Light && scheme != qtheme::ColorScheme::Dark)
+		{
+			scheme = qtheme::ColorScheme::Light;
+		}
+		(void)m_engine->setColorScheme(scheme, /*force=*/true);
+		for (auto it = m_pages.begin(); it != m_pages.end(); ++it)
+		{
+			if (PageWindow* page = it.value())
+			{
+				if (page->ribbonBar())
+				{
+					page->ribbonBar()->polishFromStore();
+				}
+			}
+		}
+	}
+
+	void ClientApp::requestThemeFromHost(qtheme::ColorScheme scheme, qint64 tabId)
+	{
+		const mps::theme::Scheme wire = (scheme == qtheme::ColorScheme::Dark) ? mps::theme::Scheme::Dark : mps::theme::Scheme::Light;
+		// Optimistic local apply; Host broadcast / InvokeResult remains the SSOT.
+		applyThemeScheme(wire == mps::theme::Scheme::Dark ? qtheme::ColorScheme::Dark : qtheme::ColorScheme::Light);
+		if (!m_channel)
+		{
+			return;
+		}
+		const QByteArray params = mps::theme::toParams(wire);
+		auto env =
+			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(), 0, tabId);
+		env.mutable_invoke()->set_method("theme.set");
+		env.mutable_invoke()->set_params(params.constData(), static_cast<int>(params.size()));
+		m_channel->send(env);
 	}
 
 	bool ClientApp::connectToHost()
@@ -486,6 +529,11 @@ namespace mps::client
 					env.mutable_invoke()->set_method("demo.request_new_window");
 					m_channel->send(env);
 				});
+		connect(page, &PageWindow::requestThemeScheme, this,
+				[this, tabId](qtheme::ColorScheme scheme)
+				{
+					requestThemeFromHost(scheme, tabId);
+				});
 		page->createWinId();
 		if (QWindow* wh = page->windowHandle())
 		{
@@ -593,6 +641,26 @@ namespace mps::client
 		}
 		if (env.has_invoke())
 		{
+			if (env.invoke().method() == "theme.set")
+			{
+				const QByteArray params = QByteArray::fromStdString(env.invoke().params());
+				mps::theme::Scheme wire = mps::theme::Scheme::Light;
+				if (!mps::theme::fromParams(params, &wire))
+				{
+					auto res = mps::ipc::makeResponse(1, env.id(), QDateTime::currentMSecsSinceEpoch());
+					auto* err = res.mutable_error();
+					err->set_code(shell::ipc::v1::ERROR_PROTOCOL);
+					err->set_message("theme.set params must be light or dark");
+					m_channel->send(res);
+					return;
+				}
+				applyThemeScheme(wire == mps::theme::Scheme::Dark ? qtheme::ColorScheme::Dark : qtheme::ColorScheme::Light);
+				const QByteArray wireBytes = mps::theme::toParams(wire);
+				auto res = mps::ipc::makeResponse(1, env.id(), QDateTime::currentMSecsSinceEpoch());
+				res.mutable_invoke_result()->set_payload(wireBytes.constData(), static_cast<int>(wireBytes.size()));
+				m_channel->send(res);
+				return;
+			}
 			auto res = mps::ipc::makeResponse(1, env.id(), QDateTime::currentMSecsSinceEpoch());
 			auto* err = res.mutable_error();
 			err->set_code(shell::ipc::v1::ERROR_UNIMPLEMENTED);

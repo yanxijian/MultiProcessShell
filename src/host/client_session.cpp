@@ -2,6 +2,7 @@
 
 #include "envelope_builder.hpp"
 #include "heartbeat_policy.hpp"
+#include "theme_scheme.hpp"
 
 #include <QCoreApplication>
 #include <QDateTime>
@@ -230,6 +231,19 @@ namespace mps::host
 		m_channel->send(env);
 	}
 
+	void ClientSession::pushThemeScheme(const QByteArray& params)
+	{
+		if (m_dead || !m_channel)
+		{
+			return;
+		}
+		auto env =
+			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(), m_pageId);
+		env.mutable_invoke()->set_method("theme.set");
+		env.mutable_invoke()->set_params(params.constData(), static_cast<int>(params.size()));
+		m_channel->send(env);
+	}
+
 	void ClientSession::onEnvelope(shell::ipc::v1::Envelope env)
 	{
 		if (env.has_hello() && !m_helloSeen)
@@ -291,6 +305,26 @@ namespace mps::host
 				emit invokeNewWindow(this, env.tab_id());
 				auto res = mps::ipc::makeResponse(1, env.id(), QDateTime::currentMSecsSinceEpoch());
 				res.mutable_invoke_result()->set_payload("ok");
+				m_channel->send(res);
+				return;
+			}
+			if (env.invoke().method() == "theme.set")
+			{
+				const QByteArray params = QByteArray::fromStdString(env.invoke().params());
+				mps::theme::Scheme scheme = mps::theme::Scheme::Light;
+				if (!mps::theme::fromParams(params, &scheme))
+				{
+					auto res = mps::ipc::makeResponse(1, env.id(), QDateTime::currentMSecsSinceEpoch());
+					auto* err = res.mutable_error();
+					err->set_code(shell::ipc::v1::ERROR_PROTOCOL);
+					err->set_message("theme.set params must be light or dark");
+					m_channel->send(res);
+					return;
+				}
+				emit themeSetRequested(this, scheme);
+				const QByteArray wire = mps::theme::toParams(scheme);
+				auto res = mps::ipc::makeResponse(1, env.id(), QDateTime::currentMSecsSinceEpoch());
+				res.mutable_invoke_result()->set_payload(wire.constData(), static_cast<int>(wire.size()));
 				m_channel->send(res);
 				return;
 			}

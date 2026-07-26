@@ -7,6 +7,8 @@ add_library(mps_host STATIC
   shell_window.hpp
   tear_out_preview.cpp
   tear_out_preview.hpp
+  theme_service.cpp
+  theme_service.hpp
   win_capture.cpp
   win_capture.hpp
   tab_info.hpp
@@ -23,6 +25,7 @@ target_link_libraries(mps_host
   PUBLIC
     mps::ipc_qt
     mps::tab_strip
+    ${MPS_QTE_TARGET}
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets

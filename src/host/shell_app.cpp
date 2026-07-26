@@ -13,6 +13,7 @@
 #include <QGuiApplication>
 #include <QKeyEvent>
 #include <QLocalSocket>
+#include <QMetaType>
 #include <QMimeData>
 #include <QPropertyAnimation>
 #include <QSize>
@@ -31,6 +32,14 @@ namespace mps::host
 		: QObject(parent)
 		, m_clientExe(std::move(clientExe))
 	{
+		m_theme = std::make_unique<ThemeService>(this);
+		if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance()))
+		{
+			m_theme->start(app);
+		}
+		qRegisterMetaType<mps::theme::Scheme>();
+		connect(m_theme.get(), &ThemeService::schemeChanged, this, &ShellApp::onThemeSchemeChanged);
+
 		m_token = QUuid::createUuid().toString(QUuid::WithoutBraces);
 		m_endpoint = QStringLiteral("mps-demo-%1").arg(m_token);
 		m_server = new QLocalServer(this);
@@ -291,12 +300,13 @@ namespace mps::host
 		auto session = std::make_unique<ClientSession>(clientIndex, m_endpoint, this);
 		auto* raw = session.get();
 		m_pendingFirstShell.insert(raw, shell);
-		connect(raw, &ClientSession::sessionHelloOk, this, &ShellApp::onSessionReady);
+		connect(raw, &ClientSession::sessionHelloOk, this, &ShellApp::onSessionHelloOk);
 		connect(raw, &ClientSession::subWindowAdded, this, &ShellApp::onSubWindowAdded);
 		connect(raw, &ClientSession::subWindowRemoved, this, &ShellApp::onSubWindowRemoved);
 		connect(raw, &ClientSession::sessionDead, this, &ShellApp::onSessionDead);
 		connect(raw, &ClientSession::sessionUnhealthy, this, &ShellApp::onSessionUnhealthy);
 		connect(raw, &ClientSession::sessionHealthy, this, &ShellApp::onSessionHealthy);
+		connect(raw, &ClientSession::themeSetRequested, this, &ShellApp::onThemeSetRequested);
 		connect(raw, &ClientSession::invokeNewWindow, this,
 				[this](ClientSession* session, qint64 sourceTabId)
 				{
@@ -364,6 +374,13 @@ namespace mps::host
 		}
 	}
 
+	void ShellApp::onSessionHelloOk(ClientSession* session)
+	{
+		// Push SSOT skin before the first CreateSubWindow so the Client page is born correct.
+		pushThemeToSession(session);
+		onSessionReady(session);
+	}
+
 	void ShellApp::onSessionReady(ClientSession* session)
 	{
 		auto* shell = m_pendingFirstShell.value(session, nullptr);
@@ -375,6 +392,52 @@ namespace mps::host
 		const qint64 tabId = m_nextTabId++;
 		const QString title = makeTitle(session->clientIndex(), m);
 		session->requestCreateSubWindow(tabId, title);
+	}
+
+	void ShellApp::requestThemeScheme(qtheme::ColorScheme scheme, ThemeOrigin origin)
+	{
+		if (m_theme)
+		{
+			m_theme->setScheme(scheme, origin);
+		}
+	}
+
+	void ShellApp::onThemeSetRequested(ClientSession* /*session*/, mps::theme::Scheme scheme)
+	{
+		requestThemeScheme(toColorScheme(scheme), ThemeOrigin::ClientRequest);
+	}
+
+	void ShellApp::onThemeSchemeChanged(qtheme::ColorScheme scheme, ThemeOrigin /*origin*/)
+	{
+		broadcastTheme(scheme);
+		for (auto& shell : m_shells)
+		{
+			if (shell)
+			{
+				shell->applyThemeChrome();
+			}
+		}
+	}
+
+	void ShellApp::pushThemeToSession(ClientSession* session)
+	{
+		if (!session || !m_theme)
+		{
+			return;
+		}
+		session->pushThemeScheme(mps::theme::toParams(toThemeScheme(m_theme->scheme())));
+	}
+
+	void ShellApp::broadcastTheme(qtheme::ColorScheme scheme)
+	{
+		const QByteArray params = mps::theme::toParams(toThemeScheme(scheme));
+		for (auto& session : m_sessions)
+		{
+			if (session && !session->isDead())
+			{
+				session->pushThemeScheme(params);
+			}
+		}
 	}
 
 	void ShellApp::onSubWindowAdded(ClientSession* session, qint64 tabId, QString title, quintptr wid)

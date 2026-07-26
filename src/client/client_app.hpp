@@ -32,6 +32,7 @@ namespace mps::client
 
 	signals:
 		void requestNewWindow();
+		void requestThemeScheme(qtheme::ColorScheme scheme);
 
 	protected:
 		bool nativeEvent(const QByteArray& eventType, void* message, qintptr* result) override;
@@ -57,6 +58,8 @@ namespace mps::client
 
 	private:
 		void ensureTheme();
+		void applyThemeScheme(qtheme::ColorScheme scheme);
+		void requestThemeFromHost(qtheme::ColorScheme scheme, qint64 tabId);
 		void onEnvelope(shell::ipc::v1::Envelope env);
 		void sendHello();
 		void sendHeartbeat();

@@ -42,7 +42,7 @@
 
 - 再次在 Home「创建 Client」→ `Client2-Window1`、…  
 - 不同 Client = 不同进程（形态 A）；Tab 可同壳并列。  
-- 页内可用 Ribbon Theme 组切 Light/Dark（仅该 Client 进程）。
+- 页内可用 Ribbon Theme 组切 Light/Dark；经 Host `theme.set` **全局同步**（壳 + 全部 Client）。
 
 ### 2.5 QFR 嵌入页
 

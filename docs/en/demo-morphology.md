@@ -40,7 +40,7 @@ Phase-1 platform: **Windows (form A)**.
 ### 2.4 Multiple Clients
 
 - Create Client again from Home → `Client2-Window1`, …  
-- Different Clients = different processes (form A); tabs may share one shell. Theme Light/Dark is per Client process.
+- Different Clients = different processes (form A); tabs may share one shell. Theme Light/Dark is **global** (Host SSOT via `Invoke theme.set`).
 
 ## 3. Tab title rules
 

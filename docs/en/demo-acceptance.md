@@ -15,6 +15,10 @@ Manual regression. Finish this list before later polish (tab overflow, REQ timeo
 
 - [ ] Home → Create Client → `Client1-Window1` embeds and fills the client area
 - [ ] Client “新建窗口” → `Client1-Window2` (same process, new tab)
+- [ ] Home → Light / Dark → shell chrome + embedded Client Ribbon sync
+- [ ] Ribbon Theme Light/Dark → Host + other Client processes switch together
+- [ ] Dark first, then Create Client → new process starts Dark
+- [ ] Same-Client “New Window” follows without re-toggling
 - [ ] Home → Create Client again → `Client2-Window1` (distinct accent OK)
 
 ## Close tab / MRU

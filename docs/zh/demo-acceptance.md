@@ -15,7 +15,10 @@
 
 - [ ] Home →「创建 Client」→ 出现 `Client1-Window1`，客户区为 **无系统标题栏的 Ribbon 页**、铺满
 - [ ] Ribbon「New Window」→ `Client1-Window2`，同进程多 Tab
-- [ ] Ribbon Theme Light/Dark 可切换（仅该 Client）
+- [ ] Home → Light / Dark → 壳变浅/深；已嵌入 Client Ribbon 同步
+- [ ] Ribbon Theme Light/Dark → Host 壳与其他 Client 进程一并切换
+- [ ] 先 Dark 再 Create Client → 新进程首屏即为 Dark
+- [ ] 同 Client「New Window」无需再切，自动跟随
 - [ ] 再回 Home「创建 Client」→ `Client2-Window1`
 
 ## 关 Tab / MRU

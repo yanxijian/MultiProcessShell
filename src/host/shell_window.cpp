@@ -1,7 +1,11 @@
 #include "shell_window.hpp"
 
+#include "qtheme/api.hpp"
+#include "qtheme/engine.hpp"
+#include "qtheme/types.hpp"
 #include "shell_app.hpp"
 #include "tab_strip.hpp"
+#include "theme_service.hpp"
 
 #include <QAction>
 #include <QApplication>
@@ -63,31 +67,39 @@ namespace mps::host
 						emit closeRequested(m_info.tabId);
 					});
 		}
-		if (m_info.isHome)
-		{
-			setStyleSheet(QStringLiteral("#TabButton { border: 2px solid #5a5a5a; border-radius: 4px; background: #f3f3f3; }"
-										 "#TabButton[active=\"true\"] { background: #ffffff; }"));
-		}
-		else
-		{
-			const QColor accent = (m_info.clientIndex % 2 == 0) ? QColor(200, 60, 60) : QColor(120, 70, 180);
-			setStyleSheet(QStringLiteral("#TabButton { border: 2px solid %1; border-radius: 4px; background: #f3f3f3; }"
-										 "#TabButton[active=\"true\"] { background: #ffffff; }")
-							  .arg(accent.name()));
-		}
+		refreshChrome();
 	}
 
 	void TabButton::setInfo(const TabInfo& info)
 	{
 		m_info = info;
 		m_title->setText(m_info.displayTitle());
+		refreshChrome();
+	}
+
+	void TabButton::refreshChrome()
+	{
+		const QColor tabBg = qtheme::api::color(QStringLiteral("tab"), QStringLiteral("bg"), QColor(0xf3, 0xf3, 0xf3));
+		const QColor tabSelected = qtheme::api::color(QStringLiteral("tab"), QStringLiteral("bg.selected"), QColor(0xff, 0xff, 0xff));
+		const QColor fg = qtheme::api::color(QStringLiteral("tab"), QStringLiteral("fg"), QColor(0x5c, 0x5c, 0x5c));
+		const QColor fgSelected = qtheme::api::color(QStringLiteral("tab"), QStringLiteral("fg.selected"), QColor(0x1a, 0x1a, 0x1a));
+		const bool dark = qtheme::api::engine() && qtheme::api::engine()->colorScheme() == qtheme::ColorScheme::Dark;
+		QColor accent = QColor(0x5a, 0x5a, 0x5a);
+		QColor idleBg = tabBg;
 		if (!m_info.isHome)
 		{
-			const QColor accent =
-				m_info.unhealthy ? QColor(180, 120, 20) : ((m_info.clientIndex % 2 == 0) ? QColor(200, 60, 60) : QColor(120, 70, 180));
-			setStyleSheet(QStringLiteral("#TabButton { border: 2px solid %1; border-radius: 4px; background: %2; }"
-										 "#TabButton[active=\"true\"] { background: #ffffff; }")
-							  .arg(accent.name(), m_info.unhealthy ? QStringLiteral("#fff4e0") : QStringLiteral("#f3f3f3")));
+			accent = m_info.unhealthy ? QColor(180, 120, 20) : ((m_info.clientIndex % 2 == 0) ? QColor(200, 60, 60) : QColor(120, 70, 180));
+			if (m_info.unhealthy)
+			{
+				idleBg = dark ? QColor(0x3d, 0x34, 0x20) : QColor(0xff, 0xf4, 0xe0);
+			}
+		}
+		setStyleSheet(QStringLiteral("#TabButton { border: 2px solid %1; border-radius: 4px; background: %2; color: %3; }"
+									 "#TabButton[active=\"true\"] { background: %4; color: %5; }")
+						  .arg(accent.name(), idleBg.name(), fg.name(), tabSelected.name(), fgSelected.name()));
+		if (m_title)
+		{
+			m_title->setStyleSheet(QStringLiteral("color: %1;").arg(fg.name()));
 		}
 	}
 
@@ -197,7 +209,6 @@ namespace mps::host
 		m_titleBar = new QWidget(root);
 		m_titleBar->setObjectName(QStringLiteral("TitleBar"));
 		m_titleBar->setFixedHeight(40);
-		m_titleBar->setStyleSheet(QStringLiteral("#TitleBar { background: #e8e8e8; border-bottom: 1px solid #c0c0c0; }"));
 		auto* titleLay = new QHBoxLayout(m_titleBar);
 		titleLay->setContentsMargins(8, 4, 8, 4);
 		titleLay->setSpacing(6);
@@ -212,7 +223,6 @@ namespace mps::host
 		m_tabDropTrail->setObjectName(QStringLiteral("TabDropTrail"));
 		m_tabDropTrail->setMinimumWidth(48);
 		m_tabDropTrail->setCursor(Qt::SizeAllCursor);
-		m_tabDropTrail->setStyleSheet(QStringLiteral("#TabDropTrail { background: transparent; }"));
 		titleLay->addWidget(m_tabDropTrail, 1);
 		m_tabDropTrail->installEventFilter(this);
 
@@ -239,12 +249,40 @@ namespace mps::host
 		m_stack = new QStackedWidget(root);
 		m_emptyPage = new QWidget(m_stack);
 		auto* emptyLay = new QVBoxLayout(m_emptyPage);
-		m_createClientBtn = new QPushButton(QStringLiteral("创建 Client"), m_emptyPage);
+		m_createClientBtn = new QPushButton(QStringLiteral("Create Client"), m_emptyPage);
 		m_createClientBtn->setFixedSize(160, 40);
+		m_lightThemeBtn = new QPushButton(QStringLiteral("Light"), m_emptyPage);
+		m_darkThemeBtn = new QPushButton(QStringLiteral("Dark"), m_emptyPage);
+		m_lightThemeBtn->setFixedSize(80, 32);
+		m_darkThemeBtn->setFixedSize(80, 32);
+		auto* themeRow = new QHBoxLayout();
+		themeRow->setSpacing(12);
+		themeRow->addStretch();
+		themeRow->addWidget(m_lightThemeBtn);
+		themeRow->addWidget(m_darkThemeBtn);
+		themeRow->addStretch();
 		emptyLay->addStretch();
 		emptyLay->addWidget(m_createClientBtn, 0, Qt::AlignCenter);
+		emptyLay->addSpacing(16);
+		emptyLay->addLayout(themeRow);
 		emptyLay->addStretch();
 		connect(m_createClientBtn, &QPushButton::clicked, this, &ShellWindow::createClientClicked);
+		connect(m_lightThemeBtn, &QPushButton::clicked, this,
+				[this]
+				{
+					if (m_app)
+					{
+						m_app->requestThemeScheme(qtheme::ColorScheme::Light, ThemeOrigin::HostUi);
+					}
+				});
+		connect(m_darkThemeBtn, &QPushButton::clicked, this,
+				[this]
+				{
+					if (m_app)
+					{
+						m_app->requestThemeScheme(qtheme::ColorScheme::Dark, ThemeOrigin::HostUi);
+					}
+				});
 
 		m_embed = new EmbedContainer(m_stack);
 		m_stack->addWidget(m_emptyPage);
@@ -258,7 +296,63 @@ namespace mps::host
 		m_activationHistory = {kHomeTabId};
 		rebuildTabs();
 		syncWorkspace();
+		applyThemeChrome();
 		setAcceptDrops(true);
+	}
+
+	void ShellWindow::applyThemeChrome()
+	{
+		const QColor window = qtheme::api::color(QStringLiteral("palette"), QStringLiteral("window"), QColor(0xf3, 0xf3, 0xf3));
+		const QColor surface = qtheme::api::color(QStringLiteral("palette"), QStringLiteral("surface"), QColor(0xff, 0xff, 0xff));
+		const QColor stroke = qtheme::api::color(QStringLiteral("palette"), QStringLiteral("stroke"), QColor(0xd1, 0xd1, 0xd1));
+		const QColor text = qtheme::api::color(QStringLiteral("palette"), QStringLiteral("windowText"), QColor(0x1a, 0x1a, 0x1a));
+		const QColor mid = qtheme::api::color(QStringLiteral("palette"), QStringLiteral("mid"), QColor(0xe0, 0xe0, 0xe0));
+		const QColor accent = qtheme::api::color(QStringLiteral("palette"), QStringLiteral("accent"), QColor(0x00, 0x78, 0xd4));
+
+		if (m_titleBar)
+		{
+			m_titleBar->setStyleSheet(
+				QStringLiteral("#TitleBar { background: %1; border-bottom: 1px solid %2; }").arg(mid.name(), stroke.name()));
+		}
+		if (m_tabDropTrail)
+		{
+			m_tabDropTrail->setStyleSheet(QStringLiteral("#TabDropTrail { background: transparent; }"));
+		}
+		if (m_emptyPage)
+		{
+			m_emptyPage->setStyleSheet(QStringLiteral("background: %1; color: %2;").arg(window.name(), text.name()));
+		}
+		if (centralWidget())
+		{
+			centralWidget()->setStyleSheet(QStringLiteral("background: %1;").arg(window.name()));
+		}
+		const QString btnQss = QStringLiteral("QPushButton { background: %1; color: %2; border: 1px solid %3; border-radius: 4px; "
+											  "padding: 4px 10px; }"
+											  "QPushButton:hover { background: %4; }"
+											  "QPushButton:flat { border: none; background: transparent; }")
+								   .arg(surface.name(), text.name(), stroke.name(), mid.name());
+		for (auto* b : {m_minBtn, m_maxBtn, m_closeBtn, m_createClientBtn, m_lightThemeBtn, m_darkThemeBtn})
+		{
+			if (b)
+			{
+				b->setStyleSheet(btnQss);
+			}
+		}
+		if (m_dropIndicator)
+		{
+			m_dropIndicator->setStyleSheet(
+				QStringLiteral("#DropInsertIndicator { background: %1; border-radius: 1px; }").arg(accent.name()));
+		}
+		for (TabButton* btn : m_tabButtons)
+		{
+			if (btn)
+			{
+				btn->refreshChrome();
+			}
+		}
+		style()->unpolish(this);
+		style()->polish(this);
+		update();
 	}
 
 	void ShellWindow::showEmptyState(bool empty)

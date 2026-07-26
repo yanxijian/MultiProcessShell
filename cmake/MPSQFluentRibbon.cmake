@@ -1,4 +1,5 @@
-# Resolve sibling QFluentRibbon (+ QThemeEngine via QFR) for the Demo Client ribbon pages.
+# Resolve sibling QFluentRibbon for Demo Client ribbon pages.
+# QThemeEngine must already be resolved via MPSQThemeEngine.cmake (shared build tree).
 # Override with -DMPS_QFR_SOURCE_DIR=... or install packages on CMAKE_PREFIX_PATH.
 
 set(MPS_QFR_SOURCE_DIR "" CACHE PATH "Path to QFluentRibbon sources (optional; default ../QFluentRibbon)")

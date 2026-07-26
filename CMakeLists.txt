@@ -67,6 +67,7 @@ add_subdirectory(src/common)
 
 if(MPS_BUILD_SRC OR MPS_BUILD_DEMOS)
   add_subdirectory(src/ipc_qt)
+  include(MPSQThemeEngine)
   add_subdirectory(src/host)
   include(MPSQFluentRibbon)
   add_subdirectory(src/client)

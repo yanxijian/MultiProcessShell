@@ -1,5 +1,7 @@
 #include "tear_out_preview.hpp"
 
+#include "qtheme/api.hpp"
+
 #include <QImage>
 #include <QPaintEvent>
 #include <QPainter>
@@ -7,6 +9,21 @@
 
 namespace mps::host
 {
+	namespace
+	{
+		QColor themeColor(const char* group, const char* role, QColor fallback)
+		{
+			const QColor c = qtheme::api::color(QString::fromUtf8(group), QString::fromUtf8(role), fallback);
+			return c.isValid() ? c : fallback;
+		}
+
+		QColor withAlpha(QColor c, int alpha)
+		{
+			c.setAlpha(alpha);
+			return c;
+		}
+	} // namespace
+
 	TabDragGhost::TabDragGhost(QWidget* parent)
 		: QWidget(parent, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint)
 	{
@@ -97,8 +114,10 @@ namespace mps::host
 		}
 		else
 		{
-			p.setPen(QPen(QColor(40, 40, 40), 1));
-			p.setBrush(QColor(245, 245, 245, 235));
+			const QColor stroke = themeColor("palette", "stroke", QColor(0xd1, 0xd1, 0xd1));
+			const QColor tabBg = themeColor("tab", "bg", QColor(0xf3, 0xf3, 0xf3));
+			p.setPen(QPen(stroke, 1));
+			p.setBrush(withAlpha(tabBg, 235));
 			p.drawRoundedRect(content.adjusted(0.5, 0.5, -0.5, -0.5), kRadius, kRadius);
 		}
 	}
@@ -156,24 +175,31 @@ namespace mps::host
 		p.setRenderHint(QPainter::Antialiasing, true);
 		p.setRenderHint(QPainter::SmoothPixmapTransform, true);
 
+		const QColor window = themeColor("palette", "window", QColor(0xf3, 0xf3, 0xf3));
+		const QColor mid = themeColor("palette", "mid", QColor(0xe0, 0xe0, 0xe0));
+		const QColor stroke = themeColor("palette", "stroke", QColor(0xd1, 0xd1, 0xd1));
+		const QColor text = themeColor("palette", "windowText", QColor(0x1a, 0x1a, 0x1a));
+		const QColor tabBg = themeColor("tab", "bg", QColor(0xf3, 0xf3, 0xf3));
+		const QColor tabFg = themeColor("tab", "fg", QColor(0x5c, 0x5c, 0x5c));
+
 		const QRectF r = QRectF(rect()).adjusted(kFramePad, kFramePad, -kFramePad, -kFramePad);
-		p.setPen(QPen(QColor(40, 40, 40, 180), 1.2));
-		p.setBrush(QColor(248, 248, 248, 220));
+		p.setPen(QPen(withAlpha(stroke, 200), 1.2));
+		p.setBrush(withAlpha(window, 230));
 		p.drawRoundedRect(r, 6, 6);
 
 		// Title / tab bar — height matches ShellWindow (tab ghost is centered in this band).
 		const QRectF titleBar(r.left(), r.top(), r.width(), kTitleBarHeight);
 		p.setPen(Qt::NoPen);
-		p.setBrush(QColor(0xe8, 0xe8, 0xe8, 230));
+		p.setBrush(withAlpha(mid, 235));
 		p.drawRoundedRect(titleBar, 6, 6);
-		p.fillRect(QRectF(titleBar.left(), titleBar.center().y(), titleBar.width(), titleBar.height() / 2), QColor(0xe8, 0xe8, 0xe8, 230));
+		p.fillRect(QRectF(titleBar.left(), titleBar.center().y(), titleBar.width(), titleBar.height() / 2), withAlpha(mid, 235));
 
 		// Home stub so the floating client tab sits after it (wrap alignment).
 		const QRectF homeChip(titleBar.left() + 8, titleBar.top() + 6, 64, titleBar.height() - 12);
-		p.setPen(QPen(QColor(90, 90, 90), 1.5));
-		p.setBrush(QColor(243, 243, 243, 220));
+		p.setPen(QPen(stroke, 1.5));
+		p.setBrush(withAlpha(tabBg, 220));
 		p.drawRoundedRect(homeChip, 4, 4);
-		p.setPen(QColor(40, 40, 40));
+		p.setPen(tabFg);
 		QFont f = font();
 		f.setPointSizeF(f.pointSizeF());
 		p.setFont(f);
@@ -191,10 +217,10 @@ namespace mps::host
 		}
 		else
 		{
-			p.setPen(QPen(QColor(160, 160, 160, 160), 1, Qt::DashLine));
-			p.setBrush(QColor(235, 235, 235, 160));
+			p.setPen(QPen(withAlpha(stroke, 160), 1, Qt::DashLine));
+			p.setBrush(withAlpha(window, 160));
 			p.drawRoundedRect(body, 4, 4);
-			p.setPen(QColor(100, 100, 100, 180));
+			p.setPen(withAlpha(text, 180));
 			f.setBold(false);
 			p.setFont(f);
 			p.drawText(body, Qt::AlignCenter, QStringLiteral("Moving…"));

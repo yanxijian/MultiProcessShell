@@ -33,6 +33,8 @@ namespace mps::host
 		}
 		void setInfo(const TabInfo& info);
 		void setActive(bool on);
+		/// Re-read QTE palette tokens into this tab's stylesheet.
+		void refreshChrome();
 
 	signals:
 		void closeRequested(qint64 tabId);
@@ -133,6 +135,8 @@ namespace mps::host
 		void forceClose();
 		/// Refresh tab labels / styles for a session's health (M6).
 		void setSessionUnhealthy(ClientSession* session, bool unhealthy);
+		/// Re-apply title bar / Home / tab chrome from the Host QTE skin.
+		void applyThemeChrome();
 
 	signals:
 		void createClientClicked();
@@ -174,6 +178,8 @@ namespace mps::host
 		QStackedWidget* m_stack = nullptr;
 		QWidget* m_emptyPage = nullptr;
 		QPushButton* m_createClientBtn = nullptr;
+		QPushButton* m_lightThemeBtn = nullptr;
+		QPushButton* m_darkThemeBtn = nullptr;
 		EmbedContainer* m_embed = nullptr;
 		QVector<TabInfo> m_tabs;
 		qint64 m_activeTabId = kHomeTabId;

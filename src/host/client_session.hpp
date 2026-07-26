@@ -3,7 +3,9 @@
 
 #include "envelope_channel.hpp"
 #include "tab_info.hpp"
+#include "theme_scheme.hpp"
 
+#include <QByteArray>
 #include <QLocalSocket>
 #include <QObject>
 #include <QProcess>
@@ -46,6 +48,8 @@ namespace mps::host
 		void requestClose(qint64 tabId);
 		void notifyReattachment(qint64 shellId);
 		void setDragSuppress(bool on);
+		/// Host → Client: push global ColorScheme ("light" / "dark").
+		void pushThemeScheme(const QByteArray& params);
 		[[nodiscard]] bool isDead() const
 		{
 			return m_dead;
@@ -66,6 +70,8 @@ namespace mps::host
 		void sessionUnhealthy(ClientSession* self);
 		void sessionHealthy(ClientSession* self);
 		void invokeNewWindow(ClientSession* self, qint64 sourceTabId);
+		/// Validated C→H theme.set (wire scheme already parsed).
+		void themeSetRequested(ClientSession* self, mps::theme::Scheme scheme);
 
 	private:
 		void onEnvelope(shell::ipc::v1::Envelope env);

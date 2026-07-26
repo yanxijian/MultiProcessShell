@@ -4,6 +4,7 @@
 #include "client_session.hpp"
 #include "shell_window.hpp"
 #include "tear_out_preview.hpp"
+#include "theme_service.hpp"
 
 #include <QHash>
 #include <QLocalServer>
@@ -42,6 +43,11 @@ namespace mps::host
 		[[nodiscard]] ShellWindow* shellFromStripDropTarget(QObject* watched) const;
 		[[nodiscard]] ShellWindow* tabDropZoneShellAtGlobal(QPoint globalPos) const;
 		void destroyShellIfEmpty(ShellWindow* shell);
+		[[nodiscard]] ThemeService* themeService() const
+		{
+			return m_theme.get();
+		}
+		void requestThemeScheme(qtheme::ColorScheme scheme, ThemeOrigin origin);
 
 	protected:
 		bool eventFilter(QObject* watched, QEvent* event) override;
@@ -50,12 +56,17 @@ namespace mps::host
 		void onNewConnection();
 		void bindShell(ShellWindow* shell);
 		void onSessionReady(ClientSession* session);
+		void onSessionHelloOk(ClientSession* session);
 		void onSubWindowAdded(ClientSession* session, qint64 tabId, QString title, quintptr wid);
 		void onSubWindowRemoved(ClientSession* session, qint64 tabId);
 		void onSessionDead(ClientSession* session);
 		void onSessionUnhealthy(ClientSession* session);
 		void onSessionHealthy(ClientSession* session);
 		void terminateSession(ClientSession* session);
+		void onThemeSetRequested(ClientSession* session, mps::theme::Scheme scheme);
+		void onThemeSchemeChanged(qtheme::ColorScheme scheme, ThemeOrigin origin);
+		void pushThemeToSession(ClientSession* session);
+		void broadcastTheme(qtheme::ColorScheme scheme);
 		void updateTabDragVisuals();
 		void clearAllTabYieldPreviews();
 		void pollEscapeCancel();
@@ -76,6 +87,7 @@ namespace mps::host
 		QString m_endpoint;
 		QString m_token;
 		QLocalServer* m_server = nullptr;
+		std::unique_ptr<ThemeService> m_theme;
 		std::vector<std::unique_ptr<ShellWindow>> m_shells;
 		std::vector<std::unique_ptr<ClientSession>> m_sessions;
 		QHash<qint64, ShellWindow*> m_tabToShell;
