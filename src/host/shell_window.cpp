@@ -17,11 +17,12 @@
 #include <QMenu>
 #include <QMimeData>
 #include <QMouseEvent>
+#include <QPaintEvent>
 #include <QPainter>
+#include <QPainterPath>
 #include <QPalette>
 #include <QPropertyAnimation>
 #include <QStackedWidget>
-#include <QStyle>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QWindow>
@@ -35,6 +36,27 @@ namespace mps::host
 		qint64 g_nextShellId = 1;
 		constexpr int kTabStripTop = 4;
 		constexpr int kTabSlideMs = 120;
+		constexpr int kTabCornerRadius = 4;
+
+		void clearStyleSheet(QWidget* widget)
+		{
+			if (widget && !widget->styleSheet().isEmpty())
+			{
+				widget->setStyleSheet(QString());
+			}
+		}
+
+		void applyPaletteFill(QWidget* widget, const QPalette& pal, QPalette::ColorRole role)
+		{
+			if (!widget)
+			{
+				return;
+			}
+			clearStyleSheet(widget);
+			widget->setPalette(pal);
+			widget->setBackgroundRole(role);
+			widget->setAutoFillBackground(true);
+		}
 	} // namespace
 
 	TabButton::TabButton(const TabInfo& info, QWidget* parent)
@@ -42,9 +64,10 @@ namespace mps::host
 		, m_info(info)
 	{
 		setObjectName(QStringLiteral("TabButton"));
-		setFrameShape(QFrame::StyledPanel);
+		setFrameShape(QFrame::NoFrame);
 		setCursor(Qt::ArrowCursor);
 		setAttribute(Qt::WA_Hover, true);
+		setAttribute(Qt::WA_StyledBackground, false);
 		auto* lay = new QHBoxLayout(this);
 		lay->setContentsMargins(10, 4, 6, 4);
 		lay->setSpacing(6);
@@ -53,14 +76,15 @@ namespace mps::host
 		lay->addWidget(m_title);
 		if (!m_info.isHome)
 		{
-			auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
-			closeBtn->setFixedSize(18, 18);
-			closeBtn->setFlat(true);
-			closeBtn->setCursor(Qt::ArrowCursor);
+			m_closeBtn = new QPushButton(QStringLiteral("×"), this);
+			m_closeBtn->setFixedSize(18, 18);
+			m_closeBtn->setFlat(true);
+			m_closeBtn->setCursor(Qt::ArrowCursor);
+			m_closeBtn->setFocusPolicy(Qt::NoFocus);
 			// Middle-click on × should close too (button otherwise swallows the event).
-			closeBtn->installEventFilter(this);
-			lay->addWidget(closeBtn);
-			connect(closeBtn, &QPushButton::clicked, this,
+			m_closeBtn->installEventFilter(this);
+			lay->addWidget(m_closeBtn);
+			connect(m_closeBtn, &QPushButton::clicked, this,
 					[this]
 					{
 						emit closeRequested(m_info.tabId);
@@ -76,13 +100,53 @@ namespace mps::host
 		refreshChrome();
 	}
 
+	void TabButton::updateTitlePalette()
+	{
+		if (!m_title)
+		{
+			return;
+		}
+		const QPalette appPal = QApplication::palette();
+		QPalette titlePal = m_title->palette();
+		const QColor fg = m_active ? appPal.color(QPalette::Text) : appPal.color(QPalette::WindowText);
+		titlePal.setColor(QPalette::WindowText, fg);
+		titlePal.setColor(QPalette::Text, fg);
+		m_title->setPalette(titlePal);
+	}
+
 	void TabButton::refreshChrome()
 	{
-		const QPalette pal = palette();
+		// Owner-drawn chrome (no QSS): keep QPushButton/QLabel on QThemeStyle when demo applies QTE.
+		clearStyleSheet(this);
+		clearStyleSheet(m_title);
+		clearStyleSheet(m_closeBtn);
+		const QPalette pal = QApplication::palette();
+		setPalette(pal);
+		if (m_closeBtn)
+		{
+			m_closeBtn->setPalette(pal);
+		}
+		updateTitlePalette();
+		update();
+	}
+
+	void TabButton::setActive(bool on)
+	{
+		if (m_active == on)
+		{
+			return;
+		}
+		m_active = on;
+		updateTitlePalette();
+		update();
+	}
+
+	void TabButton::paintEvent(QPaintEvent* event)
+	{
+		Q_UNUSED(event);
+		const QPalette pal = QApplication::palette();
 		const QColor tabBg = pal.color(QPalette::Window);
 		const QColor tabSelected = pal.color(QPalette::Base);
-		const QColor fg = pal.color(QPalette::WindowText);
-		const QColor fgSelected = pal.color(QPalette::Text);
 		const bool dark = tabBg.lightness() < 128;
 		QColor accent = QColor(0x5a, 0x5a, 0x5a);
 		QColor idleBg = tabBg;
@@ -94,20 +158,16 @@ namespace mps::host
 				idleBg = dark ? QColor(0x3d, 0x34, 0x20) : QColor(0xff, 0xf4, 0xe0);
 			}
 		}
-		setStyleSheet(QStringLiteral("#TabButton { border: 2px solid %1; border-radius: 4px; background: %2; color: %3; }"
-									 "#TabButton[active=\"true\"] { background: %4; color: %5; }")
-						  .arg(accent.name(), idleBg.name(), fg.name(), tabSelected.name(), fgSelected.name()));
-		if (m_title)
-		{
-			m_title->setStyleSheet(QStringLiteral("color: %1;").arg(fg.name()));
-		}
-	}
+		const QColor fill = m_active ? tabSelected : idleBg;
 
-	void TabButton::setActive(bool on)
-	{
-		setProperty("active", on);
-		style()->unpolish(this);
-		style()->polish(this);
+		QPainter painter(this);
+		painter.setRenderHint(QPainter::Antialiasing, true);
+		const QRectF r = QRectF(rect()).adjusted(1.0, 1.0, -1.0, -1.0);
+		QPainterPath path;
+		path.addRoundedRect(r, kTabCornerRadius, kTabCornerRadius);
+		painter.fillPath(path, fill);
+		painter.setPen(QPen(accent, 2.0));
+		painter.drawPath(path);
 	}
 
 	void TabButton::mousePressEvent(QMouseEvent* event)
@@ -236,6 +296,7 @@ namespace mps::host
 		{
 			b->setFixedSize(28, 24);
 			b->setFlat(true);
+			b->setFocusPolicy(Qt::NoFocus);
 			titleLay->addWidget(b);
 		}
 		connect(minBtn, &QPushButton::clicked, this, &QWidget::showMinimized);
@@ -245,6 +306,13 @@ namespace mps::host
 					isMaximized() ? showNormal() : showMaximized();
 				});
 		connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
+
+		auto* titleSep = new QFrame(root);
+		titleSep->setObjectName(QStringLiteral("TitleBarSep"));
+		titleSep->setFrameShape(QFrame::HLine);
+		titleSep->setFrameShadow(QFrame::Plain);
+		titleSep->setFixedHeight(1);
+		m_titleBarSep = titleSep;
 
 		m_stack = new QStackedWidget(root);
 		m_emptyPage = new QWidget(m_stack);
@@ -293,6 +361,7 @@ namespace mps::host
 		m_stack->addWidget(m_embed);
 
 		rootLay->addWidget(m_titleBar);
+		rootLay->addWidget(titleSep);
 		rootLay->addWidget(m_stack, 1);
 
 		m_tabs.push_back(TabInfo::makeHome());
@@ -306,50 +375,41 @@ namespace mps::host
 
 	void ShellWindow::applyThemeChrome()
 	{
-		// Prefer QApplication palette: widget-local palette can lag behind Engine::setColorScheme
-		// when chrome stylesheets were previously applied.
+		// Host chrome must not use QSS when Demo installs QThemeStyle: stylesheets
+		// steal painting from QTE for QPushButton and leave sticky Light colors.
 		const QPalette pal = QApplication::palette();
 		setPalette(pal);
-		const QColor window = pal.color(QPalette::Window);
-		const QColor surface = pal.color(QPalette::Base);
-		const QColor stroke = pal.color(QPalette::Mid);
-		const QColor text = pal.color(QPalette::WindowText);
-		const QColor mid = pal.color(QPalette::Button);
-		const QColor accent = pal.color(QPalette::Highlight);
-
-		if (m_titleBar)
+		clearStyleSheet(this);
+		applyPaletteFill(m_titleBar, pal, QPalette::Button);
+		if (m_titleBarSep)
 		{
-			m_titleBar->setStyleSheet(
-				QStringLiteral("#TitleBar { background: %1; border-bottom: 1px solid %2; }").arg(mid.name(), stroke.name()));
+			clearStyleSheet(m_titleBarSep);
+			m_titleBarSep->setPalette(pal);
 		}
 		if (m_tabDropTrail)
 		{
-			m_tabDropTrail->setStyleSheet(QStringLiteral("#TabDropTrail { background: transparent; }"));
+			clearStyleSheet(m_tabDropTrail);
+			m_tabDropTrail->setPalette(pal);
+			m_tabDropTrail->setAutoFillBackground(false);
 		}
-		if (m_emptyPage)
-		{
-			m_emptyPage->setStyleSheet(QStringLiteral("background: %1; color: %2;").arg(window.name(), text.name()));
-		}
-		if (centralWidget())
-		{
-			centralWidget()->setStyleSheet(QStringLiteral("background: %1;").arg(window.name()));
-		}
-		const QString btnQss = QStringLiteral("QPushButton { background: %1; color: %2; border: 1px solid %3; border-radius: 4px; "
-											  "padding: 4px 10px; }"
-											  "QPushButton:hover { background: %4; }"
-											  "QPushButton:flat { border: none; background: transparent; }")
-								   .arg(surface.name(), text.name(), stroke.name(), mid.name());
+		applyPaletteFill(m_emptyPage, pal, QPalette::Window);
+		applyPaletteFill(centralWidget(), pal, QPalette::Window);
 		for (auto* b : {m_minBtn, m_maxBtn, m_closeBtn, m_createClientBtn, m_lightThemeBtn, m_darkThemeBtn})
 		{
 			if (b)
 			{
-				b->setStyleSheet(btnQss);
+				clearStyleSheet(b);
+				b->setPalette(pal);
 			}
 		}
 		if (m_dropIndicator)
 		{
-			m_dropIndicator->setStyleSheet(
-				QStringLiteral("#DropInsertIndicator { background: %1; border-radius: 1px; }").arg(accent.name()));
+			clearStyleSheet(m_dropIndicator);
+			QPalette tip = pal;
+			tip.setColor(QPalette::Window, pal.color(QPalette::Highlight));
+			m_dropIndicator->setPalette(tip);
+			m_dropIndicator->setBackgroundRole(QPalette::Window);
+			m_dropIndicator->setAutoFillBackground(true);
 		}
 		for (TabButton* btn : m_tabButtons)
 		{
@@ -473,7 +533,11 @@ namespace mps::host
 			m_dropIndicator->setObjectName(QStringLiteral("DropInsertIndicator"));
 			m_dropIndicator->setFixedWidth(3);
 			m_dropIndicator->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-			m_dropIndicator->setStyleSheet(QStringLiteral("#DropInsertIndicator { background: #2d6cdf; border-radius: 1px; }"));
+			QPalette tip = QApplication::palette();
+			tip.setColor(QPalette::Window, tip.color(QPalette::Highlight));
+			m_dropIndicator->setPalette(tip);
+			m_dropIndicator->setBackgroundRole(QPalette::Window);
+			m_dropIndicator->setAutoFillBackground(true);
 		}
 
 		int x = 8;

@@ -33,7 +33,7 @@ namespace mps::host
 		}
 		void setInfo(const TabInfo& info);
 		void setActive(bool on);
-		/// Re-read QTE palette tokens into this tab's stylesheet.
+		/// Re-read app palette (QTE-driven in demos) into owner-drawn tab chrome.
 		void refreshChrome();
 
 	signals:
@@ -44,15 +44,20 @@ namespace mps::host
 		void dragStarted(qint64 tabId, QPoint localHotSpot);
 
 	protected:
+		void paintEvent(QPaintEvent* event) override;
 		void mousePressEvent(QMouseEvent* event) override;
 		void mouseMoveEvent(QMouseEvent* event) override;
 		void mouseReleaseEvent(QMouseEvent* event) override;
 		bool eventFilter(QObject* watched, QEvent* event) override;
 
 	private:
+		void updateTitlePalette();
+
 		TabInfo m_info;
 		QLabel* m_title = nullptr;
+		QPushButton* m_closeBtn = nullptr;
 		QPoint m_dragStart;
+		bool m_active = false;
 		bool m_pressActive = false;
 		bool m_dragging = false;
 	};
@@ -169,6 +174,7 @@ namespace mps::host
 		QObject* m_stripDropFilter = nullptr;
 		qint64 m_shellId = 0;
 		QWidget* m_titleBar = nullptr;
+		QFrame* m_titleBarSep = nullptr;
 		QWidget* m_tabDropTrail = nullptr; // trailing strip: drop-to-append + system-move
 		QWidget* m_dropIndicator = nullptr;
 		QPushButton* m_minBtn = nullptr;
