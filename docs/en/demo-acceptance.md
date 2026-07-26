@@ -13,7 +13,7 @@ Manual regression. Finish this list before later polish (tab overflow, REQ timeo
 
 ## Create / titles
 
-- [ ] Home → Create Client → `Client1-Window1` embeds and fills the client area
+- [ ] Home（**demo_host** 注入的客户区）→ Create Client → `Client1-Window1` embeds and fills the client area
 - [ ] Client “新建窗口” → `Client1-Window2` (same process, new tab)
 - [ ] Home → Light / Dark → shell chrome + embedded Client Ribbon sync
 - [ ] Ribbon Theme Light/Dark → Host + other Client processes switch together

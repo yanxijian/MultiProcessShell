@@ -23,8 +23,8 @@ Phase-1 platform: **Windows (form A)**.
 ### 2.1 Startup
 
 - Demo starts with **exactly one** top-level shell.  
-- Permanent **Home** tab (not closable, not tear-out).  
-- Home content center shows **Create Client**; no Client process starts automatically.
+- Permanent **Home** tab (not closable, not tear-out) — owned by **`mps_host`**.  
+- **Home client area** (Create Client, Light/Dark) is injected by **`demo_host`** via `ShellApp::setHomeContentFactory`; the framework default is an empty slot. No Client process starts automatically.
 
 ### 2.2 Create Client (new process / pageType session)
 
@@ -67,8 +67,8 @@ Examples: `Client1-Window1`, `Client1-Window2`, `Client2-Window1`.
 └────────────────────────────────────────────────────────┘
 ```
 
-- **Title bar**: Home + Client tabs + min / max / close.  
-- **Workspace**: Home page or current Client embed (should fill the client area).
+- **Title bar**: Home + Client tabs + min / max / close (framework chrome).  
+- **Workspace**: Home client-area content (Demo-injected) or the current Client embed (should fill the client area).
 
 ## 5. Tear-out / merge (browser-style detachable tabs)
 
@@ -126,9 +126,10 @@ Manual checklist: [demo-acceptance.md](demo-acceptance.md).
 
 | Path | Role |
 |------|------|
-| `demos/` | `mps_demo_host` / `mps_demo_client` |
-| `src/host/` | Shell, tabs, sessions, Win embed; tear-out: `tear_out_preview.*` |
-| `src/client/` | Client process and pages |
+| `demos/demo_host/` | Host Demo: `ThemeService`, Home client area (`home_page`), composition |
+| `demos/demo_client/` | Client Demo: QFR Ribbon page |
+| `src/host/` | Shell, tabs, sessions, Win embed, Home **slot**; tear-out: `tear_out_preview.*` (**no** business client-area widgets) |
+| `src/client/` | Client process + abstract `ClientPage` (no concrete business UI) |
 | `src/common/` + `proto/` | Framing and IDL |
 
 ## 9. Decisions
@@ -137,7 +138,7 @@ Manual checklist: [demo-acceptance.md](demo-acceptance.md).
 |---|----------|
 | 1 | Browser-style detachable tabs / close / tear-out / merge |
 | 2 | Spare shell with no Client tabs → destroy |
-| 3 | One shell + permanent **Home**; Create Client on Home |
+| 3 | One shell + permanent **Home tab** (framework); Create Client / Light/Dark in **demo_host** Home client area |
 | 4 | Client page New Window → same-Client child |
 | 5 | Titles: `Client{N}-Window{M}`; Home excluded |
 | 6 | Close uses activation history (includes Home); not forced to Home |

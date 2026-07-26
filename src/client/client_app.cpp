@@ -160,7 +160,7 @@ namespace mps::client
 #else
 		hello->set_pid(static_cast<uint32_t>(QCoreApplication::applicationPid()));
 #endif
-		hello->set_app_name("demo_client");
+		hello->set_app_name(m_appName.toStdString());
 		auto* caps = hello->mutable_caps();
 		caps->set_embed(shell::ipc::v1::EMBED_HWND);
 		caps->set_tab_drag(true);
@@ -219,7 +219,7 @@ namespace mps::client
 		{
 			auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(),
 											  0, tabId);
-			env->mutable_invoke()->set_method("demo.request_new_window");
+			env->mutable_invoke()->set_method(m_requestNewWindowMethod.toStdString());
 			m_channel->send(env);
 		};
 		page->onRequestTheme = [this, tabId](mps::theme::Scheme scheme)

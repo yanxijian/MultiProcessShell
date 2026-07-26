@@ -134,17 +134,17 @@ namespace mps::host
 		/// Logical size of a tab button (for drag ghost hotspot on high-DPI).
 		[[nodiscard]] QSize tabButtonSize(qint64 tabId) const;
 		void installStripDropFilter(QObject* filter);
-		void showEmptyState(bool empty);
+		/// Replace Home client-area content (framework owns only the empty slot by default).
+		void setHomeContent(QWidget* page);
 		void takeTabsFrom(ShellWindow* other, const QList<qint64>& tabIds);
 		/// Close without emitting shellCloseRequested (app-driven teardown).
 		void forceClose();
 		/// Refresh tab labels / styles for a session's health (M6).
 		void setSessionUnhealthy(ClientSession* session, bool unhealthy);
-		/// Re-apply title bar / Home / tab chrome from the Host QTE skin.
+		/// Re-apply title bar / Home slot / tab chrome from the app palette (QTE in demos).
 		void applyThemeChrome();
 
 	signals:
-		void createClientClicked();
 		void tabCloseRequested(qint64 tabId);
 		void tabActivated(qint64 tabId);
 		void tabTearOutRequested(qint64 tabId, QRect suggestedGeometry);
@@ -182,10 +182,7 @@ namespace mps::host
 		QPushButton* m_closeBtn = nullptr;
 		QHBoxLayout* m_tabRow = nullptr;
 		QStackedWidget* m_stack = nullptr;
-		QWidget* m_emptyPage = nullptr;
-		QPushButton* m_createClientBtn = nullptr;
-		QPushButton* m_lightThemeBtn = nullptr;
-		QPushButton* m_darkThemeBtn = nullptr;
+		QWidget* m_homeSlot = nullptr;
 		EmbedContainer* m_embed = nullptr;
 		QVector<TabInfo> m_tabs;
 		qint64 m_activeTabId = kHomeTabId;

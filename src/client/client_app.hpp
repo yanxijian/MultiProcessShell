@@ -29,6 +29,14 @@ namespace mps::client
 		{
 			m_appearanceHandler = std::move(handler);
 		}
+		void setAppName(QString name)
+		{
+			m_appName = std::move(name);
+		}
+		void setRequestNewWindowMethod(QString method)
+		{
+			m_requestNewWindowMethod = std::move(method);
+		}
 
 	private:
 		void applyThemeScheme(mps::theme::Scheme scheme);
@@ -45,6 +53,8 @@ namespace mps::client
 
 		QString m_endpoint;
 		QString m_token;
+		QString m_appName = QStringLiteral("client");
+		QString m_requestNewWindowMethod = QStringLiteral("shell.request_new_window");
 		PageFactory m_factory;
 		AppearanceHandler m_appearanceHandler;
 		bool m_enableHeartbeat = true;

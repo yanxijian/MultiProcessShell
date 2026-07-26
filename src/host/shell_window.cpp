@@ -2,8 +2,6 @@
 
 #include "shell_app.hpp"
 #include "tab_strip.hpp"
-#include "theme_origin.hpp"
-#include "theme_scheme.hpp"
 
 #include <QAction>
 #include <QApplication>
@@ -258,7 +256,7 @@ namespace mps::host
 		setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
 		setMinimumSize(720, 480);
 		resize(960, 640);
-		setWindowTitle(QStringLiteral("MultiProcessShell Demo"));
+		setWindowTitle(QStringLiteral("Shell"));
 
 		auto* root = new QWidget(this);
 		setCentralWidget(root);
@@ -315,49 +313,12 @@ namespace mps::host
 		m_titleBarSep = titleSep;
 
 		m_stack = new QStackedWidget(root);
-		m_emptyPage = new QWidget(m_stack);
-		auto* emptyLay = new QVBoxLayout(m_emptyPage);
-		m_createClientBtn = new QPushButton(QStringLiteral("Create Client"), m_emptyPage);
-		m_createClientBtn->setFixedSize(160, 40);
-		m_lightThemeBtn = new QPushButton(QStringLiteral("Light"), m_emptyPage);
-		m_darkThemeBtn = new QPushButton(QStringLiteral("Dark"), m_emptyPage);
-		m_lightThemeBtn->setFixedSize(80, 32);
-		m_darkThemeBtn->setFixedSize(80, 32);
-		auto* themeRow = new QHBoxLayout();
-		themeRow->setSpacing(12);
-		themeRow->addStretch();
-		themeRow->addWidget(m_lightThemeBtn);
-		themeRow->addWidget(m_darkThemeBtn);
-		themeRow->addStretch();
-		emptyLay->addStretch();
-		emptyLay->addWidget(m_createClientBtn, 0, Qt::AlignCenter);
-		emptyLay->addSpacing(16);
-		emptyLay->addLayout(themeRow);
-		emptyLay->addStretch();
-		connect(m_createClientBtn, &QPushButton::clicked, this,
-				[this]()
-				{
-					emit createClientClicked();
-				});
-		connect(m_lightThemeBtn, &QPushButton::clicked, this,
-				[this]
-				{
-					if (m_app)
-					{
-						m_app->setScheme(mps::theme::Scheme::Light, ThemeOrigin::HostUi);
-					}
-				});
-		connect(m_darkThemeBtn, &QPushButton::clicked, this,
-				[this]
-				{
-					if (m_app)
-					{
-						m_app->setScheme(mps::theme::Scheme::Dark, ThemeOrigin::HostUi);
-					}
-				});
-
+		m_homeSlot = new QWidget(m_stack);
+		auto* homeLay = new QVBoxLayout(m_homeSlot);
+		homeLay->setContentsMargins(0, 0, 0, 0);
+		homeLay->setSpacing(0);
 		m_embed = new EmbedContainer(m_stack);
-		m_stack->addWidget(m_emptyPage);
+		m_stack->addWidget(m_homeSlot);
 		m_stack->addWidget(m_embed);
 
 		rootLay->addWidget(m_titleBar);
@@ -371,6 +332,35 @@ namespace mps::host
 		syncWorkspace();
 		applyThemeChrome();
 		setAcceptDrops(true);
+	}
+
+	void ShellWindow::setHomeContent(QWidget* page)
+	{
+		if (!m_homeSlot)
+		{
+			return;
+		}
+		QLayout* lay = m_homeSlot->layout();
+		if (!lay)
+		{
+			lay = new QVBoxLayout(m_homeSlot);
+			lay->setContentsMargins(0, 0, 0, 0);
+			lay->setSpacing(0);
+		}
+		while (QLayoutItem* item = lay->takeAt(0))
+		{
+			if (QWidget* w = item->widget())
+			{
+				w->deleteLater();
+			}
+			delete item;
+		}
+		if (page)
+		{
+			lay->addWidget(page);
+		}
+		applyThemeChrome();
+		syncWorkspace();
 	}
 
 	void ShellWindow::applyThemeChrome()
@@ -392,9 +382,9 @@ namespace mps::host
 			m_tabDropTrail->setPalette(pal);
 			m_tabDropTrail->setAutoFillBackground(false);
 		}
-		applyPaletteFill(m_emptyPage, pal, QPalette::Window);
+		applyPaletteFill(m_homeSlot, pal, QPalette::Window);
 		applyPaletteFill(centralWidget(), pal, QPalette::Window);
-		for (auto* b : {m_minBtn, m_maxBtn, m_closeBtn, m_createClientBtn, m_lightThemeBtn, m_darkThemeBtn})
+		for (auto* b : {m_minBtn, m_maxBtn, m_closeBtn})
 		{
 			if (b)
 			{
@@ -421,12 +411,6 @@ namespace mps::host
 		update();
 	}
 
-	void ShellWindow::showEmptyState(bool empty)
-	{
-		Q_UNUSED(empty);
-		syncWorkspace();
-	}
-
 	void ShellWindow::syncWorkspace()
 	{
 		if (!m_stack)
@@ -438,7 +422,7 @@ namespace mps::host
 		if (showHome)
 		{
 			m_embed->clearActive(true);
-			m_stack->setCurrentWidget(m_emptyPage);
+			m_stack->setCurrentWidget(m_homeSlot);
 		}
 		else
 		{

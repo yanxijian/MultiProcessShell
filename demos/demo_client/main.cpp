@@ -91,6 +91,8 @@ int main(int argc, char* argv[])
 	};
 
 	mps::client::ClientApp client(parser.value(endpoint), parser.value(token), std::move(factory), !parser.isSet(noHeartbeat));
+	client.setAppName(QStringLiteral("demo_client"));
+	client.setRequestNewWindowMethod(QStringLiteral("demo.request_new_window"));
 	client.setAppearanceHandler(
 		[&engine, &bridge](mps::theme::Scheme scheme)
 		{

@@ -21,7 +21,8 @@ namespace mps::host
 	{
 		Q_OBJECT
 	public:
-		ClientSession(int clientIndex, QString endpoint, QObject* parent = nullptr);
+		ClientSession(int clientIndex, QString endpoint, QString requestNewWindowMethod = QStringLiteral("shell.request_new_window"),
+					  QObject* parent = nullptr);
 		~ClientSession() override;
 
 		[[nodiscard]] int clientIndex() const
@@ -85,6 +86,7 @@ namespace mps::host
 		int m_clientIndex = 0;
 		qint64 m_pageId = 0;
 		QString m_endpoint;
+		QString m_requestNewWindowMethod;
 		bool m_ready = false;
 		bool m_helloSeen = false;
 		bool m_dead = false;

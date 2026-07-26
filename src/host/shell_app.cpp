@@ -28,14 +28,15 @@
 
 namespace mps::host
 {
-	ShellApp::ShellApp(QString clientExe, QObject* parent)
+	ShellApp::ShellApp(QString clientExe, QString endpointPrefix, QObject* parent)
 		: QObject(parent)
 		, m_clientExe(std::move(clientExe))
 	{
 		qRegisterMetaType<mps::theme::Scheme>();
 
 		m_token = QUuid::createUuid().toString(QUuid::WithoutBraces);
-		m_endpoint = QStringLiteral("mps-demo-%1").arg(m_token);
+		const QString prefix = endpointPrefix.isEmpty() ? QStringLiteral("mps") : endpointPrefix;
+		m_endpoint = QStringLiteral("%1-%2").arg(prefix, m_token);
 		m_server = new QLocalServer(this);
 		QLocalServer::removeServer(m_endpoint);
 		if (!m_server->listen(m_endpoint))
@@ -66,6 +67,11 @@ namespace mps::host
 	{
 		auto shell = std::make_unique<ShellWindow>(this);
 		auto* raw = shell.get();
+		raw->setWindowTitle(m_shellWindowTitle);
+		if (m_homeContentFactory)
+		{
+			raw->setHomeContent(m_homeContentFactory(raw));
+		}
 		bindShell(raw);
 		if (size.isValid() && size.width() > 200 && size.height() > 150)
 		{
@@ -85,11 +91,6 @@ namespace mps::host
 
 	void ShellApp::bindShell(ShellWindow* shell)
 	{
-		connect(shell, &ShellWindow::createClientClicked, this,
-				[this, shell]
-				{
-					createClientOn(shell);
-				});
 		connect(shell, &ShellWindow::tabCloseRequested, this,
 				[this](qint64 tabId)
 				{
@@ -303,7 +304,7 @@ namespace mps::host
 		m_clientLaunchInFlight = true;
 		const int clientIndex = m_nextClientIndex++;
 		m_nextWindowIndex[clientIndex] = 1;
-		auto session = std::make_unique<ClientSession>(clientIndex, m_endpoint, this);
+		auto session = std::make_unique<ClientSession>(clientIndex, m_endpoint, m_requestNewWindowMethod, this);
 		auto* raw = session.get();
 		m_pendingFirstShell.insert(raw, shell);
 		connect(raw, &ClientSession::sessionHelloOk, this, &ShellApp::onSessionHelloOk);

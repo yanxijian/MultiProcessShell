@@ -13,7 +13,7 @@
 
 ## 创建与标题
 
-- [ ] Home →「创建 Client」→ 出现 `Client1-Window1`，客户区为 **无系统标题栏的 Ribbon 页**、铺满
+- [ ] Home（**demo_host** 注入的客户区）→「创建 Client」→ 出现 `Client1-Window1`，客户区为 **无系统标题栏的 Ribbon 页**、铺满
 - [ ] Ribbon「New Window」→ `Client1-Window2`，同进程多 Tab
 - [ ] Home → Light / Dark → 壳变浅/深；已嵌入 Client Ribbon 同步
 - [ ] Ribbon Theme Light/Dark → Host 壳与其他 Client 进程一并切换

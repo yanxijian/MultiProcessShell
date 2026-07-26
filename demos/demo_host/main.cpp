@@ -1,4 +1,5 @@
-﻿#include "shell_app.hpp"
+﻿#include "home_page.hpp"
+#include "shell_app.hpp"
 #include "theme_service.hpp"
 
 #include <QApplication>
@@ -31,7 +32,14 @@ int main(int argc, char* argv[])
 		qWarning("Client executable not found: %s", qPrintable(clientExe));
 	}
 
-	mps::host::ShellApp shellApp(clientExe);
+	mps::host::ShellApp shellApp(clientExe, QStringLiteral("mps-demo"));
+	shellApp.setShellWindowTitle(QStringLiteral("MultiProcessShell Demo"));
+	shellApp.setRequestNewWindowMethod(QStringLiteral("demo.request_new_window"));
+	shellApp.setHomeContentFactory(
+		[&shellApp](mps::host::ShellWindow* shell) -> QWidget*
+		{
+			return new mps::demo_host::HomePage(&shellApp, shell);
+		});
 	QObject::connect(&shellApp, &mps::host::ShellApp::schemeChanged, &theme,
 					 [&theme](mps::theme::Scheme scheme, mps::host::ThemeOrigin origin)
 					 {

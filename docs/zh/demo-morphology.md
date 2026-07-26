@@ -23,8 +23,8 @@
 ### 2.1 启动
 
 - 启动 Demo 后 **只有一个** 顶层壳窗。  
-- 壳上有一个固定 **Home** Tab（不可关闭、不可拖出）。  
-- **Home** 客户区中央为「创建 Client」；**不**自动拉起任何 Client 进程。
+- 壳上有一个固定 **Home** Tab（不可关闭、不可拖出）——由 **`mps_host`** 提供。  
+- **Home 客户区**（「创建 Client」、Light/Dark）由 **`demo_host`** 经 `ShellApp::setHomeContentFactory` 注入；框架默认仅为空白槽。**不**自动拉起任何 Client 进程。
 
 ### 2.2 创建 Client（新进程 / 新 pageType 会话）
 
@@ -75,8 +75,8 @@ Client{N}-Window{M}
 └────────────────────────────────────────────────────────┘
 ```
 
-- **标题栏**：Home + Client Tabs + 最小化 / 最大化 / 关闭。  
-- **工作区**：Home 页或当前 Client 嵌入区（应铺满客户区）。
+- **标题栏**：Home + Client Tabs + 最小化 / 最大化 / 关闭（框架 chrome）。  
+- **工作区**：Home 客户区内容（Demo 注入）或当前 Client 嵌入区（应铺满客户区）。
 
 ## 5. 拖出 / 合入（浏览器式可撕出 Tab）
 
@@ -134,9 +134,10 @@ Client{N}-Window{M}
 
 | 路径 | 角色 |
 |------|------|
-| `demos/` | `mps_demo_host` / `mps_demo_client` |
-| `src/host/` | 壳、Tab、会话、Win embed；拖出：`tear_out_preview.*` |
-| `src/client/` | Client 进程与 page |
+| `demos/demo_host/` | Host Demo：`ThemeService`、Home 客户区（`home_page`）、组装配方 |
+| `demos/demo_client/` | Client Demo：QFR Ribbon 页 |
+| `src/host/` | 壳、Tab、会话、Win embed、Home **空槽**；拖出：`tear_out_preview.*`（**无**业务客户区控件） |
+| `src/client/` | Client 进程与抽象 `ClientPage`（无具体业务 UI） |
 | `src/common/` + `proto/` | 帧与 IDL |
 
 ## 9. 已决议摘要
@@ -145,7 +146,7 @@ Client{N}-Window{M}
 |---|------|
 | 1 | 浏览器式可撕出 Tab：并列 Tab、关 Tab、拖出新壳、合入他壳 |
 | 2 | 无剩余 Client Tab 的多余壳 → 销毁 |
-| 3 | 启动一壳 + 固定 **Home**；Create Client 在 Home |
+| 3 | 启动一壳 + 固定 **Home Tab**（框架）；Create Client / Light/Dark 在 **demo_host** Home 客户区 |
 | 4 | Client page「新建窗口」→ 同 Client 子窗 |
 | 5 | Tab 名：`Client{N}-Window{M}`；Home 除外 |
 | 6 | 关 Tab 走激活历史（含 Home），默认不强制回 Home |

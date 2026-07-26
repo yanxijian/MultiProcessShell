@@ -7,7 +7,7 @@
 
 | 进程 | 职责 |
 |------|------|
-| `mps_demo_host` | 壳、Tab、`EmbedContainer::SetParent`；链接 **QTE**（`ThemeService` 为外观 SSOT）；**不**链 QFR |
+| `mps_demo_host` | 壳 / Tab / embed（`mps_host`）；**Demo** 注入 Home 客户区；链接 **QTE**（`ThemeService` 为外观 SSOT）；**不**链 QFR |
 | `mps_demo_client` | `qtheme::Engine` + `ThemeBridge` + frameless `RibbonWindow` 页 |
 
 IPC / tear-out 协议不变；Host 仍剥 caption 并强制 `WS_CHILD`。
@@ -33,7 +33,7 @@ IPC / tear-out 协议不变；Host 仍剥 caption 并强制 `WS_CHILD`。
 | 角色 | 行为 |
 |------|------|
 | Host | `ThemeService` 持有 `ColorScheme`；`QSettings` 持久化；`Engine::apply` 驱动壳 chrome |
-| 切换入口 | Home 页 Light/Dark；Client Ribbon Theme 组同等入口 |
+| 切换入口 | **demo_host** Home 页 Light/Dark；Client Ribbon Theme 组同等入口 |
 | IPC | 双向 `Invoke("theme.set")`，params 仅 `"light"` / `"dark"`；其它值回 `ERROR_PROTOCOL`、不改肤 |
 | 握手后 | `HelloAck` 后 Host 立即向该 session 推当前 scheme，避免新 Client 先闪默认肤 |
 | 同进程多页 | 一进程一个 `Engine`，一次 `setColorScheme` 全窗生效 |

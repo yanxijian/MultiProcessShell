@@ -18,12 +18,17 @@ namespace mps::host
 		qint64 g_nextPageId = 1;
 	}
 
-	ClientSession::ClientSession(int clientIndex, QString endpoint, QObject* parent)
+	ClientSession::ClientSession(int clientIndex, QString endpoint, QString requestNewWindowMethod, QObject* parent)
 		: QObject(parent)
 		, m_clientIndex(clientIndex)
 		, m_pageId(g_nextPageId++)
 		, m_endpoint(std::move(endpoint))
+		, m_requestNewWindowMethod(std::move(requestNewWindowMethod))
 	{
+		if (m_requestNewWindowMethod.isEmpty())
+		{
+			m_requestNewWindowMethod = QStringLiteral("shell.request_new_window");
+		}
 	}
 
 	ClientSession::~ClientSession()
@@ -324,7 +329,7 @@ namespace mps::host
 		if (env->has_invoke())
 		{
 			// Client asks Host to create another window in this session.
-			if (env->invoke().method() == "demo.request_new_window")
+			if (QString::fromStdString(env->invoke().method()) == m_requestNewWindowMethod)
 			{
 				emit invokeNewWindow(this, env->tab_id());
 				auto res = mps::ipc::makeResponse(1, env->id(), QDateTime::currentMSecsSinceEpoch());
@@ -355,7 +360,7 @@ namespace mps::host
 			auto res = mps::ipc::makeResponse(1, env->id(), QDateTime::currentMSecsSinceEpoch());
 			auto* err = res->mutable_error();
 			err->set_code(shell::ipc::v1::ERROR_UNIMPLEMENTED);
-			err->set_message("Invoke not implemented in Demo Host");
+			err->set_message("Invoke method not implemented");
 			m_channel->send(res);
 			return;
 		}

@@ -13,6 +13,7 @@
 #include <QPropertyAnimation>
 #include <QTimer>
 
+#include <functional>
 #include <memory>
 #include <mps/mps_host_export.hpp>
 #include <vector>
@@ -23,7 +24,10 @@ namespace mps::host
 	{
 		Q_OBJECT
 	public:
-		explicit ShellApp(QString clientExe, QObject* parent = nullptr);
+		using HomeContentFactory = std::function<QWidget*(ShellWindow*)>;
+
+		/// endpointPrefix forms the pipe name "{prefix}-{token}". Default "mps" (Demo passes "mps-demo").
+		explicit ShellApp(QString clientExe, QString endpointPrefix = QStringLiteral("mps"), QObject* parent = nullptr);
 		~ShellApp() override;
 		[[nodiscard]] ShellWindow* createShell(QPoint pos = {}, QSize size = {}, bool showNow = true);
 		void createClientOn(ShellWindow* shell);
@@ -45,6 +49,25 @@ namespace mps::host
 		[[nodiscard]] ShellWindow* shellFromStripDropTarget(QObject* watched) const;
 		[[nodiscard]] ShellWindow* tabDropZoneShellAtGlobal(QPoint globalPos) const;
 		void destroyShellIfEmpty(ShellWindow* shell);
+
+		/// Per-shell Home client-area factory (Demo installs Create Client / theme UI).
+		void setHomeContentFactory(HomeContentFactory factory)
+		{
+			m_homeContentFactory = std::move(factory);
+		}
+		void setShellWindowTitle(QString title)
+		{
+			m_shellWindowTitle = std::move(title);
+		}
+		/// Client Invoke method that requests another sub-window in the same session.
+		void setRequestNewWindowMethod(QString method)
+		{
+			m_requestNewWindowMethod = std::move(method);
+		}
+		[[nodiscard]] QString requestNewWindowMethod() const
+		{
+			return m_requestNewWindowMethod;
+		}
 
 		[[nodiscard]] mps::theme::Scheme scheme() const
 		{
@@ -92,6 +115,9 @@ namespace mps::host
 		QString m_clientExe;
 		QString m_endpoint;
 		QString m_token;
+		QString m_shellWindowTitle = QStringLiteral("Shell");
+		QString m_requestNewWindowMethod = QStringLiteral("shell.request_new_window");
+		HomeContentFactory m_homeContentFactory;
 		QLocalServer* m_server = nullptr;
 		mps::theme::Scheme m_scheme = mps::theme::Scheme::Light;
 		std::vector<std::unique_ptr<ShellWindow>> m_shells;

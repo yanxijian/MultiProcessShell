@@ -1,5 +1,7 @@
 add_executable(mps_demo_host
   demo_host/main.cpp
+  demo_host/home_page.cpp
+  demo_host/home_page.hpp
   demo_host/theme_service.cpp
   demo_host/theme_service.hpp
 )
