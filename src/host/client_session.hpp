@@ -1,4 +1,4 @@
-#ifndef __MPS_HOST_CLIENT_SESSION_H__
+﻿#ifndef __MPS_HOST_CLIENT_SESSION_H__
 #define __MPS_HOST_CLIENT_SESSION_H__
 
 #include "envelope_channel.hpp"
@@ -74,7 +74,7 @@ namespace mps::host
 		void themeSetRequested(ClientSession* self, mps::theme::Scheme scheme);
 
 	private:
-		void onEnvelope(shell::ipc::v1::Envelope env);
+		void onEnvelope(mps::ipc::EnvelopePtr env);
 		void sendHelloAck();
 		void markDead();
 		void noteHeartbeat();

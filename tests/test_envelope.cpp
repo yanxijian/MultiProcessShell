@@ -1,4 +1,4 @@
-#include "envelope_builder.hpp"
+﻿#include "envelope_builder.hpp"
 #include "frame.hpp"
 #include "shell/ipc/v1/ipc.pb.h"
 
@@ -37,18 +37,20 @@ namespace
 TEST(EnvelopeBuilder, MakeEnvelopeAndResponse)
 {
 	auto env = mps::ipc::makeEnvelope(1, "id-a", shell::ipc::v1::DIR_EVT, 99, 2, 3);
-	EXPECT_EQ(env.protocol(), 1u);
-	EXPECT_EQ(env.id(), "id-a");
-	EXPECT_EQ(env.dir(), shell::ipc::v1::DIR_EVT);
-	EXPECT_EQ(env.ts_ms(), 99);
-	EXPECT_EQ(env.page_id(), 2);
-	EXPECT_EQ(env.tab_id(), 3);
+	ASSERT_TRUE(env);
+	EXPECT_EQ(env->protocol(), 1u);
+	EXPECT_EQ(env->id(), "id-a");
+	EXPECT_EQ(env->dir(), shell::ipc::v1::DIR_EVT);
+	EXPECT_EQ(env->ts_ms(), 99);
+	EXPECT_EQ(env->page_id(), 2);
+	EXPECT_EQ(env->tab_id(), 3);
 
 	auto res = mps::ipc::makeResponse(1, "req-1", 100, 7);
-	EXPECT_EQ(res.dir(), shell::ipc::v1::DIR_RES);
-	EXPECT_EQ(res.id(), "req-1");
-	EXPECT_EQ(res.tab_id(), 7);
-	EXPECT_EQ(res.page_id(), 0);
+	ASSERT_TRUE(res);
+	EXPECT_EQ(res->dir(), shell::ipc::v1::DIR_RES);
+	EXPECT_EQ(res->id(), "req-1");
+	EXPECT_EQ(res->tab_id(), 7);
+	EXPECT_EQ(res->page_id(), 0);
 }
 
 TEST(EnvelopeProto, SerializeParseRoundTrip)

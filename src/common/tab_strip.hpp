@@ -1,4 +1,4 @@
-#ifndef __MPS_TAB_STRIP_TAB_STRIP_H__
+﻿#ifndef __MPS_TAB_STRIP_TAB_STRIP_H__
 #define __MPS_TAB_STRIP_TAB_STRIP_H__
 
 // Pure browser-style detachable tab strip / tear-out / shell rules (no Qt).

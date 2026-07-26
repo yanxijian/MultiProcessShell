@@ -15,6 +15,15 @@ target_link_libraries(mps_ipc_tests
 include(GoogleTest)
 gtest_discover_tests(mps_ipc_tests)
 
+if(WIN32 AND MPS_BUILD_SHARED)
+  add_custom_command(TARGET mps_ipc_tests POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_ipc> $<TARGET_FILE_DIR:mps_ipc_tests>
+    COMMENT "Copy mps_ipc.dll beside mps_ipc_tests"
+    VERBATIM
+  )
+  mps_copy_protobuf_runtime(mps_ipc_tests)
+endif()
+
 add_executable(mps_tab_strip_tests
   test_tab_strip_mru.cpp
   test_tab_strip_yield.cpp

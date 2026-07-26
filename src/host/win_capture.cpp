@@ -1,4 +1,4 @@
-#include "win_capture.hpp"
+﻿#include "win_capture.hpp"
 
 #include <QImage>
 

@@ -1,4 +1,4 @@
-#include "envelope_builder.hpp"
+﻿#include "envelope_builder.hpp"
 #include "envelope_channel.hpp"
 #include "shell/ipc/v1/ipc.pb.h"
 
@@ -65,17 +65,17 @@ TEST(M4bPythonHello, HelloAckOverLocalSocket)
 	bool gotHello = false;
 	auto channel = std::make_unique<mps::ipc::EnvelopeChannel>(sock);
 	channel->setHandler(
-		[&](shell::ipc::v1::Envelope env)
+		[&](mps::ipc::EnvelopePtr env)
 		{
-			if (!env.has_hello() || gotHello)
+			if (!env || !env->has_hello() || gotHello)
 			{
 				return;
 			}
 			gotHello = true;
-			EXPECT_EQ(env.hello().caps().embed(), shell::ipc::v1::EMBED_NONE);
+			EXPECT_EQ(env->hello().caps().embed(), shell::ipc::v1::EMBED_NONE);
 			auto ack =
 				mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch());
-			auto* body = ack.mutable_hello_ack();
+			auto* body = ack->mutable_hello_ack();
 			body->set_protocol(1);
 			body->set_session_id("m4b");
 			body->mutable_host_caps()->set_embed(shell::ipc::v1::EMBED_HWND);

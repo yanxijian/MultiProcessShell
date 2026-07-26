@@ -15,11 +15,21 @@ if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()
 
+option(MPS_BUILD_SHARED "Build mps_* libraries as shared" ON)
 option(MPS_BUILD_TESTS "Build protocol/unit tests (M0)" ON)
 option(MPS_BUILD_DEMOS "Build browser-style detachable-tab Demo" ON)
 option(MPS_BUILD_SRC "Build Host/Client libraries used by demos" ON)
 option(MPS_FETCH_PROTOBUF "Fetch protobuf via FetchContent" ON)
 option(MPS_REQUIRE_QT "Require Qt (needed for Host/Client/Demo)" OFF)
+option(MPS_DEV_EMBED_QTE "Demo only: embed sibling QThemeEngine via add_subdirectory" OFF)
+option(MPS_DEV_EMBED_QFR "Demo only: embed sibling QFluentRibbon via add_subdirectory" OFF)
+option(MPS_INSTALL "Install libraries, headers, and CMake package" ON)
+
+include(GNUInstallDirs)
+include(GenerateExportHeader)
+
+set(MPS_GENERATED_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/include")
+file(MAKE_DIRECTORY "${MPS_GENERATED_INCLUDE_DIR}/mps")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(MPSProtobuf)
@@ -27,8 +37,6 @@ include(MPSProtobuf)
 if(MPS_REQUIRE_QT OR MPS_BUILD_SRC OR MPS_BUILD_DEMOS)
   set(MPS_REQUIRE_QT ON)
 
-  # Prefer QTDIR when set. On Windows use a 64-bit CMake kit: Qt *64 packages set
-  # PACKAGE_VERSION_UNSUITABLE if CMAKE_SIZEOF_VOID_P is 4 (often mis-read as a version mismatch).
   if(DEFINED ENV{QTDIR} AND NOT "$ENV{QTDIR}" STREQUAL "")
     file(TO_CMAKE_PATH "$ENV{QTDIR}" _mps_qtdir)
     set(CMAKE_PREFIX_PATH "${_mps_qtdir};${CMAKE_PREFIX_PATH}")
@@ -67,13 +75,14 @@ add_subdirectory(src/common)
 
 if(MPS_BUILD_SRC OR MPS_BUILD_DEMOS)
   add_subdirectory(src/ipc_qt)
-  include(MPSQThemeEngine)
   add_subdirectory(src/host)
-  include(MPSQFluentRibbon)
   add_subdirectory(src/client)
 endif()
 
 if(MPS_BUILD_DEMOS)
+  # QTE/QFR are Demo composition only — never linked into mps_* libraries.
+  include(MPSQThemeEngine)
+  include(MPSQFluentRibbon)
   add_subdirectory(demos)
 endif()
 
@@ -83,6 +92,107 @@ if(MPS_BUILD_TESTS)
   add_subdirectory(tests)
 endif()
 
+file(WRITE "${MPS_GENERATED_INCLUDE_DIR}/mps/mps_export.hpp"
+"#pragma once
+#include <mps/mps_ipc_export.hpp>
+#if defined(__has_include)
+#  if __has_include(<mps/mps_ipc_qt_export.hpp>)
+#    include <mps/mps_ipc_qt_export.hpp>
+#  endif
+#  if __has_include(<mps/mps_host_export.hpp>)
+#    include <mps/mps_host_export.hpp>
+#  endif
+#  if __has_include(<mps/mps_client_export.hpp>)
+#    include <mps/mps_client_export.hpp>
+#  endif
+#endif
+")
+
+if(MPS_INSTALL)
+  if(MPS_QTE_VIA_SOURCE OR MPS_QFR_VIA_SOURCE)
+    message(FATAL_ERROR
+      "MPS_INSTALL=ON is incompatible with MPS_DEV_EMBED_QTE/QFR.\n"
+      "Install QTE+QFR for demos separately; keep embed OFF when installing mps_*.")
+  endif()
+
+  include(CMakePackageConfigHelpers)
+
+  set(_mps_install_targets mps_ipc mps_tab_strip)
+  if(TARGET mps_ipc_qt)
+    list(APPEND _mps_install_targets mps_ipc_qt mps_host mps_client)
+  endif()
+
+  install(TARGETS ${_mps_install_targets}
+    EXPORT MultiProcessShellTargets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  )
+
+  install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/common/"
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.hpp"
+  )
+  if(EXISTS "${CMAKE_CURRENT_BINARY_DIR}/src/common/generated")
+    install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/src/common/generated/"
+      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+      FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+    )
+  endif()
+  if(TARGET mps_ipc_qt)
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/ipc_qt/"
+      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+      FILES_MATCHING PATTERN "*.hpp"
+    )
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/host/"
+      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+      FILES_MATCHING PATTERN "*.hpp"
+      PATTERN "embed" EXCLUDE
+    )
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/host/embed/win/embed_container.hpp"
+      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    )
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/client/"
+      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+      FILES_MATCHING PATTERN "*.hpp"
+    )
+    install(DIRECTORY "${MPS_GENERATED_INCLUDE_DIR}/mps"
+      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+      FILES_MATCHING PATTERN "*.hpp"
+    )
+  endif()
+
+  install(EXPORT MultiProcessShellTargets
+    FILE MultiProcessShellTargets.cmake
+    NAMESPACE mps::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/MultiProcessShell
+  )
+
+  configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/MultiProcessShellConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/MultiProcessShellConfig.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/MultiProcessShell
+  )
+
+  write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/MultiProcessShellConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+  )
+
+  install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/MultiProcessShellConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/MultiProcessShellConfigVersion.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/MultiProcessShell
+  )
+endif()
+
+if(NOT DEFINED MPS_PROTOBUF_SHARED)
+  set(MPS_PROTOBUF_SHARED FALSE)
+endif()
+
 message(STATUS "MultiProcessShell ${PROJECT_VERSION}")
 message(STATUS "  Qt: ${MPS_QT_VERSION}")
+message(STATUS "  shared=${MPS_BUILD_SHARED} protobuf_shared=${MPS_PROTOBUF_SHARED} install=${MPS_INSTALL} demos_embed_qte=${MPS_DEV_EMBED_QTE} demos_embed_qfr=${MPS_DEV_EMBED_QFR}")
 message(STATUS "  MPS_BUILD_SRC=${MPS_BUILD_SRC} MPS_BUILD_DEMOS=${MPS_BUILD_DEMOS} MPS_BUILD_TESTS=${MPS_BUILD_TESTS}")

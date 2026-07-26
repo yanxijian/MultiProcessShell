@@ -1,4 +1,4 @@
-#include "client_session.hpp"
+﻿#include "client_session.hpp"
 
 #include "envelope_builder.hpp"
 #include "heartbeat_policy.hpp"
@@ -6,6 +6,7 @@
 
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QFileInfo>
 #include <QHash>
 #include <QLocalSocket>
 #include <QTimer>
@@ -49,6 +50,16 @@ namespace mps::host
 				{
 					markDead();
 				});
+		connect(m_process, &QProcess::errorOccurred, this,
+				[this](QProcess::ProcessError err)
+				{
+					qWarning("Client process error %d: %s (exe=%s)", static_cast<int>(err), qPrintable(m_process->errorString()),
+							 qPrintable(m_process->program()));
+					if (err == QProcess::FailedToStart)
+					{
+						markDead();
+					}
+				});
 		QStringList args;
 		args << QStringLiteral("--from-host") << QStringLiteral("--endpoint=%1").arg(m_endpoint)
 			 << QStringLiteral("--pipe-token=%1").arg(token) << QStringLiteral("--protocol=1");
@@ -56,7 +67,16 @@ namespace mps::host
 		{
 			args << QStringLiteral("--no-heartbeat");
 		}
-		m_process->start(clientExe, args);
+		const QFileInfo fi(clientExe);
+		if (fi.exists())
+		{
+			m_process->setWorkingDirectory(fi.absolutePath());
+		}
+		m_process->setProgram(clientExe);
+		m_process->setArguments(args);
+		// Async start only: waitForStarted() on the GUI thread blocks the event loop so the
+		// started notification never arrives (Create Client appears to do nothing).
+		m_process->start();
 	}
 
 	void ClientSession::attachSocket(QLocalSocket* socket)
@@ -65,7 +85,7 @@ namespace mps::host
 		m_socket->setParent(this);
 		m_channel = std::make_unique<mps::ipc::EnvelopeChannel>(m_socket, this);
 		m_channel->setHandler(
-			[this](shell::ipc::v1::Envelope env)
+			[this](mps::ipc::EnvelopePtr env)
 			{
 				onEnvelope(std::move(env));
 			});
@@ -154,7 +174,7 @@ namespace mps::host
 	void ClientSession::sendHelloAck()
 	{
 		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch());
-		auto* ack = env.mutable_hello_ack();
+		auto* ack = env->mutable_hello_ack();
 		ack->set_protocol(1);
 		ack->set_session_id(QString::number(m_pageId).toStdString());
 		auto* caps = ack->mutable_host_caps();
@@ -179,7 +199,7 @@ namespace mps::host
 		m_pendingTabs.push_back(tabId);
 		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(),
 										  m_pageId, tabId);
-		env.mutable_create_sub_window()->set_title(title.toStdString());
+		env->mutable_create_sub_window()->set_title(title.toStdString());
 		m_channel->send(env);
 	}
 
@@ -191,7 +211,7 @@ namespace mps::host
 		}
 		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(),
 										  m_pageId, tabId);
-		env.mutable_active_sub_window();
+		env->mutable_active_sub_window();
 		m_channel->send(env);
 	}
 
@@ -203,7 +223,7 @@ namespace mps::host
 		}
 		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(),
 										  m_pageId, tabId);
-		env.mutable_query_close_sub_window();
+		env->mutable_query_close_sub_window();
 		m_channel->send(env);
 	}
 
@@ -215,7 +235,7 @@ namespace mps::host
 		}
 		auto env =
 			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(), m_pageId);
-		env.mutable_notify_main_window_reattachment()->set_shell_id(shellId);
+		env->mutable_notify_main_window_reattachment()->set_shell_id(shellId);
 		m_channel->send(env);
 	}
 
@@ -227,7 +247,7 @@ namespace mps::host
 		}
 		auto env =
 			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(), m_pageId);
-		env.mutable_set_drag_suppress()->set_suppress(on);
+		env->mutable_set_drag_suppress()->set_suppress(on);
 		m_channel->send(env);
 	}
 
@@ -239,31 +259,35 @@ namespace mps::host
 		}
 		auto env =
 			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(), m_pageId);
-		env.mutable_invoke()->set_method("theme.set");
-		env.mutable_invoke()->set_params(params.constData(), static_cast<int>(params.size()));
+		env->mutable_invoke()->set_method("theme.set");
+		env->mutable_invoke()->set_params(params.constData(), static_cast<int>(params.size()));
 		m_channel->send(env);
 	}
 
-	void ClientSession::onEnvelope(shell::ipc::v1::Envelope env)
+	void ClientSession::onEnvelope(mps::ipc::EnvelopePtr env)
 	{
-		if (env.has_hello() && !m_helloSeen)
+		if (!env)
+		{
+			return;
+		}
+		if (env->has_hello() && !m_helloSeen)
 		{
 			m_helloSeen = true;
-			m_heartbeatNegotiated = env.hello().caps().heartbeat();
+			m_heartbeatNegotiated = env->hello().caps().heartbeat();
 			sendHelloAck();
 			emit sessionHelloOk(this);
 			return;
 		}
-		if (env.has_main_window_added())
+		if (env->has_main_window_added())
 		{
-			m_mainWid = static_cast<quintptr>(env.main_window_added().wid());
+			m_mainWid = static_cast<quintptr>(env->main_window_added().wid());
 			m_ready = true;
 			emit sessionReady(this);
 			return;
 		}
-		if (env.has_sub_window_added())
+		if (env->has_sub_window_added())
 		{
-			qint64 tabId = env.tab_id();
+			qint64 tabId = env->tab_id();
 			if (tabId == 0 && !m_pendingTabs.isEmpty())
 			{
 				tabId = m_pendingTabs.takeFirst();
@@ -272,50 +296,50 @@ namespace mps::host
 			{
 				m_pendingTabs.pop_front();
 			}
-			quintptr wid = static_cast<quintptr>(env.sub_window_added().wid());
+			quintptr wid = static_cast<quintptr>(env->sub_window_added().wid());
 			if (wid == 0)
 			{
 				wid = m_mainWid;
 			}
-			const QString title = QString::fromStdString(env.sub_window_added().title());
+			const QString title = QString::fromStdString(env->sub_window_added().title());
 			emit subWindowAdded(this, tabId, title, wid);
 			return;
 		}
-		if (env.has_sub_window_removed())
+		if (env->has_sub_window_removed())
 		{
-			const qint64 tabId = env.tab_id();
+			const qint64 tabId = env->tab_id();
 			emit subWindowRemoved(this, tabId);
 			return;
 		}
-		if (env.has_query_close_sub_window_result())
+		if (env->has_query_close_sub_window_result())
 		{
 			// Accept → tear down Host tab immediately; SubWindowRemoved is idempotent backup.
-			if (env.query_close_sub_window_result().accept())
+			if (env->query_close_sub_window_result().accept())
 			{
-				const qint64 tabId = env.tab_id();
+				const qint64 tabId = env->tab_id();
 				emit subWindowRemoved(this, tabId);
 			}
 			return;
 		}
-		if (env.has_invoke())
+		if (env->has_invoke())
 		{
 			// Client asks Host to create another window in this session.
-			if (env.invoke().method() == "demo.request_new_window")
+			if (env->invoke().method() == "demo.request_new_window")
 			{
-				emit invokeNewWindow(this, env.tab_id());
-				auto res = mps::ipc::makeResponse(1, env.id(), QDateTime::currentMSecsSinceEpoch());
-				res.mutable_invoke_result()->set_payload("ok");
+				emit invokeNewWindow(this, env->tab_id());
+				auto res = mps::ipc::makeResponse(1, env->id(), QDateTime::currentMSecsSinceEpoch());
+				res->mutable_invoke_result()->set_payload("ok");
 				m_channel->send(res);
 				return;
 			}
-			if (env.invoke().method() == "theme.set")
+			if (env->invoke().method() == "theme.set")
 			{
-				const QByteArray params = QByteArray::fromStdString(env.invoke().params());
+				const QByteArray params = QByteArray::fromStdString(env->invoke().params());
 				mps::theme::Scheme scheme = mps::theme::Scheme::Light;
 				if (!mps::theme::fromParams(params, &scheme))
 				{
-					auto res = mps::ipc::makeResponse(1, env.id(), QDateTime::currentMSecsSinceEpoch());
-					auto* err = res.mutable_error();
+					auto res = mps::ipc::makeResponse(1, env->id(), QDateTime::currentMSecsSinceEpoch());
+					auto* err = res->mutable_error();
 					err->set_code(shell::ipc::v1::ERROR_PROTOCOL);
 					err->set_message("theme.set params must be light or dark");
 					m_channel->send(res);
@@ -323,19 +347,19 @@ namespace mps::host
 				}
 				emit themeSetRequested(this, scheme);
 				const QByteArray wire = mps::theme::toParams(scheme);
-				auto res = mps::ipc::makeResponse(1, env.id(), QDateTime::currentMSecsSinceEpoch());
-				res.mutable_invoke_result()->set_payload(wire.constData(), static_cast<int>(wire.size()));
+				auto res = mps::ipc::makeResponse(1, env->id(), QDateTime::currentMSecsSinceEpoch());
+				res->mutable_invoke_result()->set_payload(wire.constData(), static_cast<int>(wire.size()));
 				m_channel->send(res);
 				return;
 			}
-			auto res = mps::ipc::makeResponse(1, env.id(), QDateTime::currentMSecsSinceEpoch());
-			auto* err = res.mutable_error();
+			auto res = mps::ipc::makeResponse(1, env->id(), QDateTime::currentMSecsSinceEpoch());
+			auto* err = res->mutable_error();
 			err->set_code(shell::ipc::v1::ERROR_UNIMPLEMENTED);
 			err->set_message("Invoke not implemented in Demo Host");
 			m_channel->send(res);
 			return;
 		}
-		if (env.has_heartbeat())
+		if (env->has_heartbeat())
 		{
 			if (m_heartbeatNegotiated)
 			{

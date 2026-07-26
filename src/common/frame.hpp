@@ -1,4 +1,4 @@
-#ifndef __MPS_IPC_FRAME_H__
+﻿#ifndef __MPS_IPC_FRAME_H__
 #define __MPS_IPC_FRAME_H__
 
 #include <cstddef>

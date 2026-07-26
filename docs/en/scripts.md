@@ -4,6 +4,7 @@
 
 | Script | Purpose |
 |--------|---------|
+| `install_stack.py` | Install QTE→QFR→MPS into a local prefix (SHARED + find_package) |
 | `build_repo.py` | Configure/build this repo (`QTDIR` required unless `--no-demos`) |
 | `build_qt.py` | Help build external Qt (qtbase) into a prefix |
 | `deploy_demo.py` | Windows: `windeployqt` beside `build/demos` |
@@ -18,6 +19,7 @@
 - **Incremental:** skips cmake reconfigure when options match (avoids protobuf rebuild); `--reconfigure` / `--fresh` when needed.
 
 ```bat
+python scripts\install_stack.py
 python scripts\build_repo.py
 python scripts\build_repo.py --no-demos --test
 python scripts\deploy_demo.py

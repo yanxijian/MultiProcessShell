@@ -1,11 +1,9 @@
-#include "shell_window.hpp"
+﻿#include "shell_window.hpp"
 
-#include "qtheme/api.hpp"
-#include "qtheme/engine.hpp"
-#include "qtheme/types.hpp"
 #include "shell_app.hpp"
 #include "tab_strip.hpp"
-#include "theme_service.hpp"
+#include "theme_origin.hpp"
+#include "theme_scheme.hpp"
 
 #include <QAction>
 #include <QApplication>
@@ -20,6 +18,7 @@
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPalette>
 #include <QPropertyAnimation>
 #include <QStackedWidget>
 #include <QStyle>
@@ -79,11 +78,12 @@ namespace mps::host
 
 	void TabButton::refreshChrome()
 	{
-		const QColor tabBg = qtheme::api::color(QStringLiteral("tab"), QStringLiteral("bg"), QColor(0xf3, 0xf3, 0xf3));
-		const QColor tabSelected = qtheme::api::color(QStringLiteral("tab"), QStringLiteral("bg.selected"), QColor(0xff, 0xff, 0xff));
-		const QColor fg = qtheme::api::color(QStringLiteral("tab"), QStringLiteral("fg"), QColor(0x5c, 0x5c, 0x5c));
-		const QColor fgSelected = qtheme::api::color(QStringLiteral("tab"), QStringLiteral("fg.selected"), QColor(0x1a, 0x1a, 0x1a));
-		const bool dark = qtheme::api::engine() && qtheme::api::engine()->colorScheme() == qtheme::ColorScheme::Dark;
+		const QPalette pal = palette();
+		const QColor tabBg = pal.color(QPalette::Window);
+		const QColor tabSelected = pal.color(QPalette::Base);
+		const QColor fg = pal.color(QPalette::WindowText);
+		const QColor fgSelected = pal.color(QPalette::Text);
+		const bool dark = tabBg.lightness() < 128;
 		QColor accent = QColor(0x5a, 0x5a, 0x5a);
 		QColor idleBg = tabBg;
 		if (!m_info.isHome)
@@ -266,13 +266,17 @@ namespace mps::host
 		emptyLay->addSpacing(16);
 		emptyLay->addLayout(themeRow);
 		emptyLay->addStretch();
-		connect(m_createClientBtn, &QPushButton::clicked, this, &ShellWindow::createClientClicked);
+		connect(m_createClientBtn, &QPushButton::clicked, this,
+				[this]()
+				{
+					emit createClientClicked();
+				});
 		connect(m_lightThemeBtn, &QPushButton::clicked, this,
 				[this]
 				{
 					if (m_app)
 					{
-						m_app->requestThemeScheme(qtheme::ColorScheme::Light, ThemeOrigin::HostUi);
+						m_app->setScheme(mps::theme::Scheme::Light, ThemeOrigin::HostUi);
 					}
 				});
 		connect(m_darkThemeBtn, &QPushButton::clicked, this,
@@ -280,7 +284,7 @@ namespace mps::host
 				{
 					if (m_app)
 					{
-						m_app->requestThemeScheme(qtheme::ColorScheme::Dark, ThemeOrigin::HostUi);
+						m_app->setScheme(mps::theme::Scheme::Dark, ThemeOrigin::HostUi);
 					}
 				});
 
@@ -302,12 +306,16 @@ namespace mps::host
 
 	void ShellWindow::applyThemeChrome()
 	{
-		const QColor window = qtheme::api::color(QStringLiteral("palette"), QStringLiteral("window"), QColor(0xf3, 0xf3, 0xf3));
-		const QColor surface = qtheme::api::color(QStringLiteral("palette"), QStringLiteral("surface"), QColor(0xff, 0xff, 0xff));
-		const QColor stroke = qtheme::api::color(QStringLiteral("palette"), QStringLiteral("stroke"), QColor(0xd1, 0xd1, 0xd1));
-		const QColor text = qtheme::api::color(QStringLiteral("palette"), QStringLiteral("windowText"), QColor(0x1a, 0x1a, 0x1a));
-		const QColor mid = qtheme::api::color(QStringLiteral("palette"), QStringLiteral("mid"), QColor(0xe0, 0xe0, 0xe0));
-		const QColor accent = qtheme::api::color(QStringLiteral("palette"), QStringLiteral("accent"), QColor(0x00, 0x78, 0xd4));
+		// Prefer QApplication palette: widget-local palette can lag behind Engine::setColorScheme
+		// when chrome stylesheets were previously applied.
+		const QPalette pal = QApplication::palette();
+		setPalette(pal);
+		const QColor window = pal.color(QPalette::Window);
+		const QColor surface = pal.color(QPalette::Base);
+		const QColor stroke = pal.color(QPalette::Mid);
+		const QColor text = pal.color(QPalette::WindowText);
+		const QColor mid = pal.color(QPalette::Button);
+		const QColor accent = pal.color(QPalette::Highlight);
 
 		if (m_titleBar)
 		{
@@ -350,8 +358,6 @@ namespace mps::host
 				btn->refreshChrome();
 			}
 		}
-		style()->unpolish(this);
-		style()->polish(this);
 		update();
 	}
 

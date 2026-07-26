@@ -1,4 +1,6 @@
-#include "envelope_channel.hpp"
+﻿#include "envelope_channel.hpp"
+
+#include "envelope_codec.hpp"
 
 #include <QIODevice>
 #include <QLocalSocket>
@@ -11,16 +13,22 @@ namespace mps::ipc
 		, m_device(device)
 	{
 		Q_ASSERT(m_device);
-		connect(m_device, &QIODevice::readyRead, this, &EnvelopeChannel::onReadyRead);
 		if (auto* ls = qobject_cast<QLocalSocket*>(m_device))
 		{
 			connect(ls, &QLocalSocket::disconnected, this, &EnvelopeChannel::disconnected);
 		}
+		// Do not connect readyRead until setHandler: otherwise a Hello that arrives in the
+		// race window is parsed with a null handler and dropped (bytes already consumed).
 	}
 
 	void EnvelopeChannel::setHandler(Handler handler)
 	{
 		m_handler = std::move(handler);
+		if (m_device && !m_readyReadHooked)
+		{
+			connect(m_device, &QIODevice::readyRead, this, &EnvelopeChannel::onReadyRead);
+			m_readyReadHooked = true;
+		}
 		// Data may already be buffered if the peer wrote before the handler was set.
 		if (m_device && m_device->bytesAvailable() > 0)
 		{
@@ -35,7 +43,7 @@ namespace mps::ipc
 			return false;
 		}
 		std::string payload;
-		if (!env.SerializeToString(&payload))
+		if (!serializeEnvelope(env, &payload))
 		{
 			return false;
 		}
@@ -45,7 +53,16 @@ namespace mps::ipc
 			return false;
 		}
 		const auto n = m_device->write(reinterpret_cast<const char*>(frame.data()), static_cast<qint64>(frame.size()));
+		if (auto* ls = qobject_cast<QLocalSocket*>(m_device))
+		{
+			ls->flush();
+		}
 		return n == static_cast<qint64>(frame.size());
+	}
+
+	bool EnvelopeChannel::send(const EnvelopePtr& env)
+	{
+		return env && send(*env);
 	}
 
 	void EnvelopeChannel::onReadyRead()
@@ -74,8 +91,8 @@ namespace mps::ipc
 				m_decoder.reset();
 				break;
 			}
-			shell::ipc::v1::Envelope env;
-			if (!env.ParseFromString(payload))
+			auto env = parseEnvelope(payload);
+			if (!env)
 			{
 				continue;
 			}

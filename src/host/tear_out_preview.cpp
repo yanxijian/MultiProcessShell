@@ -1,19 +1,18 @@
-#include "tear_out_preview.hpp"
-
-#include "qtheme/api.hpp"
+﻿#include "tear_out_preview.hpp"
 
 #include <QImage>
 #include <QPaintEvent>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPalette>
 
 namespace mps::host
 {
 	namespace
 	{
-		QColor themeColor(const char* group, const char* role, QColor fallback)
+		QColor themeColor(QPalette::ColorRole role, QColor fallback)
 		{
-			const QColor c = qtheme::api::color(QString::fromUtf8(group), QString::fromUtf8(role), fallback);
+			const QColor c = QPalette().color(role);
 			return c.isValid() ? c : fallback;
 		}
 
@@ -114,8 +113,8 @@ namespace mps::host
 		}
 		else
 		{
-			const QColor stroke = themeColor("palette", "stroke", QColor(0xd1, 0xd1, 0xd1));
-			const QColor tabBg = themeColor("tab", "bg", QColor(0xf3, 0xf3, 0xf3));
+			const QColor stroke = themeColor(QPalette::Mid, QColor(0xd1, 0xd1, 0xd1));
+			const QColor tabBg = themeColor(QPalette::Window, QColor(0xf3, 0xf3, 0xf3));
 			p.setPen(QPen(stroke, 1));
 			p.setBrush(withAlpha(tabBg, 235));
 			p.drawRoundedRect(content.adjusted(0.5, 0.5, -0.5, -0.5), kRadius, kRadius);
@@ -175,12 +174,12 @@ namespace mps::host
 		p.setRenderHint(QPainter::Antialiasing, true);
 		p.setRenderHint(QPainter::SmoothPixmapTransform, true);
 
-		const QColor window = themeColor("palette", "window", QColor(0xf3, 0xf3, 0xf3));
-		const QColor mid = themeColor("palette", "mid", QColor(0xe0, 0xe0, 0xe0));
-		const QColor stroke = themeColor("palette", "stroke", QColor(0xd1, 0xd1, 0xd1));
-		const QColor text = themeColor("palette", "windowText", QColor(0x1a, 0x1a, 0x1a));
-		const QColor tabBg = themeColor("tab", "bg", QColor(0xf3, 0xf3, 0xf3));
-		const QColor tabFg = themeColor("tab", "fg", QColor(0x5c, 0x5c, 0x5c));
+		const QColor window = themeColor(QPalette::Window, QColor(0xf3, 0xf3, 0xf3));
+		const QColor mid = themeColor(QPalette::Button, QColor(0xe0, 0xe0, 0xe0));
+		const QColor stroke = themeColor(QPalette::Mid, QColor(0xd1, 0xd1, 0xd1));
+		const QColor text = themeColor(QPalette::WindowText, QColor(0x1a, 0x1a, 0x1a));
+		const QColor tabBg = themeColor(QPalette::Window, QColor(0xf3, 0xf3, 0xf3));
+		const QColor tabFg = themeColor(QPalette::WindowText, QColor(0x5c, 0x5c, 0x5c));
 
 		const QRectF r = QRectF(rect()).adjusted(kFramePad, kFramePad, -kFramePad, -kFramePad);
 		p.setPen(QPen(withAlpha(stroke, 200), 1.2));

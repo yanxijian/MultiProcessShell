@@ -1,4 +1,4 @@
-#ifndef __MPS_IPC_QT_THEME_SCHEME_H__
+﻿#ifndef __MPS_IPC_QT_THEME_SCHEME_H__
 #define __MPS_IPC_QT_THEME_SCHEME_H__
 
 #include <QByteArray>

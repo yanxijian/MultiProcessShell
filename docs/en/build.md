@@ -2,83 +2,13 @@
 
 > **中文主文档**: [`../zh/build.md`](../zh/build.md)
 
-## Dependencies
+## Architecture
 
-- Windows: MSVC (x64), CMake ≥ 3.21, Ninja (recommended), Python 3.10+, Git (FetchContent)
-- Qt: open-source **6.8+** (needed for default Host/Client/Demo; **optional for M0-only**)
-- Protobuf / GoogleTest: CMake **FetchContent**
-
-## Environment
-
-| Variable | Purpose |
-|----------|---------|
-| `QTDIR` | Qt install prefix (required for default Demo build) |
-| `PATH` | should include `%QTDIR%\bin` |
-
-Use `%QTDIR%` / `$env:QTDIR` in projects.
-
-On Windows, configure/build inside an **x64 vcvars / Native Tools** shell (`cl`, `rc`, `mt`).
-
-## Default: Demo + deploy
-
-CMake defaults: `MPS_BUILD_SRC=ON`, `MPS_BUILD_DEMOS=ON`, `MPS_BUILD_TESTS=ON`.
+Framework DLLs are independent: `qtheme_engine`, `qfluentribbon`, and `mps_*` do **not** link each other. Demos compose them (`mps_demo_host`→QTE, `mps_demo_client`→QFR+QTE).
 
 ```bat
-python scripts\build_repo.py
-:: double-click (no console):
-build\demos\mps_demo_host.exe
+set QTDIR=D:\Codes\Qt6.8.4
+python scripts\install_stack.py --prefix D:\Codes\prefix
 ```
 
-On Windows, a successful `build_repo.py` runs `scripts/deploy_demo.py` (`windeployqt`) and copies Qt/CRT next to the exes. You can also run:
-
-```bat
-python scripts\deploy_demo.py
-```
-
-Demo targets use the **Windows GUI** subsystem (`WIN32_EXECUTABLE`); double-click does not open an extra console.
-
-### Incremental builds
-
-`build_repo.py` **skips cmake reconfigure** when options already match the cache (`cmake configure: skipped`), so FetchContent protobuf/abseil are not rebuilt for ordinary code edits.
-
-- Day-to-day: just re-run `python scripts\build_repo.py`.  
-- Force reconfigure: `--reconfigure`; wipe: `--fresh` (rebuilds protobuf).  
-- Stay in the same **vcvars** shell; the script prefers `cl` from PATH to avoid toolchain path thrash.
-
-## M0 (framing + proto tests, Qt optional)
-
-```bat
-python scripts\build_repo.py --no-demos --test
-```
-
-Note: `--no-demos` also turns off `MPS_BUILD_SRC`.
-
-Equivalent manual CMake:
-
-```bat
-cmake -S . -B build -G Ninja ^
-  -DMPS_BUILD_TESTS=ON -DMPS_FETCH_PROTOBUF=ON ^
-  -DMPS_BUILD_DEMOS=OFF -DMPS_BUILD_SRC=OFF
-cmake --build build
-ctest --test-dir build --output-on-failure
-```
-
-First configure downloads protobuf and GoogleTest (needs network).
-
-## Helper scripts
-
-```bash
-python scripts/build_qt.py --help
-python scripts/build_repo.py --help
-python scripts/deploy_demo.py --help
-```
-
-## Manual CMake (with Demo)
-
-```bat
-cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH="%QTDIR%" -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-```
-
-Related: [product spec](multiprocess-shell-spec.md), [Demo morphology](demo-morphology.md), [Demo IPC](demo-ipc.md), [CI](ci.md)  
-IDL: `proto/shell/ipc/v1/ipc.proto`
+Demo-only sibling embed: `-DMPS_DEV_EMBED_QTE=ON -DMPS_DEV_EMBED_QFR=ON -DMPS_INSTALL=OFF`.

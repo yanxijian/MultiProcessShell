@@ -1,4 +1,4 @@
-#include "shell_app.hpp"
+﻿#include "shell_app.hpp"
 
 #include "tab_strip.hpp"
 
@@ -32,13 +32,7 @@ namespace mps::host
 		: QObject(parent)
 		, m_clientExe(std::move(clientExe))
 	{
-		m_theme = std::make_unique<ThemeService>(this);
-		if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance()))
-		{
-			m_theme->start(app);
-		}
 		qRegisterMetaType<mps::theme::Scheme>();
-		connect(m_theme.get(), &ThemeService::schemeChanged, this, &ShellApp::onThemeSchemeChanged);
 
 		m_token = QUuid::createUuid().toString(QUuid::WithoutBraces);
 		m_endpoint = QStringLiteral("mps-demo-%1").arg(m_token);
@@ -295,6 +289,18 @@ namespace mps::host
 
 	void ShellApp::createClientOn(ShellWindow* shell)
 	{
+		if (m_clientLaunchInFlight)
+		{
+			return;
+		}
+		for (const auto& existing : m_sessions)
+		{
+			if (existing && !existing->isDead() && !existing->channel())
+			{
+				return;
+			}
+		}
+		m_clientLaunchInFlight = true;
 		const int clientIndex = m_nextClientIndex++;
 		m_nextWindowIndex[clientIndex] = 1;
 		auto session = std::make_unique<ClientSession>(clientIndex, m_endpoint, this);
@@ -376,6 +382,7 @@ namespace mps::host
 
 	void ShellApp::onSessionHelloOk(ClientSession* session)
 	{
+		m_clientLaunchInFlight = false;
 		// Push SSOT skin before the first CreateSubWindow so the Client page is born correct.
 		pushThemeToSession(session);
 		onSessionReady(session);
@@ -394,22 +401,20 @@ namespace mps::host
 		session->requestCreateSubWindow(tabId, title);
 	}
 
-	void ShellApp::requestThemeScheme(qtheme::ColorScheme scheme, ThemeOrigin origin)
+	void ShellApp::setScheme(mps::theme::Scheme scheme, ThemeOrigin origin)
 	{
-		if (m_theme)
+		if (scheme != mps::theme::Scheme::Light && scheme != mps::theme::Scheme::Dark)
 		{
-			m_theme->setScheme(scheme, origin);
+			scheme = mps::theme::Scheme::Light;
 		}
-	}
-
-	void ShellApp::onThemeSetRequested(ClientSession* /*session*/, mps::theme::Scheme scheme)
-	{
-		requestThemeScheme(toColorScheme(scheme), ThemeOrigin::ClientRequest);
-	}
-
-	void ShellApp::onThemeSchemeChanged(qtheme::ColorScheme scheme, ThemeOrigin /*origin*/)
-	{
-		broadcastTheme(scheme);
+		if (m_scheme == scheme)
+		{
+			return;
+		}
+		m_scheme = scheme;
+		// Demo applies QTE synchronously first so QPalette matches the new scheme,
+		// then chrome stylesheets are rebuilt from the updated palette.
+		emit schemeChanged(scheme, origin);
 		for (auto& shell : m_shells)
 		{
 			if (shell)
@@ -417,20 +422,29 @@ namespace mps::host
 				shell->applyThemeChrome();
 			}
 		}
+		if (origin != ThemeOrigin::Startup)
+		{
+			broadcastTheme(scheme);
+		}
+	}
+
+	void ShellApp::onThemeSetRequested(ClientSession* /*session*/, mps::theme::Scheme scheme)
+	{
+		setScheme(scheme, ThemeOrigin::ClientRequest);
 	}
 
 	void ShellApp::pushThemeToSession(ClientSession* session)
 	{
-		if (!session || !m_theme)
+		if (!session)
 		{
 			return;
 		}
-		session->pushThemeScheme(mps::theme::toParams(toThemeScheme(m_theme->scheme())));
+		session->pushThemeScheme(mps::theme::toParams(m_scheme));
 	}
 
-	void ShellApp::broadcastTheme(qtheme::ColorScheme scheme)
+	void ShellApp::broadcastTheme(mps::theme::Scheme scheme)
 	{
-		const QByteArray params = mps::theme::toParams(toThemeScheme(scheme));
+		const QByteArray params = mps::theme::toParams(scheme);
 		for (auto& session : m_sessions)
 		{
 			if (session && !session->isDead())
@@ -512,6 +526,7 @@ namespace mps::host
 		{
 			return;
 		}
+		m_clientLaunchInFlight = false;
 		// Disconnect further death signals — process finished + socket disconnect both fire.
 		session->disconnect(this);
 

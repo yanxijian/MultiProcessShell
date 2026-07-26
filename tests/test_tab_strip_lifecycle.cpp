@@ -1,4 +1,4 @@
-#include "tab_strip.hpp"
+﻿#include "tab_strip.hpp"
 
 #include <gtest/gtest.h>
 

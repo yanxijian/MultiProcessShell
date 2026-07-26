@@ -1,4 +1,4 @@
-#ifndef __MPS_HOST_TEAR_OUT_PREVIEW_H__
+﻿#ifndef __MPS_HOST_TEAR_OUT_PREVIEW_H__
 #define __MPS_HOST_TEAR_OUT_PREVIEW_H__
 
 #include <QPixmap>

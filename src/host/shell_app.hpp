@@ -1,10 +1,11 @@
-#ifndef __MPS_HOST_SHELL_APP_H__
+﻿#ifndef __MPS_HOST_SHELL_APP_H__
 #define __MPS_HOST_SHELL_APP_H__
 
 #include "client_session.hpp"
 #include "shell_window.hpp"
 #include "tear_out_preview.hpp"
-#include "theme_service.hpp"
+#include "theme_origin.hpp"
+#include "theme_scheme.hpp"
 
 #include <QHash>
 #include <QLocalServer>
@@ -13,11 +14,12 @@
 #include <QTimer>
 
 #include <memory>
+#include <mps/mps_host_export.hpp>
 #include <vector>
 
 namespace mps::host
 {
-	class ShellApp final : public QObject
+	class MPS_HOST_EXPORT ShellApp final : public QObject
 	{
 		Q_OBJECT
 	public:
@@ -43,11 +45,16 @@ namespace mps::host
 		[[nodiscard]] ShellWindow* shellFromStripDropTarget(QObject* watched) const;
 		[[nodiscard]] ShellWindow* tabDropZoneShellAtGlobal(QPoint globalPos) const;
 		void destroyShellIfEmpty(ShellWindow* shell);
-		[[nodiscard]] ThemeService* themeService() const
+
+		[[nodiscard]] mps::theme::Scheme scheme() const
 		{
-			return m_theme.get();
+			return m_scheme;
 		}
-		void requestThemeScheme(qtheme::ColorScheme scheme, ThemeOrigin origin);
+		/// Update appearance SSOT (Light/Dark). Broadcasts to clients when origin != Startup.
+		void setScheme(mps::theme::Scheme scheme, ThemeOrigin origin);
+
+	signals:
+		void schemeChanged(mps::theme::Scheme scheme, ThemeOrigin origin);
 
 	protected:
 		bool eventFilter(QObject* watched, QEvent* event) override;
@@ -64,9 +71,8 @@ namespace mps::host
 		void onSessionHealthy(ClientSession* session);
 		void terminateSession(ClientSession* session);
 		void onThemeSetRequested(ClientSession* session, mps::theme::Scheme scheme);
-		void onThemeSchemeChanged(qtheme::ColorScheme scheme, ThemeOrigin origin);
 		void pushThemeToSession(ClientSession* session);
-		void broadcastTheme(qtheme::ColorScheme scheme);
+		void broadcastTheme(mps::theme::Scheme scheme);
 		void updateTabDragVisuals();
 		void clearAllTabYieldPreviews();
 		void pollEscapeCancel();
@@ -87,19 +93,17 @@ namespace mps::host
 		QString m_endpoint;
 		QString m_token;
 		QLocalServer* m_server = nullptr;
-		std::unique_ptr<ThemeService> m_theme;
+		mps::theme::Scheme m_scheme = mps::theme::Scheme::Light;
 		std::vector<std::unique_ptr<ShellWindow>> m_shells;
 		std::vector<std::unique_ptr<ClientSession>> m_sessions;
 		QHash<qint64, ShellWindow*> m_tabToShell;
 		qint64 m_nextTabId = 1;
 		int m_nextClientIndex = 1;
-		QHash<int, int> m_nextWindowIndex; // clientIndex -> next M
-		// Queued first CreateSubWindow per session after ready
+		QHash<int, int> m_nextWindowIndex;
 		QHash<ClientSession*, ShellWindow*> m_pendingFirstShell;
-		// Spec S5: CreateSubWindow deferred while tear-out drag is active
 		std::vector<DeferredCreate> m_deferredCreatesDuringDrag;
+		bool m_clientLaunchInFlight = false;
 
-		// Detachable-tab tear-out drag session
 		TearOutPreview* m_tearOutPreview = nullptr;
 		TabDragGhost* m_tabDragGhost = nullptr;
 		QTimer* m_dragVisualTimer = nullptr;
@@ -114,11 +118,9 @@ namespace mps::host
 		bool m_dragDropHandled = false;
 		bool m_dragActive = false;
 		bool m_dragCancelled = false;
-		bool m_tearOutDetached = false; // hysteresis: window-preview mode
+		bool m_tearOutDetached = false;
 		bool m_ghostSnapBackActive = false;
 		bool m_dragForbiddenCursor = false;
-		// Leave strip → tear-out; return requires getting closer (hysteresis).
-		// Slops live in mps::tab_strip (unit-tested).
 	};
 } // namespace mps::host
 

@@ -1,11 +1,54 @@
+﻿// demo_client sources (parent wires demos/CMakeLists.txt):
+//   main.cpp, page_window.cpp, page_window.hpp, ribbon_page.cpp, ribbon_page.hpp
 #include "client_app.hpp"
+#include "qfluentribbon/ribbon_tokens.hpp"
+#include "qfluentribbon/theme_bridge.hpp"
+#include "qtheme/api.hpp"
+#include "qtheme/engine.hpp"
+#include "qtheme/store.hpp"
+#include "qtheme/types.hpp"
+#include "ribbon_page.hpp"
 
 #include <QApplication>
+#include <QColor>
 #include <QCommandLineParser>
+#include <QDir>
+
+#include <memory>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
+
+namespace
+{
+	void syncRibbonTokensFromEngine(qtheme::Engine* engine, qfluentribbon::ThemeBridge* bridge)
+	{
+		if (!engine || !bridge)
+		{
+			return;
+		}
+		qfluentribbon::tokens::setDpiScale(qtheme::api::dpiScale());
+
+		auto pick = [engine](const QString& role, const QColor& fallback) -> QColor
+		{
+			if (qtheme::ThemeStore* store = engine->store())
+			{
+				const qtheme::ColorValue cv = store->color(QStringLiteral("palette"), role, fallback);
+				return cv.ok ? cv.value : fallback;
+			}
+			return fallback;
+		};
+
+		bridge->ensureRibbonTokens(pick(QStringLiteral("window"), QColor(QStringLiteral("#F3F3F3"))),
+								   pick(QStringLiteral("surface"), QColor(QStringLiteral("#FFFFFF"))),
+								   pick(QStringLiteral("stroke"), QColor(QStringLiteral("#D1D1D1"))),
+								   pick(QStringLiteral("text"), QColor(QStringLiteral("#1A1A1A"))),
+								   pick(QStringLiteral("accent"), QColor(QStringLiteral("#0078D4"))),
+								   pick(QStringLiteral("text.tertiary"), QColor(QStringLiteral("#8D8D8D"))),
+								   pick(QStringLiteral("accent.text"), QColor(Qt::white)));
+	}
+} // namespace
 
 int main(int argc, char* argv[])
 {
@@ -35,7 +78,26 @@ int main(int argc, char* argv[])
 		return 2;
 	}
 
-	mps::client::ClientApp client(parser.value(endpoint), parser.value(token), !parser.isSet(noHeartbeat));
+	qtheme::Engine engine;
+	engine.apply(&app);
+	qtheme::api::bind(&engine);
+	qtheme::Engine::setDefault(&engine);
+	qfluentribbon::ThemeBridge bridge;
+	syncRibbonTokensFromEngine(&engine, &bridge);
+
+	mps::client::PageFactory factory = [&engine, &bridge](qint64 tabId, const QString& title)
+	{
+		return std::make_unique<mps::demo::RibbonPage>(tabId, title, &engine, &bridge);
+	};
+
+	mps::client::ClientApp client(parser.value(endpoint), parser.value(token), std::move(factory), !parser.isSet(noHeartbeat));
+	client.setAppearanceHandler(
+		[&engine, &bridge](mps::theme::Scheme scheme)
+		{
+			const qtheme::ColorScheme cs = (scheme == mps::theme::Scheme::Dark) ? qtheme::ColorScheme::Dark : qtheme::ColorScheme::Light;
+			(void)engine.setColorScheme(cs, /*force=*/true);
+			syncRibbonTokensFromEngine(&engine, &bridge);
+		});
 	if (!client.connectToHost())
 	{
 		return 3;

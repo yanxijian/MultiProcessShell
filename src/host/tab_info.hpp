@@ -1,4 +1,4 @@
-#ifndef __MPS_HOST_TAB_INFO_H__
+﻿#ifndef __MPS_HOST_TAB_INFO_H__
 #define __MPS_HOST_TAB_INFO_H__
 
 #include <QString>

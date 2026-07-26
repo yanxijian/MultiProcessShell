@@ -1,9 +1,19 @@
-add_executable(mps_demo_host demo_host/main.cpp)
-target_link_libraries(mps_demo_host PRIVATE mps::host)
+add_executable(mps_demo_host
+  demo_host/main.cpp
+  demo_host/theme_service.cpp
+  demo_host/theme_service.hpp
+)
+target_link_libraries(mps_demo_host PRIVATE mps::host ${MPS_QTE_TARGET})
 set_target_properties(mps_demo_host PROPERTIES AUTOMOC ON)
 
-add_executable(mps_demo_client demo_client/main.cpp)
-target_link_libraries(mps_demo_client PRIVATE mps::client)
+add_executable(mps_demo_client
+  demo_client/main.cpp
+  demo_client/page_window.cpp
+  demo_client/page_window.hpp
+  demo_client/ribbon_page.cpp
+  demo_client/ribbon_page.hpp
+)
+target_link_libraries(mps_demo_client PRIVATE mps::client ${MPS_QFR_TARGET} ${MPS_QTE_TARGET})
 set_target_properties(mps_demo_client PROPERTIES AUTOMOC ON)
 
 # GUI subsystem: no extra console window on double-click (Windows).
@@ -11,7 +21,6 @@ if(WIN32)
   set_target_properties(mps_demo_host mps_demo_client PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
 
-# Resolve windeployqt from Qt prefix (QTDIR / CMAKE_PREFIX_PATH).
 if(NOT WINDEPLOYQT_EXECUTABLE)
   find_program(WINDEPLOYQT_EXECUTABLE
     NAMES windeployqt windeployqt.exe
@@ -22,13 +31,43 @@ if(NOT WINDEPLOYQT_EXECUTABLE)
   )
 endif()
 
-# Host finds client next to itself, then deploy Qt (+ CRT) for double-click run.
 add_custom_command(TARGET mps_demo_host POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
           $<TARGET_FILE:mps_demo_client>
           $<TARGET_FILE_DIR:mps_demo_host>
   COMMENT "Copy mps_demo_client beside mps_demo_host"
 )
+
+if(WIN32 AND MPS_BUILD_SHARED)
+  set(_mps_demo_dll_copy_cmds
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_ipc> $<TARGET_FILE_DIR:mps_demo_host>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_ipc_qt> $<TARGET_FILE_DIR:mps_demo_host>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_host> $<TARGET_FILE_DIR:mps_demo_host>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_client> $<TARGET_FILE_DIR:mps_demo_host>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${MPS_QTE_TARGET}> $<TARGET_FILE_DIR:mps_demo_host>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${MPS_QFR_TARGET}> $<TARGET_FILE_DIR:mps_demo_host>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_ipc> $<TARGET_FILE_DIR:mps_demo_client>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_ipc_qt> $<TARGET_FILE_DIR:mps_demo_client>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_client> $<TARGET_FILE_DIR:mps_demo_client>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${MPS_QTE_TARGET}> $<TARGET_FILE_DIR:mps_demo_client>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${MPS_QFR_TARGET}> $<TARGET_FILE_DIR:mps_demo_client>
+  )
+  if(MPS_PROTOBUF_SHARED)
+    foreach(_t IN LISTS MPS_PROTOBUF_RUNTIME_TARGETS)
+      if(TARGET ${_t})
+        list(APPEND _mps_demo_dll_copy_cmds
+          COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${_t}> $<TARGET_FILE_DIR:mps_demo_host>
+          COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${_t}> $<TARGET_FILE_DIR:mps_demo_client>
+        )
+      endif()
+    endforeach()
+  endif()
+  add_custom_command(TARGET mps_demo_host POST_BUILD
+    ${_mps_demo_dll_copy_cmds}
+    COMMENT "Copy mps_*.dll + protobuf runtime + qtheme_engine + qfluentribbon beside demos"
+    VERBATIM
+  )
+endif()
 
 if(WIN32 AND WINDEPLOYQT_EXECUTABLE)
   add_custom_command(TARGET mps_demo_host POST_BUILD

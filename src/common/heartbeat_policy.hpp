@@ -1,4 +1,4 @@
-#ifndef __MPS_IPC_HEARTBEAT_POLICY_H__
+﻿#ifndef __MPS_IPC_HEARTBEAT_POLICY_H__
 #define __MPS_IPC_HEARTBEAT_POLICY_H__
 
 #include <cstdint>

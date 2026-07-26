@@ -1,8 +1,9 @@
-#ifndef __MPS_HOST_THEME_SERVICE_H__
-#define __MPS_HOST_THEME_SERVICE_H__
+﻿#ifndef __MPS_DEMO_HOST_THEME_SERVICE_H__
+#define __MPS_DEMO_HOST_THEME_SERVICE_H__
 
 #include "qtheme/engine.hpp"
 #include "qtheme/types.hpp"
+#include "theme_origin.hpp"
 #include "theme_scheme.hpp"
 
 #include <QObject>
@@ -11,15 +12,8 @@
 
 class QApplication;
 
-namespace mps::host
+namespace mps::demo_host
 {
-	enum class ThemeOrigin
-	{
-		Startup,
-		HostUi,
-		ClientRequest,
-	};
-
 	[[nodiscard]] inline qtheme::ColorScheme toColorScheme(mps::theme::Scheme scheme)
 	{
 		return scheme == mps::theme::Scheme::Dark ? qtheme::ColorScheme::Dark : qtheme::ColorScheme::Light;
@@ -30,7 +24,7 @@ namespace mps::host
 		return scheme == qtheme::ColorScheme::Dark ? mps::theme::Scheme::Dark : mps::theme::Scheme::Light;
 	}
 
-	/// Process-wide appearance SSOT for the Demo Host (Light/Dark).
+	/// Demo Host: owns QThemeEngine and persists Light/Dark. Wired to ShellApp::schemeChanged.
 	class ThemeService final : public QObject
 	{
 		Q_OBJECT
@@ -42,19 +36,14 @@ namespace mps::host
 		{
 			return m_engine.get();
 		}
-		[[nodiscard]] qtheme::ColorScheme scheme() const;
-		/// Apply locally, persist, and emit schemeChanged when the scheme actually changes.
-		void setScheme(qtheme::ColorScheme scheme, ThemeOrigin origin);
-
-	signals:
-		void schemeChanged(qtheme::ColorScheme scheme, ThemeOrigin origin);
+		[[nodiscard]] mps::theme::Scheme scheme() const;
+		void applyScheme(mps::theme::Scheme scheme);
+		[[nodiscard]] mps::theme::Scheme loadPersistedOrDefault() const;
+		void persist(mps::theme::Scheme scheme) const;
 
 	private:
-		void persist() const;
-		void loadOrDefault();
-
 		std::unique_ptr<qtheme::Engine> m_engine;
 	};
-} // namespace mps::host
+} // namespace mps::demo_host
 
-#endif // __MPS_HOST_THEME_SERVICE_H__
+#endif

@@ -1,4 +1,4 @@
-#ifndef __MPS_HOST_WIN_CAPTURE_H__
+﻿#ifndef __MPS_HOST_WIN_CAPTURE_H__
 #define __MPS_HOST_WIN_CAPTURE_H__
 
 #include <QPixmap>

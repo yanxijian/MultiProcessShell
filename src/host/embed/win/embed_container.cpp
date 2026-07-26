@@ -1,4 +1,4 @@
-#include "embed_container.hpp"
+﻿#include "embed_container.hpp"
 
 #include "win_capture.hpp"
 

@@ -1,4 +1,4 @@
-#ifndef __MPS_TAB_STRIP_TAB_EMBED_MAP_H__
+﻿#ifndef __MPS_TAB_STRIP_TAB_EMBED_MAP_H__
 #define __MPS_TAB_STRIP_TAB_EMBED_MAP_H__
 
 // Pure tabId → embed credential (wid) map. Host Tab model stays tabId-only;

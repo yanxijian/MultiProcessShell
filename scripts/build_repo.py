@@ -308,7 +308,14 @@ def main() -> int:
                 cmake_cmd.append(f"-DCMAKE_MT={Path(mt).resolve().as_posix()}")
 
         if qtdir:
-            cmake_cmd.append(f"-DCMAKE_PREFIX_PATH={Path(qtdir).as_posix()}")
+            prefix = os.environ.get("MPS_PREFIX", str(ROOT.parent / "prefix"))
+            prefix_path = Path(prefix)
+            if prefix_path.is_dir():
+                cmake_cmd.append(
+                    f"-DCMAKE_PREFIX_PATH={Path(qtdir).as_posix()};{prefix_path.as_posix()}"
+                )
+            else:
+                cmake_cmd.append(f"-DCMAKE_PREFIX_PATH={Path(qtdir).as_posix()}")
         if args.fresh:
             cmake_cmd.append("--fresh")
         for d in args.defs:
