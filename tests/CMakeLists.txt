@@ -83,15 +83,9 @@ if(TARGET mps::ipc_qt)
       VERBATIM
     )
     mps_copy_protobuf_runtime(mps_m4b_python_hello)
-    set(_mps_m4b_path "$ENV{PATH}")
-    if(DEFINED ENV{QTDIR} AND NOT "$ENV{QTDIR}" STREQUAL "")
-      file(TO_NATIVE_PATH "$ENV{QTDIR}/bin" _mps_qt_bin)
-      set(_mps_m4b_path "${_mps_qt_bin};${_mps_m4b_path}")
-    endif()
-    gtest_discover_tests(mps_m4b_python_hello
-      DISCOVERY_MODE PRE_TEST
-      PROPERTIES ENVIRONMENT "PATH=${_mps_m4b_path}"
-    )
+    # Do not bake PATH into the test ENVIRONMENT: CTest treats ';' as a list
+    # separator and truncates PATH, which breaks finding python.exe / Qt DLLs.
+    gtest_discover_tests(mps_m4b_python_hello DISCOVERY_MODE PRE_TEST)
   else()
     gtest_discover_tests(mps_m4b_python_hello)
   endif()
