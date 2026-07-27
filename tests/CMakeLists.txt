@@ -76,7 +76,22 @@ if(TARGET mps::ipc_qt)
   )
   set_target_properties(mps_m4b_python_hello PROPERTIES AUTOMOC ON)
   if(WIN32 AND MPS_BUILD_SHARED)
-    gtest_discover_tests(mps_m4b_python_hello DISCOVERY_MODE PRE_TEST)
+    add_custom_command(TARGET mps_m4b_python_hello POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_ipc> $<TARGET_FILE_DIR:mps_m4b_python_hello>
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_ipc_qt> $<TARGET_FILE_DIR:mps_m4b_python_hello>
+      COMMENT "Copy mps_ipc*.dll beside mps_m4b_python_hello"
+      VERBATIM
+    )
+    mps_copy_protobuf_runtime(mps_m4b_python_hello)
+    set(_mps_m4b_path "$ENV{PATH}")
+    if(DEFINED ENV{QTDIR} AND NOT "$ENV{QTDIR}" STREQUAL "")
+      file(TO_NATIVE_PATH "$ENV{QTDIR}/bin" _mps_qt_bin)
+      set(_mps_m4b_path "${_mps_qt_bin};${_mps_m4b_path}")
+    endif()
+    gtest_discover_tests(mps_m4b_python_hello
+      DISCOVERY_MODE PRE_TEST
+      PROPERTIES ENVIRONMENT "PATH=${_mps_m4b_path}"
+    )
   else()
     gtest_discover_tests(mps_m4b_python_hello)
   endif()
