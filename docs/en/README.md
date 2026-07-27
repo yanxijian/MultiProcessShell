@@ -50,13 +50,25 @@ python scripts\build_repo.py --no-demos --test
 
 See [build.md](build.md) and [ci.md](ci.md).
 
+## Layout
+
+```text
+cmake/            Qt / Protobuf helpers
+proto/            shell.ipc.v1 IDL
+src/              Host / Client / common / ipc_qt
+demos/            mps_demo_host / mps_demo_client
+tests/            protocol + tab-strip unit tests
+scripts/          install_stack / build_repo / build_qt / deploy_demo
+clients/python/   M4b Python Hello smoke
+docs/zh|en/       Chinese + English docs
+```
+
 ## Documentation
 
-| Topic | 中文 | English |
-|-------|------|---------|
+| Topic | 中文（主） | English |
+|-------|------------|---------|
 | Product spec | [../zh/multiprocess-shell-spec.md](../zh/multiprocess-shell-spec.md) | [multiprocess-shell-spec.md](multiprocess-shell-spec.md) |
 | Dev plan | [../zh/dev-plan.md](../zh/dev-plan.md) | [dev-plan.md](dev-plan.md) |
-| M5 gap audit | [../zh/m5-gap-audit.md](../zh/m5-gap-audit.md) | [m5-gap-audit.md](m5-gap-audit.md) |
 | Demo morphology | [../zh/demo-morphology.md](../zh/demo-morphology.md) | [demo-morphology.md](demo-morphology.md) |
 | Demo acceptance | [../zh/demo-acceptance.md](../zh/demo-acceptance.md) | [demo-acceptance.md](demo-acceptance.md) |
 | Demo IPC | [../zh/demo-ipc.md](../zh/demo-ipc.md) | [demo-ipc.md](demo-ipc.md) |
@@ -72,10 +84,9 @@ See [build.md](build.md) and [ci.md](ci.md).
 |------------|--------|
 | Framing + `shell.ipc.v1` + `mps_ipc_tests` (M0) | Done |
 | Detachable tab-strip rule tests | Done |
-| Windows Demo (Home / Create Client / tear-out / embed) | Done |
+| Windows Demo (Home / Create Client / tear-out / embed) | Done (M5 closable) |
 | `wid` behind embed seam | Done |
 | M4b Python Hello | Done |
-| M5 tear-out / merge | Closable — [gap audit](../zh/m5-gap-audit.md) |
 | M6 heartbeat / unresponsive UI | Done |
 | Multi-backend / optional M7 | See spec + [dev-plan](dev-plan.md) |
 

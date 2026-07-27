@@ -93,7 +93,7 @@ docs/zh|en/       中英文文档
 |------|------|
 | 拼帧 + `shell.ipc.v1` + `mps_ipc_tests`（M0） | 完成 |
 | 可撕出 Tab 规则单测（`mps_tab_strip_tests`） | 完成 |
-| Windows Demo（Home / 创建 Client / 拖出合入 / 嵌入） | 完成（M5 可关账） |
+| Windows Demo（Home / Create Client / 拖出合入 / 嵌入） | 完成（M5 可关账） |
 | `wid` 收到 embed seam（Tab 模型 tabId-only） | 完成 |
 | M4b Python Hello | 完成 |
 | M6 心跳 / 无响应 UI | 完成 |
