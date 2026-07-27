@@ -45,7 +45,7 @@
 
 | 方向 | 建议姿态 |
 |------|----------|
-| ~~M4b Python Hello~~ | **完成**：`hello_client.py` + 离线 `test_frame_envelope.py` + Qt 烟测 `mps_m4b_python_hello` |
+| ~~M4b Python Hello~~ | **完成**：`hello_client.py` + 离线 `test_frame_envelope.py` + Qt 烟测 `mps_tests_m4b_hello` |
 | M5 拖出 / 合入 | **可关账**（G1/G4 已修；G2/G3 Demo Client no-op）— [m5-gap-audit.md](m5-gap-audit.md) |
 | ~~M6 心跳 / 无响应 UI~~ | **完成**：`heartbeat_policy.hpp`；Client 2s EVT；Host 6s Unhealthy；Tab 后缀 + 右键终止 |
 | x11 / inproc / 多类型 Client | 前：~~wid 后置 +~~ `IEmbedBackend`（wid 已后置） |

@@ -68,4 +68,4 @@ Manual regression. Finish this list before later polish (tab overflow, REQ timeo
 ## M4b (multi-language Hello, optional)
 
 - [ ] `python clients/python/test_frame_envelope.py` passes
-- [ ] `ctest -R M4bPythonHello` (or `mps_m4b_python_hello`) passes: Python `Hello(EMBED_NONE)` ↔ `HelloAck`
+- [ ] `ctest -R M4bPythonHello` (or `mps_tests_m4b_hello`) passes: Python `Hello(EMBED_NONE)` ↔ `HelloAck`

@@ -41,7 +41,7 @@ namespace
 TEST(M4bPythonHello, HelloAckOverLocalSocket)
 {
 	int argc = 1;
-	char arg0[] = "mps_m4b_python_hello";
+	char arg0[] = "mps_tests_m4b_hello";
 	char* argv[] = {arg0, nullptr};
 	QCoreApplication app(argc, argv);
 

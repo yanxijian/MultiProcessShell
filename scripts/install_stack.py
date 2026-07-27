@@ -138,7 +138,6 @@ def main() -> int:
             extra_defs=[
                 "-DQFR_BUILD_SHARED=ON",
                 "-DQFR_INSTALL=ON",
-                "-DQFR_DEV_EMBED_QTE=OFF",
                 "-DQFR_BUILD_TESTS=OFF",
                 "-DQFR_BUILD_EXAMPLES=ON",
             ],

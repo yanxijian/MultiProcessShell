@@ -37,7 +37,7 @@ Scan top recommendation: ~~**wid → embed** first~~ **done**; peel Shell rules 
 
 | Direction | Posture |
 |-----------|---------|
-| ~~M4b Python Hello~~ | **Done** — `hello_client.py`, offline `test_frame_envelope.py`, Qt harness `mps_m4b_python_hello` |
+| ~~M4b Python Hello~~ | **Done** — `hello_client.py`, offline `test_frame_envelope.py`, Qt harness `mps_tests_m4b_hello` |
 | M5 tear-out / merge | **Closable** (G1/G4 fixed; G2/G3 Demo Client no-op) — [gap audit](../zh/m5-gap-audit.md) |
 | ~~M6 heartbeat / unhealthy UI~~ | **Done** — `heartbeat_policy.hpp`; Client 2s EVT; Host 6s Unhealthy; tab suffix + terminate |
 | x11 / inproc / multi-client | `IEmbedBackend` next (`wid` already localized) |

@@ -6,11 +6,11 @@
 
 | 库 | 依赖 |
 |----|------|
-| `qtheme_engine` | 仅 Qt |
-| `qfluentribbon` | 仅 Qt（本地 `ribbon_tokens`；不链 QTE） |
+| `qte_engine` | 仅 Qt |
+| `qfr_ribbon` | 仅 Qt（本地 `ribbon_tokens`；不链 QTE） |
 | `mps_*` | Qt + protobuf（不链 QTE/QFR） |
 
-QTE / QFR 仅由 **Demo** 链接：`mps_demo_host`→QTE，`mps_demo_client`→QFR+QTE，`qfr_gallery`→QFR+QTE。
+QTE / QFR 仅由 **Demo** 链接：`mps_demo_host`→QTE，`mps_demo_client`→QFR+QTE。
 
 ## 推荐：本地 prefix
 

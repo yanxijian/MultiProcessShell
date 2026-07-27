@@ -4,7 +4,7 @@
 
 ## Architecture
 
-Framework DLLs are independent: `qtheme_engine`, `qfluentribbon`, and `mps_*` do **not** link each other. Demos compose them (`mps_demo_host`→QTE, `mps_demo_client`→QFR+QTE).
+Framework DLLs are independent: `qte_engine`, `qfr_ribbon`, and `mps_*` do **not** link each other. Demos compose them (`mps_demo_host`→QTE, `mps_demo_client`→QFR+QTE).
 
 ```bat
 set QTDIR=D:\Codes\Qt6.8.4

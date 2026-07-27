@@ -69,4 +69,4 @@
 ## M4b（多语言 Hello，可选）
 
 - [ ] `python clients/python/test_frame_envelope.py` 通过
-- [ ] `ctest -R M4bPythonHello`（或跑 `mps_m4b_python_hello`）通过：Python `Hello(EMBED_NONE)` ↔ Host 侧 `HelloAck`
+- [ ] `ctest -R M4bPythonHello`（或跑 `mps_tests_m4b_hello`）通过：Python `Hello(EMBED_NONE)` ↔ Host 侧 `HelloAck`

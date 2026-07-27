@@ -66,7 +66,7 @@ if(WIN32 AND MPS_BUILD_SHARED)
   endif()
   add_custom_command(TARGET mps_demo_host POST_BUILD
     ${_mps_demo_dll_copy_cmds}
-    COMMENT "Copy mps_*.dll + protobuf runtime + qtheme_engine + qfluentribbon beside demos"
+    COMMENT "Copy mps_*.dll + protobuf runtime + qte_engine + qfr_ribbon beside demos"
     VERBATIM
   )
 endif()

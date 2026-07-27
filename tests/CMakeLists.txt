@@ -60,33 +60,33 @@ if(MPS_PYTHON)
 endif()
 
 if(TARGET mps::ipc_qt)
-  add_executable(mps_m4b_python_hello
+  add_executable(mps_tests_m4b_hello
     test_m4b_python_hello.cpp
   )
-  target_compile_definitions(mps_m4b_python_hello
+  target_compile_definitions(mps_tests_m4b_hello
     PRIVATE
       MPS_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
   )
-  target_link_libraries(mps_m4b_python_hello
+  target_link_libraries(mps_tests_m4b_hello
     PRIVATE
       mps::ipc_qt
       GTest::gtest_main
       Qt6::Core
       Qt6::Network
   )
-  set_target_properties(mps_m4b_python_hello PROPERTIES AUTOMOC ON)
+  set_target_properties(mps_tests_m4b_hello PROPERTIES AUTOMOC ON)
   if(WIN32 AND MPS_BUILD_SHARED)
-    add_custom_command(TARGET mps_m4b_python_hello POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_ipc> $<TARGET_FILE_DIR:mps_m4b_python_hello>
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_ipc_qt> $<TARGET_FILE_DIR:mps_m4b_python_hello>
-      COMMENT "Copy mps_ipc*.dll beside mps_m4b_python_hello"
+    add_custom_command(TARGET mps_tests_m4b_hello POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_ipc> $<TARGET_FILE_DIR:mps_tests_m4b_hello>
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_ipc_qt> $<TARGET_FILE_DIR:mps_tests_m4b_hello>
+      COMMENT "Copy mps_ipc*.dll beside mps_tests_m4b_hello"
       VERBATIM
     )
-    mps_copy_protobuf_runtime(mps_m4b_python_hello)
+    mps_copy_protobuf_runtime(mps_tests_m4b_hello)
     # Do not bake PATH into the test ENVIRONMENT: CTest treats ';' as a list
     # separator and truncates PATH, which breaks finding python.exe / Qt DLLs.
-    gtest_discover_tests(mps_m4b_python_hello DISCOVERY_MODE PRE_TEST)
+    gtest_discover_tests(mps_tests_m4b_hello DISCOVERY_MODE PRE_TEST)
   else()
-    gtest_discover_tests(mps_m4b_python_hello)
+    gtest_discover_tests(mps_tests_m4b_hello)
   endif()
 endif()

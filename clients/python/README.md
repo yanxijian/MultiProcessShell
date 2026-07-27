@@ -25,7 +25,7 @@ python test_frame_envelope.py
 ## 对接 Host / 烟测 harness
 
 需本机有一个 `QLocalServer` 在 `--endpoint` 上监听，并在收到 `Hello` 后回 `HelloAck`。  
-CMake 目标 `mps_m4b_python_hello`（需 Qt）会拉起本脚本并完成握手。
+CMake 目标 `mps_tests_m4b_hello`（需 Qt）会拉起本脚本并完成握手。
 
 手动：
 
