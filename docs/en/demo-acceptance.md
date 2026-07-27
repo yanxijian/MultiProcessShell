@@ -2,7 +2,7 @@
 
 > **中文主文档**：[../zh/demo-acceptance.md](../zh/demo-acceptance.md)  
 > **Companion**: [demo-morphology.md](demo-morphology.md), [demo-ipc.md](demo-ipc.md)  
-> **Run**: `build/demos/mps_demo_host.exe` (build/deploy per [build.md](build.md))
+> **Run**: `build-shared/demos/mps_demo_host.exe` (build/deploy per [build.md](build.md))
 
 Manual regression. Finish this list before later polish (tab overflow, REQ timeout, build-script ergonomics).
 
@@ -68,4 +68,4 @@ Manual regression. Finish this list before later polish (tab overflow, REQ timeo
 ## M4b (multi-language Hello, optional)
 
 - [ ] `python clients/python/test_frame_envelope.py` passes
-- [ ] `ctest -R M4bPythonHello` (or `mps_tests_m4b_hello`) passes: Python `Hello(EMBED_NONE)` ↔ `HelloAck`
+- [ ] `ctest --test-dir build-shared -R M4bPythonHello` (or `mps_tests_m4b_hello`) passes: Python `Hello(EMBED_NONE)` ↔ `HelloAck`

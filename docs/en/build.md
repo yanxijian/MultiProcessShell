@@ -2,13 +2,48 @@
 
 > **中文主文档**: [`../zh/build.md`](../zh/build.md)
 
-## Architecture
+## Architecture: independent frameworks, composed demos
 
-Framework DLLs are independent: `qte_engine`, `qfr_ribbon`, and `mps_*` do **not** link each other. Demos compose them (`mps_demo_host`→QTE, `mps_demo_client`→QFR+QTE).
+| Library | Depends on |
+|---------|------------|
+| `qte_engine` | Qt only |
+| `qfr_ribbon` | Qt only (local `ribbon_tokens`; does not link QTE) |
+| `mps_*` | Qt + protobuf (does not link QTE/QFR) |
+
+QTE / QFR are linked only by **demos**: `mps_demo_host`→QTE, `mps_demo_client`→QFR+QTE.
+
+## Recommended: local prefix (shared libs)
 
 ```bat
-set QTDIR=D:\Codes\Qt6.8.4
-python scripts\install_stack.py --prefix D:\Codes\prefix
+:: QTDIR = Qt 6.8+ prefix; PREFIX = install root (optional; default sibling prefix/)
+set QTDIR=<Qt-6.8+-prefix>
+set PREFIX=<install-prefix>
+python scripts\install_stack.py --prefix %PREFIX%
+:: Run (from this repo root):
+build-shared\demos\mps_demo_host.exe
 ```
 
-Demo-only sibling embed: `-DMPS_DEV_EMBED_QTE=ON -DMPS_DEV_EMBED_QFR=ON -DMPS_INSTALL=OFF`.
+Local convention uses out-of-source dir **`build-shared`** (`install_stack.py` and `build_repo.py` default). CI may still use `-B build`.
+
+## Dependencies
+
+- Windows: MSVC x64, CMake ≥ 3.21, Ninja, Python 3.10+
+- Qt 6.8+
+- For demos: installed QThemeEngine + QFluentRibbon (`CMAKE_PREFIX_PATH`)
+- Protobuf via FetchContent (`MPS_BUILD_SHARED` default ON → shared `libprotobuf.dll` + `abseil_dll.dll` + `utf8_validity.dll`). Generated `Envelope` lives only in `mps_ipc.dll`; receivers use `EnvelopePtr` so destruction stays in-module.
+
+## Demo-only sibling embed
+
+```bat
+cmake -S . -B build-embed -G Ninja -DCMAKE_PREFIX_PATH=%QTDIR% ^
+  -DMPS_DEV_EMBED_QTE=ON -DMPS_DEV_EMBED_QFR=ON -DMPS_INSTALL=OFF
+```
+
+## Helper scripts
+
+```bash
+python scripts/install_stack.py --help
+python scripts/build_repo.py --help
+```
+
+See also: [qfr-demo-client.md](../zh/qfr-demo-client.md) (Chinese), [CI](ci.md).

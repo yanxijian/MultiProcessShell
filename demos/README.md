@@ -11,12 +11,13 @@
 
 ```bat
 :: 在 vcvars x64 环境，并设置 QTDIR
+:: 推荐整栈：set QTDIR=... 后 python scripts\install_stack.py（--prefix 可选）
 python scripts\build_repo.py
 :: 双击（GUI 子系统，无控制台）：
-build\demos\mps_demo_host.exe
+build-shared\demos\mps_demo_host.exe
 ```
 
-Windows 上 `build_repo.py` 会自动跑 `scripts/deploy_demo.py`（`windeployqt`），把 Qt/CRT 拷到 exe 旁。
+Windows 上 `build_repo.py` 默认输出到 `build-shared`，并自动跑 `scripts/deploy_demo.py`（`windeployqt`）。
 
 ## 当前体验
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Install QThemeEngine → QFluentRibbon → MultiProcessShell into a local prefix.
 
-Default prefix: D:/Codes/prefix (override with --prefix or MPS_PREFIX).
+Default prefix: <parent-of-the-three-repos>/prefix (override with --prefix or MPS_PREFIX).
 Requires QTDIR (or --qt) and an x64 MSVC environment (vcvars) on Windows.
 """
 
@@ -15,9 +15,9 @@ import sys
 from pathlib import Path
 
 
+# Parent of MultiProcessShell / QThemeEngine / QFluentRibbon (sibling layout).
 CODES = Path(__file__).resolve().parents[2]
-DEFAULT_PREFIX = Path(os.environ.get("MPS_PREFIX", str(CODES / "prefix")))
-DEFAULT_QT = Path(os.environ.get("QTDIR", str(CODES / "Qt6.8.4")))
+DEFAULT_PREFIX = Path(os.environ["MPS_PREFIX"]) if os.environ.get("MPS_PREFIX") else (CODES / "prefix")
 
 
 def run(cmd: list[str], cwd: Path | None = None) -> None:
@@ -30,6 +30,15 @@ def which_or_die(name: str) -> str:
     if not path:
         raise SystemExit(f"error: '{name}' not found on PATH (run from vcvars x64 shell)")
     return path
+
+
+def resolve_qt(cli_qt: Path | None) -> Path:
+    if cli_qt is not None:
+        return cli_qt
+    qtdir = os.environ.get("QTDIR")
+    if not qtdir:
+        raise SystemExit("error: set QTDIR to your Qt 6.8+ prefix, or pass --qt")
+    return Path(qtdir)
 
 
 def configure_build_install(
@@ -67,13 +76,13 @@ def main() -> int:
         "--prefix",
         type=Path,
         default=DEFAULT_PREFIX,
-        help=f"Install prefix (default: {DEFAULT_PREFIX})",
+        help="Install prefix (default: MPS_PREFIX or <parent-of-repos>/prefix)",
     )
     parser.add_argument(
         "--qt",
         type=Path,
-        default=DEFAULT_QT,
-        help=f"Qt prefix (default: QTDIR or {DEFAULT_QT})",
+        default=None,
+        help="Qt prefix (default: QTDIR environment variable)",
     )
     parser.add_argument(
         "--skip-qte",
@@ -98,7 +107,7 @@ def main() -> int:
     args = parser.parse_args()
 
     prefix: Path = args.prefix
-    qt: Path = args.qt
+    qt: Path = resolve_qt(args.qt)
     if not qt.is_dir():
         raise SystemExit(f"error: Qt prefix not found: {qt}")
 

@@ -15,7 +15,7 @@ C++/Qt 多进程壳：**Host 壳框 + Client 原生窗嵌入 + Protobuf IPC**。
 - **可撕出 Tab**：拖出 / 合入、MRU 关 Tab、空壳规则（纯规则模块 + 单测）
 - **Protobuf IPC**：权威 IDL 为 `proto/shell/ipc/v1/ipc.proto`，Demo 合约见文档
 - **`wid` 在 embed seam**：Tab 模型只认 `tabId`；平台句柄由 `EmbedContainer` / `TabEmbedMap` 持有
-- **一键 Demo 部署**：Windows 上自动 `windeployqt`，可直接运行 `build/demos/mps_demo_host.exe`
+- **一键 Demo 部署**：Windows 上自动 `windeployqt`，可直接运行 `build-shared/demos/mps_demo_host.exe`
 
 ## 要求
 
@@ -30,19 +30,26 @@ C++/Qt 多进程壳：**Host 壳框 + Client 原生窗嵌入 + Protobuf IPC**。
 
 1. 打开 **x64 Native Tools / vcvars** 环境。  
 2. 设置 `QTDIR` 为 Qt **6.8+** 前缀，并把 `%QTDIR%\bin` 加入 `PATH`。  
-3. 编译并部署：
+3. 推荐：安装 QTE→QFR→MPS 到本地 prefix（共享库，构建目录 `build-shared`）：
 
 ```bat
-python scripts\build_repo.py
+:: QTDIR = Qt 6.8+ 前缀；PREFIX = 安装根（可选，默认三仓同级的 prefix/）
+set QTDIR=<Qt-6.8+-prefix>
+set PREFIX=<install-prefix>
+python scripts\install_stack.py --prefix %PREFIX%
 ```
 
 4. 双击运行（无额外控制台）：
 
 ```text
-build\demos\mps_demo_host.exe
+build-shared\demos\mps_demo_host.exe
 ```
 
-默认编 Host / Client Demo；Windows 上会自动跑 `scripts/deploy_demo.py`（`windeployqt`）。
+仅编本仓（默认也输出到 `build-shared`；Windows 上会自动 `deploy_demo.py` / `windeployqt`）：
+
+```bat
+python scripts\build_repo.py
+```
 
 仅协议 / Tab 规则单测（可不装 Qt）：
 
@@ -60,7 +67,7 @@ proto/            shell.ipc.v1 IDL
 src/              Host / Client / common / ipc_qt
 demos/            mps_demo_host / mps_demo_client
 tests/            协议单测 + Tab 条规则单测
-scripts/          build_repo / build_qt / deploy_demo
+scripts/          install_stack / build_repo / build_qt / deploy_demo
 clients/python/   M4b Python Hello 烟测
 docs/zh|en/       中英文文档
 ```

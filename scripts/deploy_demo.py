@@ -18,8 +18,8 @@ def main() -> int:
     parser.add_argument(
         "--build-dir",
         type=Path,
-        default=ROOT / "build",
-        help="CMake build directory (default: ./build)",
+        default=ROOT / "build-shared",
+        help="CMake build directory (default: ./build-shared)",
     )
     parser.add_argument(
         "--config",

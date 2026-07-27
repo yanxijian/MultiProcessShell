@@ -7,8 +7,8 @@
 | `install_stack.py` | Install QTE→QFR→MPS into a local prefix (SHARED + find_package) |
 | `build_repo.py` | Configure/build this repo (`QTDIR` required unless `--no-demos`) |
 | `build_qt.py` | Help build external Qt (qtbase) into a prefix |
-| `deploy_demo.py` | Windows: `windeployqt` beside `build/demos` |
-| `format_source.py` | Format handwritten C/C++ via root `.clang-format` (skips `build/`, `_deps/`, `*.pb.*`) |
+| `deploy_demo.py` | Windows: `windeployqt` beside `build-shared/demos` |
+| `format_source.py` | Format handwritten C/C++ via root `.clang-format` (skips path segments containing `build`, e.g. `build/` / `build-shared/`, plus `_deps/`, `*.pb.*`) |
 
 ## Windows notes
 
@@ -28,5 +28,5 @@ python scripts\format_source.py --check
 python scripts\build_qt.py --source <qt-everywhere-src> --build-dir <qt-build> --prefix %QTDIR%
 ```
 
-Double-click Host: `build\demos\mps_demo_host.exe`.  
+Double-click Host: `build-shared\demos\mps_demo_host.exe`.  
 Full guide: [build.md](build.md).

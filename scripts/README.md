@@ -7,8 +7,8 @@
 | `install_stack.py` | 安装 QTE→QFR→MPS 到本地 prefix（默认 SHARED + find_package） |
 | `build_repo.py` | 配置/编译本仓（默认要 `QTDIR`；`--no-demos` 除外） |
 | `build_qt.py` | 辅助外置编译 Qt（qtbase）到指定前缀 |
-| `deploy_demo.py` | Windows：`windeployqt` 到 `build/demos` 旁 |
-| `format_source.py` | 按根目录 `.clang-format` 格式化手写 C/C++（排除 `build/`、`_deps/`、`*.pb.*`） |
+| `deploy_demo.py` | Windows：`windeployqt` 到 `build-shared/demos` 旁 |
+| `format_source.py` | 按根目录 `.clang-format` 格式化手写 C/C++（排除路径段含 `build` 的目录如 `build/` / `build-shared/`，以及 `_deps/`、`*.pb.*`） |
 
 CI 说明见 [docs/zh/ci.md](../docs/zh/ci.md)。
 
@@ -30,5 +30,5 @@ python scripts\format_source.py --check
 python scripts\build_qt.py --source <qt-everywhere-src> --build-dir <qt-build> --prefix %QTDIR%
 ```
 
-可双击运行：`build\demos\mps_demo_host.exe`（或 `build-shared\demos\...`）。  
+可双击运行：`build-shared\demos\mps_demo_host.exe`。  
 更完整说明见 [docs/zh/build.md](../docs/zh/build.md)。

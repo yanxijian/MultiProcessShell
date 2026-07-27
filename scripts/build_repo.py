@@ -5,7 +5,7 @@ Skips cmake reconfigure when the existing build tree already matches the
 requested options, so FetchContent protobuf/abseil are not rebuilt needlessly.
 
 On Windows with demos enabled, runs scripts/deploy_demo.py after a successful
-build so build/demos/mps_demo_host.exe is double-clickable (Qt runtime beside it).
+build so build-shared/demos/mps_demo_host.exe is double-clickable (Qt runtime beside it).
 """
 
 from __future__ import annotations
@@ -173,8 +173,8 @@ def main() -> int:
     parser.add_argument(
         "--build-dir",
         type=Path,
-        default=ROOT / "build",
-        help="Out-of-source build directory (default: ./build)",
+        default=ROOT / "build-shared",
+        help="Out-of-source build directory (default: ./build-shared)",
     )
     parser.add_argument(
         "--config",

@@ -11,12 +11,13 @@ Morphology / IPC: [demo-morphology.md](demo-morphology.md), [demo-ipc.md](demo-i
 
 ```bat
 :: vcvars x64 shell, QTDIR set
+:: Recommended stack: set QTDIR=... then python scripts\install_stack.py (--prefix optional)
 python scripts\build_repo.py
 :: double-click (GUI subsystem, no console):
-build\demos\mps_demo_host.exe
+build-shared\demos\mps_demo_host.exe
 ```
 
-On Windows, `build_repo.py` auto-runs `scripts/deploy_demo.py` (`windeployqt`) beside the demos.
+On Windows, `build_repo.py` defaults to `build-shared` and auto-runs `scripts/deploy_demo.py` (`windeployqt`).
 
 ## Current UX
 

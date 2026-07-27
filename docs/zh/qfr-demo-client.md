@@ -14,12 +14,14 @@ IPC / tear-out 协议不变；Host 仍剥 caption 并强制 `WS_CHILD`。
 
 ## 构建依赖
 
-默认 Demo 构建需要旁路源码：
+推荐：**已安装**的 QTE / QFR（`CMAKE_PREFIX_PATH` → `find_package`），见 [build.md](build.md) 与 `scripts/install_stack.py`。
+
+可选旁路源码（CI / 本地调试）：
 
 - `../QThemeEngine`（或 `-DMPS_QTE_SOURCE_DIR=...` / `find_package(QThemeEngine)`）— Host 与 Client 均依赖
 - `../QFluentRibbon`（或 `-DMPS_QFR_SOURCE_DIR=...`）— 仅 Client；见 [`cmake/MPSQFluentRibbon.cmake`](../../cmake/MPSQFluentRibbon.cmake)
 
-根目录先 `include(MPSQThemeEngine)`，再解析 QFR（复用已加载的 QTE，避免双份 Engine）。QTE/QFR 主题资源编进静态库；运行时仍靠现有 `windeployqt` 部署 Qt。
+根目录先 `include(MPSQThemeEngine)`，再解析 QFR（复用已加载的 QTE，避免双份 Engine）。QTE/QFR 主题资源编进 **`qte_engine` / `qfr_ribbon` 共享库**（`QTE_BUILD_SHARED` / `QFR_BUILD_SHARED` 默认 ON）；运行时仍靠现有 `windeployqt` 部署 Qt，Demo 旁需有对应 DLL。
 
 ## Client 页行为
 

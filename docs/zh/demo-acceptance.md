@@ -2,7 +2,7 @@
 
 > **English**：[../en/demo-acceptance.md](../en/demo-acceptance.md)  
 > **配套**：[demo-morphology.md](demo-morphology.md)、[demo-ipc.md](demo-ipc.md)  
-> **运行**：`build/demos/mps_demo_host.exe`（先按 [build.md](build.md) 构建部署）
+> **运行**：`build-shared/demos/mps_demo_host.exe`（先按 [build.md](build.md) 构建部署）
 
 手工回归用。每条勾选通过后再谈后续打磨（Tab 溢出、REQ 超时、构建脚本等）。
 
@@ -69,4 +69,4 @@
 ## M4b（多语言 Hello，可选）
 
 - [ ] `python clients/python/test_frame_envelope.py` 通过
-- [ ] `ctest -R M4bPythonHello`（或跑 `mps_tests_m4b_hello`）通过：Python `Hello(EMBED_NONE)` ↔ Host 侧 `HelloAck`
+- [ ] `ctest --test-dir build-shared -R M4bPythonHello`（或跑 `mps_tests_m4b_hello`）通过：Python `Hello(EMBED_NONE)` ↔ Host 侧 `HelloAck`
