@@ -1,4 +1,4 @@
-# Pure tab-strip rules (no Qt / protobuf) — shared by Host + unit tests.
+﻿# Pure tab-strip rules (no Qt / protobuf) — shared by Host + unit tests.
 add_library(mps_tab_strip INTERFACE)
 add_library(mps::tab_strip ALIAS mps_tab_strip)
 target_include_directories(mps_tab_strip
@@ -89,11 +89,18 @@ target_link_libraries(mps_ipc
 set_target_properties(mps_ipc PROPERTIES
   OUTPUT_NAME mps_ipc
   EXPORT_NAME ipc
-  CXX_VISIBILITY_PRESET hidden
-  VISIBILITY_INLINES_HIDDEN ON
 )
 if(MPS_BUILD_SHARED AND WIN32)
-  set_target_properties(mps_ipc PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+  # MSVC: export all object symbols (incl. generated pb) from the DLL.
+  set_target_properties(mps_ipc PROPERTIES
+    WINDOWS_EXPORT_ALL_SYMBOLS ON
+    CXX_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN ON
+  )
+  target_compile_definitions(mps_ipc PUBLIC MPS_IPC_SHARED)
+elseif(MPS_BUILD_SHARED)
+  # ELF: keep default visibility so pb + framing symbols stay linkable for tests/consumers.
+  # (Hidden + selective MPS_IPC_EXPORT is insufficient for generated protobuf code.)
   target_compile_definitions(mps_ipc PUBLIC MPS_IPC_SHARED)
 endif()
 

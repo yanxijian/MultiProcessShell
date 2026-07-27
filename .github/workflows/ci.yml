@@ -101,4 +101,4 @@ jobs:
         run: |
           where cl
           where ninja
-          python scripts\build_repo.py --test -D MPS_DEV_EMBED_QTE=ON -D MPS_DEV_EMBED_QFR=ON
+          python scripts\build_repo.py --test -D MPS_DEV_EMBED_QTE=ON -D MPS_DEV_EMBED_QFR=ON -D MPS_INSTALL=OFF

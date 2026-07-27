@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <mps/mps_ipc_export.hpp>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -21,10 +22,10 @@ namespace mps::ipc
 	};
 
 	/// Encode one frame: 4-byte big-endian length + payload bytes.
-	[[nodiscard]] std::vector<std::uint8_t> encodeFrame(std::string_view payload);
+	[[nodiscard]] MPS_IPC_EXPORT std::vector<std::uint8_t> encodeFrame(std::string_view payload);
 
 	/// Incremental decoder for a stream of length-prefixed frames.
-	class FrameDecoder
+	class MPS_IPC_EXPORT FrameDecoder
 	{
 	public:
 		void reset();
