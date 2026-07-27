@@ -13,7 +13,13 @@ target_link_libraries(mps_ipc_tests
 )
 
 include(GoogleTest)
-gtest_discover_tests(mps_ipc_tests)
+# On Windows shared builds, POST_BUILD discovery runs before DLL copy-beside and
+# fails with 0xc0000135. Discover at ctest time after the full build finishes.
+if(WIN32 AND MPS_BUILD_SHARED)
+  gtest_discover_tests(mps_ipc_tests DISCOVERY_MODE PRE_TEST)
+else()
+  gtest_discover_tests(mps_ipc_tests)
+endif()
 
 if(WIN32 AND MPS_BUILD_SHARED)
   add_custom_command(TARGET mps_ipc_tests POST_BUILD
@@ -69,5 +75,9 @@ if(TARGET mps::ipc_qt)
       Qt6::Network
   )
   set_target_properties(mps_m4b_python_hello PROPERTIES AUTOMOC ON)
-  gtest_discover_tests(mps_m4b_python_hello)
+  if(WIN32 AND MPS_BUILD_SHARED)
+    gtest_discover_tests(mps_m4b_python_hello DISCOVERY_MODE PRE_TEST)
+  else()
+    gtest_discover_tests(mps_m4b_python_hello)
+  endif()
 endif()
