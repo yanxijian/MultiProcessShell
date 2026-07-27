@@ -20,6 +20,9 @@ install_manifest.txt
 CTestTestfile.cmake
 _deps/
 
+# Local GIF debug frame dumps (do not commit)
+_gif_frames*/
+
 # Generated protobuf (keep sources under proto/)
 **/generated/
 **/*\.pb\.cc

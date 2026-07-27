@@ -28,6 +28,7 @@
 #include <QVBoxLayout>
 #include <QWindow>
 
+#include <cmath>
 #include <vector>
 
 namespace mps::host
@@ -43,6 +44,32 @@ namespace mps::host
 		constexpr auto kPropWindowRadius = "qtheme.window.radius";
 		constexpr auto kPropWindowBorderWidth = "qtheme.window.borderWidth";
 		constexpr auto kPropWindowBorder = "qtheme.window.border";
+
+		/// Plain arrow for QDrag::setDragCursor. QCursor(Arrow).pixmap() is often null
+		/// on Windows, which leaves the native OLE "Move" badge (small right arrow).
+		[[nodiscard]] QPixmap plainArrowDragCursorPixmap()
+		{
+			const qreal dpr = qApp ? qApp->devicePixelRatio() : 1.0;
+			const int dim = int(std::ceil(32 * dpr));
+			QPixmap pm(dim, dim);
+			pm.fill(Qt::transparent);
+			pm.setDevicePixelRatio(dpr);
+			QPainter p(&pm);
+			p.setRenderHint(QPainter::Antialiasing, true);
+			QPainterPath path;
+			path.moveTo(1.0, 1.0);
+			path.lineTo(1.0, 21.0);
+			path.lineTo(5.5, 16.5);
+			path.lineTo(9.5, 26.0);
+			path.lineTo(12.5, 24.5);
+			path.lineTo(8.0, 15.0);
+			path.lineTo(15.0, 15.0);
+			path.closeSubpath();
+			p.setPen(QPen(QColor(0, 0, 0), 1.15));
+			p.setBrush(QColor(255, 255, 255));
+			p.drawPath(path);
+			return pm;
+		}
 
 		/// Window frame stroke. Prefer theme hint; dark falls back to Fluent `button.border`.
 		[[nodiscard]] QColor windowFrameStroke(const QColor& fill, const QColor& hint = QColor())
@@ -1153,6 +1180,7 @@ namespace mps::host
 	void ShellWindow::clearTabYieldPreview()
 	{
 		stopTabSlideAnimations();
+		const qint64 wasDragTab = m_yieldDragTabId;
 		const bool had = (m_yieldDragTabId != 0) || !m_yieldOrder.isEmpty() || m_stripDragLayoutActive;
 		m_yieldDragTabId = 0;
 		m_yieldOrder.clear();
@@ -1162,6 +1190,10 @@ namespace mps::host
 		if (m_titleBar)
 		{
 			m_titleBar->setAcceptDrops(false);
+		}
+		if (wasDragTab != 0)
+		{
+			setTabDragHidden(wasDragTab, false);
 		}
 		if (!had || !m_tabRow)
 		{
@@ -1389,32 +1421,16 @@ namespace mps::host
 		{
 			return false;
 		}
-		// During live yield the open gap under the ghost has no tab widget — still count
-		// as on-strip so merge/reorder do not flip to tear-out.
-		if (m_stripDragLayoutActive)
+		// Full strip band (buttons + gaps + trail), not only individual tab widgets.
+		const QRect band = tabStripGlobalRect();
+		if (band.isValid() && band.adjusted(0, -6, 0, 10).contains(globalPos))
 		{
-			const QRect band = tabStripGlobalRect();
-			if (band.isValid() && band.adjusted(0, -4, 0, 4).contains(globalPos))
-			{
-				return true;
-			}
-		}
-		for (auto* btn : m_tabButtons)
-		{
-			if (!btn || !btn->isVisible())
-			{
-				continue;
-			}
-			const QRect r(btn->mapToGlobal(QPoint(0, 0)), btn->size());
-			if (r.contains(globalPos))
-			{
-				return true;
-			}
+			return true;
 		}
 		if (m_tabDropTrail)
 		{
 			const QRect r(m_tabDropTrail->mapToGlobal(QPoint(0, 0)), m_tabDropTrail->size());
-			if (r.contains(globalPos))
+			if (r.adjusted(0, -6, 0, 10).contains(globalPos))
 			{
 				return true;
 			}
@@ -1742,18 +1758,34 @@ namespace mps::host
 						mime->setData(QString::fromUtf8(kTabMimeType), QByteArray::number(tabId));
 						auto* drag = new QDrag(this);
 						drag->setMimeData(mime);
-						// Invisible drag pixmap — tab ghost / tear-out preview drawn separately.
+						// Invisible drag pixmap — tab ghost / whole-shell follow drawn separately.
 						QPixmap empty(1, 1);
 						empty.fill(Qt::transparent);
 						drag->setPixmap(empty);
 						drag->setHotSpot(QPoint(0, 0));
-						// Keep normal arrow cursor; blank drag cursors + override.
-						drag->setDragCursor(empty, Qt::MoveAction);
-						drag->setDragCursor(empty, Qt::CopyAction);
-						drag->setDragCursor(empty, Qt::IgnoreAction);
+						// Windows OLE ignores QApplication override cursors and uses setDragCursor.
+						// Paint our own arrow: system Arrow pixmap is often null, and the native
+						// Move cursor adds a small right-arrow badge under the pointer.
+						const QPixmap arrowPm = plainArrowDragCursorPixmap();
+						drag->setDragCursor(arrowPm, Qt::MoveAction);
+						drag->setDragCursor(arrowPm, Qt::CopyAction);
+						drag->setDragCursor(arrowPm, Qt::LinkAction);
+						// IgnoreAction custom cursors are unsupported on Windows — never rely on ignore.
+						drag->setDragCursor(arrowPm, Qt::IgnoreAction);
 						QApplication::setOverrideCursor(Qt::ArrowCursor);
 						const auto drop = drag->exec(Qt::MoveAction);
 						QApplication::restoreOverrideCursor();
+						if (m_app && m_app->isDragAutoMerged())
+						{
+							// Magnetic auto-merge: OLE aborted; endTabDrag runs after settle anim.
+							emit dropIndicatorsClearRequested();
+							clearDropInsertIndicator();
+							if (!m_app->isAutoMergeAnimating())
+							{
+								m_app->endTabDrag(/*tearOrMerge=*/false);
+							}
+							return;
+						}
 						const QRect previewGeom = m_app ? m_app->tearOutPreviewGeometry() : QRect(QCursor::pos() - QPoint(40, 20), size());
 						emit dropIndicatorsClearRequested();
 						clearDropInsertIndicator();
@@ -1817,6 +1849,8 @@ namespace mps::host
 						}
 						else if (m_app)
 						{
+							// Drop already handled in ShellApp::eventFilter (incl. whole-shell
+							// merge redirected by strip geometry). Just end the drag session.
 							m_app->endTabDrag(/*tearOrMerge=*/false);
 						}
 					});

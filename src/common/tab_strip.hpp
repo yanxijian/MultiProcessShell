@@ -44,6 +44,9 @@ namespace mps::tab_strip
 	inline constexpr int kTearOutLeaveSlopH = 10;
 	inline constexpr int kTearOutReturnSlopV = 10;
 	inline constexpr int kTearOutReturnSlopH = 4;
+	/// Whole-shell merge magnet (beyond exact strip hit). Keep tighter than leave-slop.
+	inline constexpr int kMergeMagnetV = 18;
+	inline constexpr int kMergeMagnetH = 8;
 
 	// --- Activation / MRU -------------------------------------------------------
 
@@ -268,6 +271,13 @@ namespace mps::tab_strip
 	inline bool shouldDestroyEmptyShell(int clientTabCount, int shellCount)
 	{
 		return clientTabCount == 0 && shellCount > 1;
+	}
+
+	/// Spec §7.2: sole Client tab → move the real shell with the cursor (Chrome last-tab),
+	/// instead of a TearOutPreview while a Home husk stays put.
+	inline bool shouldMoveWholeShellOnTearOut(int clientTabCount)
+	{
+		return clientTabCount == 1;
 	}
 } // namespace mps::tab_strip
 

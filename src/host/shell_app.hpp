@@ -10,6 +10,8 @@
 #include <QHash>
 #include <QLocalServer>
 #include <QObject>
+#include <QParallelAnimationGroup>
+#include <QPointer>
 #include <QPropertyAnimation>
 #include <QTimer>
 
@@ -40,6 +42,8 @@ namespace mps::host
 		void beginTabDrag(ShellWindow* source, qint64 tabId, QPoint localHotSpot = {});
 		void noteTabDragDropHandled();
 		[[nodiscard]] bool consumeDragCancelled();
+		[[nodiscard]] bool isDragAutoMerged() const;
+		[[nodiscard]] bool isAutoMergeAnimating() const;
 		[[nodiscard]] bool shouldSuppressTearOutAt(QPoint globalPos) const;
 		[[nodiscard]] bool isReleaseOverWindowButtons(QPoint globalPos) const;
 		[[nodiscard]] QRect tearOutPreviewGeometry() const;
@@ -102,6 +106,13 @@ namespace mps::host
 		void startGhostSnapBack();
 		void finishGhostSnapBack();
 		void flushCreatesDeferredDuringDrag();
+		void tryCommitMagneticAutoMerge();
+		void startAutoMergeAnimation(ShellWindow* source, ShellWindow* target, qint64 tabId, int insertIndex);
+		void finishAutoMergeAnimation();
+		void requestAbortOleDrag();
+		void showDragDropSink(bool on);
+		[[nodiscard]] bool isDragDropSink(QObject* watched) const;
+		[[nodiscard]] bool shellStillAlive(ShellWindow* shell) const;
 		[[nodiscard]] QString makeTitle(int clientIndex, int windowIndex) const;
 
 		struct DeferredCreate
@@ -132,11 +143,18 @@ namespace mps::host
 
 		TearOutPreview* m_tearOutPreview = nullptr;
 		TabDragGhost* m_tabDragGhost = nullptr;
+		QWidget* m_dragDropSink = nullptr;
 		QTimer* m_dragVisualTimer = nullptr;
 		QPropertyAnimation* m_ghostSnapAnim = nullptr;
+		QParallelAnimationGroup* m_autoMergeAnim = nullptr;
 		ShellWindow* m_dragSource = nullptr;
+		QPointer<ShellWindow> m_pendingMergeTarget;
+		QPointer<ShellWindow> m_pendingMergeSource;
+		QPointer<ShellWindow> m_shellPendingDestroy;
 		qint64 m_dragTabId = 0;
 		qint64 m_dragResumeTabId = 0;
+		qint64 m_pendingMergeTabId = 0;
+		int m_pendingMergeIndex = -1;
 		QPoint m_dragHotSpot{40, 20};
 		QPoint m_tabGhostHotSpot{20, 16};
 		QSize m_dragPreviewSize{720, 480};
@@ -144,9 +162,15 @@ namespace mps::host
 		bool m_dragDropHandled = false;
 		bool m_dragActive = false;
 		bool m_dragCancelled = false;
+		bool m_dragAutoMerged = false;
+		bool m_autoMergeAnimActive = false;
+		bool m_finishAutoMergeGuard = false;
 		bool m_tearOutDetached = false;
+		bool m_dragMoveWholeShell = false;
 		bool m_ghostSnapBackActive = false;
 		bool m_dragForbiddenCursor = false;
+		QRect m_dragSourceSavedGeometry;
+		QPoint m_dragWindowHotSpot;
 	};
 } // namespace mps::host
 

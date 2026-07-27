@@ -81,14 +81,15 @@ Examples: `Client1-Window1`, `Client1-Window2`, `Client2-Window1`.
 
 While dragging: source tab is a transparent placeholder; other tabs on the same / merge-target shell **live-yield** (not a blue insert bar); source shell shows the previous active tab.  
 **After tear-out**: as soon as the window preview appears, siblings on the source shell **immediately claim** the vacated slot (no wait for mouse-up); returning to the strip re-opens a yield gap.  
+**Sole Client tab** (spec §7.2 / Chrome last-tab): skip the window preview and **move the real shell** with the cursor; hovering another shell’s tab strip (narrow magnet) shows target yield and **auto-merges** (translate shell to the slot and fade out — no mouse-up); release in empty space leaves the shell in place (no second shell).  
 Over min / max / close → **forbidden cursor** (not a merge target); **release does not tear-out** (treated as cancel).  
 If the Client clicks「新建窗口」during tear-out → Host **queues** `CreateSubWindow` and sends after the drag ends (spec S5).
 
 ### 5.2 Drop rules
 
 1. **Horizontal drag in the same shell** → **reorder** from live yield (Home stays leftmost; cannot insert before Home).  
-2. **Release outside the strip** → **new top-level shell** at preview geometry (same wrap-around-tab alignment); preview briefly covers the new shell until the first embed paint (less flash).  
-3. **Drop on another shell’s tabs + trailing strip** → **merge** (live yield shows the slot; not window buttons).  
+2. **Release outside the strip** → **new top-level shell** at preview geometry (same wrap-around-tab alignment); preview briefly covers the new shell until the first embed paint (less flash). **Sole Client tab** exception: the real shell already followed the cursor — release leaves it in place (no second shell).
+3. **Drop on another shell’s tabs + trailing strip** → **merge** (live yield shows the slot; not window buttons).
 4. **Esc**, release still near the strip / return hysteresis, or release over **min/max/close** → **cancel** (ghost snaps back; no tear-out). On Windows OLE, Esc is polled by the Host.  
 5. If the source then has **no Client tabs** (Home only) and is not the sole shell → **destroy** the source.  
 6. DnD updates **Host model only**; mime carries only tabId (`application/x-mps-tab-id`), never HWND; then reattach.  

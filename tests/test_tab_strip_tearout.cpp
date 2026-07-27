@@ -54,3 +54,18 @@ TEST(TabStripTearOut, CancelOverWindowButtons)
 	EXPECT_TRUE(shouldCancelTearOutOverWindowButtons(true));
 	EXPECT_FALSE(shouldCancelTearOutOverWindowButtons(false));
 }
+
+TEST(TabStripTearOut, SoleClientTabMovesWholeShell)
+{
+	EXPECT_TRUE(shouldMoveWholeShellOnTearOut(1));
+	EXPECT_FALSE(shouldMoveWholeShellOnTearOut(0));
+	EXPECT_FALSE(shouldMoveWholeShellOnTearOut(2));
+}
+
+TEST(TabStripTearOut, MergeMagnetTighterThanLeaveSlop)
+{
+	EXPECT_LT(kMergeMagnetV, kTearOutLeaveSlopV);
+	EXPECT_LT(kMergeMagnetH, kTearOutLeaveSlopH);
+	EXPECT_LE(kMergeMagnetV, 24);
+	EXPECT_LE(kMergeMagnetH, 12);
+}
