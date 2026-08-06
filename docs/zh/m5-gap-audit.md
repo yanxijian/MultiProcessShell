@@ -30,7 +30,7 @@
 | Tear-out / merge / reattach | `ShellApp::tearOutTab` / `mergeTab` / `EmbedContainer::transferBinding` | mime 仅 tabId |
 | Suppress / Reattachment EVT（Host） | `setDragSuppress` / `notifyReattachment` | Client Demo no-op → §3 |
 | 空壳销毁 / yield / 迟滞 / Esc | `tab_strip` + Host | 既有验收项 |
-| **G1 S5 Create 排队** | `m_deferredCreatesDuringDrag`；`shouldDeferCreateDuringDrag`；`endTabDrag` → `flushCreatesDeferredDuringDrag` | `invokeNewWindow` 门闩 |
+| **G1 S5 Create 排队** | `m_deferredCreatesDuringDrag`；`shouldDeferCreateDuringDrag`；`endTabDrag` → `flushCreatesDeferredDuringDrag` | `createContentViewRequested` 门闩 |
 | **G4 按钮区松手不 tear-out** | `isReleaseOverWindowButtons` + `shouldCancelTearOutOverWindowButtons` | 与 Forbidden 光标一致 |
 
 ## 3. 缺口处理

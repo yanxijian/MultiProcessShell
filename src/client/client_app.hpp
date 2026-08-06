@@ -33,9 +33,9 @@ namespace mps::client
 		{
 			m_appName = std::move(name);
 		}
-		void setRequestNewWindowMethod(QString method)
+		void setRequestNewContentViewMethod(QString method)
 		{
-			m_requestNewWindowMethod = std::move(method);
+			m_requestNewContentViewMethod = std::move(method);
 		}
 
 	private:
@@ -46,7 +46,7 @@ namespace mps::client
 		void sendHeartbeat();
 		void startHeartbeatTimer();
 		void stopHeartbeatTimer();
-		void ensureMainReported();
+		void ensureMainWindowAddedSent();
 		void createView(qint64 tabId, const QString& title);
 		void closeView(qint64 tabId);
 		void activateView(qint64 tabId);
@@ -54,7 +54,7 @@ namespace mps::client
 		QString m_endpoint;
 		QString m_token;
 		QString m_appName = QStringLiteral("client");
-		QString m_requestNewWindowMethod = QStringLiteral("shell.request_new_window");
+		QString m_requestNewContentViewMethod = QStringLiteral("demo.request_new_window");
 		ContentViewFactory m_factory;
 		AppearanceHandler m_appearanceHandler;
 		bool m_enableHeartbeat = true;
@@ -62,7 +62,7 @@ namespace mps::client
 		QLocalSocket* m_socket = nullptr;
 		std::unique_ptr<mps::ipc::EnvelopeChannel> m_channel;
 		QTimer* m_heartbeatTimer = nullptr;
-		bool m_mainReported = false;
+		bool m_mainWindowAddedSent = false;
 		QHash<qint64, ContentView*> m_views;
 		ContentView* m_active = nullptr;
 	};

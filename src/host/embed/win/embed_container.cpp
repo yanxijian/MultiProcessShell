@@ -20,16 +20,16 @@ namespace mps::host
 		setMinimumSize(200, 150);
 	}
 
-	bool EmbedContainer::foreignAlive() const
+	bool EmbedContainer::clientWindowAlive() const
 	{
 #ifdef Q_OS_WIN
-		if (!m_foreignWid)
+		if (!m_clientWid)
 		{
 			return false;
 		}
-		return IsWindow(reinterpret_cast<HWND>(m_foreignWid)) != FALSE;
+		return IsWindow(reinterpret_cast<HWND>(m_clientWid)) != FALSE;
 #else
-		return m_foreignWid != 0;
+		return m_clientWid != 0;
 #endif
 	}
 
@@ -65,9 +65,9 @@ namespace mps::host
 	quintptr EmbedContainer::takeBinding(qint64 tabId)
 	{
 		const quintptr wid = static_cast<quintptr>(m_bindings.take(tabId));
-		if (wid && m_foreignWid == wid)
+		if (wid && m_clientWid == wid)
 		{
-			releaseForeignWindow();
+			releaseClientWindow();
 			m_activeTabId = 0;
 		}
 		else if (m_activeTabId == tabId)
@@ -97,27 +97,27 @@ namespace mps::host
 		const quintptr wid = static_cast<quintptr>(m_bindings.peek(tabId));
 		if (!wid)
 		{
-			clearForeignWindow(true);
+			clearClientWindow(true);
 			return;
 		}
-		setForeignWindow(wid);
+		setClientWindow(wid);
 	}
 
 	void EmbedContainer::clearActive(bool hide)
 	{
-		clearForeignWindow(hide);
+		clearClientWindow(hide);
 		m_activeTabId = 0;
 	}
 
 	void EmbedContainer::releaseActive()
 	{
-		releaseForeignWindow();
+		releaseClientWindow();
 		m_activeTabId = 0;
 	}
 
 	void EmbedContainer::releaseActiveIfTab(qint64 tabId)
 	{
-		if (m_activeTabId == tabId || (m_foreignWid && m_bindings.peek(tabId) == static_cast<uint64_t>(m_foreignWid)))
+		if (m_activeTabId == tabId || (m_clientWid && m_bindings.peek(tabId) == static_cast<uint64_t>(m_clientWid)))
 		{
 			releaseActive();
 		}
@@ -131,27 +131,27 @@ namespace mps::host
 
 	void EmbedContainer::resyncActive()
 	{
-		if (!foreignAlive())
+		if (!clientWindowAlive())
 		{
-			m_foreignWid = 0;
+			m_clientWid = 0;
 			return;
 		}
 #ifdef Q_OS_WIN
 		const HWND host = reinterpret_cast<HWND>(winId());
-		const HWND child = reinterpret_cast<HWND>(m_foreignWid);
+		const HWND child = reinterpret_cast<HWND>(m_clientWid);
 		if (!host || GetParent(child) != host)
 		{
 			applyEmbed();
 			return;
 		}
 #endif
-		syncForeignGeometry();
+		syncClientGeometry();
 	}
 
 	QPixmap EmbedContainer::grabContent(qint64 tabId, QSize maxSize)
 	{
 		const quintptr wid = static_cast<quintptr>(m_bindings.peek(tabId));
-		if (wid && m_foreignWid == wid)
+		if (wid && m_clientWid == wid)
 		{
 			const QPixmap live = grab();
 			if (!live.isNull())
@@ -166,12 +166,12 @@ namespace mps::host
 		return {};
 	}
 
-	void EmbedContainer::clearForeignWindow(bool hide)
+	void EmbedContainer::clearClientWindow(bool hide)
 	{
 #ifdef Q_OS_WIN
-		if (m_foreignWid && IsWindow(reinterpret_cast<HWND>(m_foreignWid)))
+		if (m_clientWid && IsWindow(reinterpret_cast<HWND>(m_clientWid)))
 		{
-			const HWND child = reinterpret_cast<HWND>(m_foreignWid);
+			const HWND child = reinterpret_cast<HWND>(m_clientWid);
 			SetParent(child, nullptr);
 			if (hide)
 			{
@@ -181,16 +181,16 @@ namespace mps::host
 #else
 		Q_UNUSED(hide);
 #endif
-		m_foreignWid = 0;
+		m_clientWid = 0;
 	}
 
-	void EmbedContainer::releaseForeignWindow()
+	void EmbedContainer::releaseClientWindow()
 	{
 		// Caller will reparent; avoid Hide to reduce flash during tear-out/merge.
-		m_foreignWid = 0;
+		m_clientWid = 0;
 	}
 
-	void EmbedContainer::setForeignWindow(quintptr wid)
+	void EmbedContainer::setClientWindow(quintptr wid)
 	{
 #ifdef Q_OS_WIN
 		if (wid && !IsWindow(reinterpret_cast<HWND>(wid)))
@@ -198,7 +198,7 @@ namespace mps::host
 			wid = 0;
 		}
 #endif
-		if (m_foreignWid == wid)
+		if (m_clientWid == wid)
 		{
 			if (wid)
 			{
@@ -206,11 +206,11 @@ namespace mps::host
 			}
 			return;
 		}
-		if (m_foreignWid)
+		if (m_clientWid)
 		{
-			clearForeignWindow(true);
+			clearClientWindow(true);
 		}
-		m_foreignWid = wid;
+		m_clientWid = wid;
 		applyEmbed();
 	}
 
@@ -229,7 +229,7 @@ namespace mps::host
 	void EmbedContainer::resizeEvent(QResizeEvent* event)
 	{
 		QWidget::resizeEvent(event);
-		syncForeignGeometry();
+		syncClientGeometry();
 	}
 
 	void EmbedContainer::showEvent(QShowEvent* event)
@@ -241,15 +241,15 @@ namespace mps::host
 	void EmbedContainer::applyEmbed()
 	{
 #ifdef Q_OS_WIN
-		if (!foreignAlive())
+		if (!clientWindowAlive())
 		{
-			m_foreignWid = 0;
+			m_clientWid = 0;
 			return;
 		}
 		setAttribute(Qt::WA_NativeWindow, true);
 		winId();
 		const HWND host = reinterpret_cast<HWND>(winId());
-		const HWND child = reinterpret_cast<HWND>(m_foreignWid);
+		const HWND child = reinterpret_cast<HWND>(m_clientWid);
 		LONG_PTR style = GetWindowLongPtrW(child, GWL_STYLE);
 		style |= WS_CHILD;
 		style &= ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_BORDER | WS_DLGFRAME);
@@ -262,19 +262,19 @@ namespace mps::host
 		SetParent(child, host);
 		SetWindowPos(child, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
 		ensureWindowShown(child);
-		syncForeignGeometry();
+		syncClientGeometry();
 		InvalidateRect(child, nullptr, FALSE);
 #else
-		Q_UNUSED(m_foreignWid);
+		Q_UNUSED(m_clientWid);
 #endif
 	}
 
-	void EmbedContainer::syncForeignGeometry()
+	void EmbedContainer::syncClientGeometry()
 	{
 #ifdef Q_OS_WIN
-		if (!foreignAlive())
+		if (!clientWindowAlive())
 		{
-			m_foreignWid = 0;
+			m_clientWid = 0;
 			return;
 		}
 		if (!testAttribute(Qt::WA_NativeWindow))
@@ -283,7 +283,7 @@ namespace mps::host
 		}
 		winId();
 		const HWND host = reinterpret_cast<HWND>(winId());
-		const HWND child = reinterpret_cast<HWND>(m_foreignWid);
+		const HWND child = reinterpret_cast<HWND>(m_clientWid);
 		RECT rc{};
 		GetClientRect(host, &rc);
 		const int w = qMax(1, static_cast<int>(rc.right - rc.left));

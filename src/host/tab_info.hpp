@@ -16,8 +16,8 @@ namespace mps::host
 	{
 		qint64 sessionId = 0;
 		qint64 tabId = 0;
-		int clientIndex = 0;
-		int windowIndex = 0;
+		int instanceIndex = 0;
+		int contentIndex = 0;
 		QString title;
 		class ClientSession* session = nullptr;
 		bool isHome = false;

@@ -29,7 +29,7 @@ namespace mps::demo
 		void syncAfterEmbed();
 
 	signals:
-		void requestNewWindow();
+		void requestNewContentView();
 		void requestThemeScheme(mps::theme::Scheme scheme);
 
 	protected:

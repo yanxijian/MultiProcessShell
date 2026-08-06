@@ -18,16 +18,16 @@ namespace mps::host
 		qint64 g_nextSessionId = 1;
 	}
 
-	ClientSession::ClientSession(int clientIndex, QString endpoint, QString requestNewWindowMethod, QObject* parent)
+	ClientSession::ClientSession(int instanceIndex, QString endpoint, QString requestNewContentViewMethod, QObject* parent)
 		: QObject(parent)
-		, m_clientIndex(clientIndex)
+		, m_instanceIndex(instanceIndex)
 		, m_sessionId(g_nextSessionId++)
 		, m_endpoint(std::move(endpoint))
-		, m_requestNewWindowMethod(std::move(requestNewWindowMethod))
+		, m_requestNewContentViewMethod(std::move(requestNewContentViewMethod))
 	{
-		if (m_requestNewWindowMethod.isEmpty())
+		if (m_requestNewContentViewMethod.isEmpty())
 		{
-			m_requestNewWindowMethod = QStringLiteral("shell.request_new_window");
+			m_requestNewContentViewMethod = QStringLiteral("demo.request_new_window");
 		}
 	}
 
@@ -187,7 +187,7 @@ namespace mps::host
 		caps->set_tab_drag(true);
 		caps->set_heartbeat(true);
 		caps->set_invoke(true);
-		caps->set_multi_sub_window(true);
+		caps->set_multi_tab(true);
 		m_channel->send(env);
 		if (m_heartbeatNegotiated)
 		{
@@ -195,7 +195,7 @@ namespace mps::host
 		}
 	}
 
-	void ClientSession::requestCreateSubWindow(qint64 tabId, const QString& title)
+	void ClientSession::requestCreateContentView(qint64 tabId, const QString& title)
 	{
 		if (m_dead || !m_channel)
 		{
@@ -240,7 +240,7 @@ namespace mps::host
 		}
 		auto env =
 			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(), m_sessionId);
-		env->mutable_notify_main_window_reattachment()->set_shell_id(shellId);
+		env->mutable_notify_main_window_reattachment()->set_host_shell_id(shellId);
 		m_channel->send(env);
 	}
 
@@ -285,7 +285,7 @@ namespace mps::host
 		}
 		if (env->has_main_window_added())
 		{
-			m_mainWid = static_cast<quintptr>(env->main_window_added().wid());
+			m_embedRootWid = static_cast<quintptr>(env->main_window_added().wid());
 			m_ready = true;
 			emit sessionReady(this);
 			return;
@@ -304,16 +304,16 @@ namespace mps::host
 			quintptr wid = static_cast<quintptr>(env->sub_window_added().wid());
 			if (wid == 0)
 			{
-				wid = m_mainWid;
+				wid = m_embedRootWid;
 			}
 			const QString title = QString::fromStdString(env->sub_window_added().title());
-			emit subWindowAdded(this, tabId, title, wid);
+			emit contentViewReady(this, tabId, title, wid);
 			return;
 		}
 		if (env->has_sub_window_removed())
 		{
 			const qint64 tabId = env->tab_id();
-			emit subWindowRemoved(this, tabId);
+			emit contentViewClosed(this, tabId);
 			return;
 		}
 		if (env->has_query_close_sub_window_result())
@@ -322,16 +322,16 @@ namespace mps::host
 			if (env->query_close_sub_window_result().accept())
 			{
 				const qint64 tabId = env->tab_id();
-				emit subWindowRemoved(this, tabId);
+				emit contentViewClosed(this, tabId);
 			}
 			return;
 		}
 		if (env->has_invoke())
 		{
 			// Client asks Host to create another window in this session.
-			if (QString::fromStdString(env->invoke().method()) == m_requestNewWindowMethod)
+			if (QString::fromStdString(env->invoke().method()) == m_requestNewContentViewMethod)
 			{
-				emit invokeNewWindow(this, env->tab_id());
+				emit createContentViewRequested(this, env->tab_id());
 				auto res = mps::ipc::makeResponse(1, env->id(), QDateTime::currentMSecsSinceEpoch());
 				res->mutable_invoke_result()->set_payload("ok");
 				m_channel->send(res);

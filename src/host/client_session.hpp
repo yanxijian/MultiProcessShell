@@ -21,13 +21,13 @@ namespace mps::host
 	{
 		Q_OBJECT
 	public:
-		ClientSession(int clientIndex, QString endpoint, QString requestNewWindowMethod = QStringLiteral("shell.request_new_window"),
-					  QObject* parent = nullptr);
+		ClientSession(int instanceIndex, QString endpoint,
+					  QString requestNewContentViewMethod = QStringLiteral("demo.request_new_window"), QObject* parent = nullptr);
 		~ClientSession() override;
 
-		[[nodiscard]] int clientIndex() const
+		[[nodiscard]] int instanceIndex() const
 		{
-			return m_clientIndex;
+			return m_instanceIndex;
 		}
 		[[nodiscard]] qint64 sessionId() const
 		{
@@ -44,7 +44,7 @@ namespace mps::host
 
 		void startClientProcess(const QString& clientExe, const QString& token);
 		void attachSocket(QLocalSocket* socket);
-		void requestCreateSubWindow(qint64 tabId, const QString& title);
+		void requestCreateContentView(qint64 tabId, const QString& title);
 		void requestActivate(qint64 tabId);
 		void requestClose(qint64 tabId);
 		void notifyReattachment(qint64 shellId);
@@ -65,12 +65,12 @@ namespace mps::host
 	signals:
 		void sessionHelloOk(ClientSession* self);
 		void sessionReady(ClientSession* self);
-		void subWindowAdded(ClientSession* self, qint64 tabId, QString title, quintptr wid);
-		void subWindowRemoved(ClientSession* self, qint64 tabId);
+		void contentViewReady(ClientSession* self, qint64 tabId, QString title, quintptr wid);
+		void contentViewClosed(ClientSession* self, qint64 tabId);
 		void sessionDead(ClientSession* self);
 		void sessionUnhealthy(ClientSession* self);
 		void sessionHealthy(ClientSession* self);
-		void invokeNewWindow(ClientSession* self, qint64 sourceTabId);
+		void createContentViewRequested(ClientSession* self, qint64 sourceTabId);
 		/// Validated C→H theme.set (wire scheme already parsed).
 		void themeSetRequested(ClientSession* self, mps::theme::Scheme scheme);
 
@@ -83,10 +83,10 @@ namespace mps::host
 		void stopHeartbeatWatch();
 		void onHeartbeatWatchTick();
 
-		int m_clientIndex = 0;
+		int m_instanceIndex = 0;
 		qint64 m_sessionId = 0;
 		QString m_endpoint;
-		QString m_requestNewWindowMethod;
+		QString m_requestNewContentViewMethod;
 		bool m_ready = false;
 		bool m_helloSeen = false;
 		bool m_dead = false;
@@ -97,9 +97,9 @@ namespace mps::host
 		QProcess* m_process = nullptr;
 		QLocalSocket* m_socket = nullptr;
 		std::unique_ptr<mps::ipc::EnvelopeChannel> m_channel;
-		// pending CreateSubWindow tab ids awaiting SubWindowAdded (same order)
+		// pending CreateSubWindow (proto) / ContentView tab ids awaiting SubWindowAdded (same order)
 		QList<qint64> m_pendingTabs;
-		quintptr m_mainWid = 0;
+		quintptr m_embedRootWid = 0;
 	};
 } // namespace mps::host
 

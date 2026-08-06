@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
 
 	mps::host::ShellApp shellApp(clientExe, QStringLiteral("mps-demo"));
 	shellApp.setShellWindowTitle(QStringLiteral("MultiProcessShell Demo"));
-	shellApp.setRequestNewWindowMethod(QStringLiteral("demo.request_new_window"));
+	shellApp.setRequestNewContentViewMethod(QStringLiteral("demo.request_new_window"));
 	shellApp.setHomeContentFactory(
 		[&shellApp](mps::host::ShellWindow* shell) -> QWidget*
 		{

@@ -29,49 +29,49 @@
 ### 2.2 创建 Client（新进程 / 新 clientKind / ClientSession）
 
 - 在 **Home** 点击「创建 Client」→ 启动一个 Client 进程，并在当前壳新增一个 Client Tab。  
-- 首个该 Client 下的子窗口标题形如：`Client1-Window1`。  
+- 首个该 Client 下的子窗口标题形如：`Client1-Tab1`。  
 - 需要再建 Client 时，切回 **Home** 再点「创建 Client」。
 
 ### 2.3 同 Client 再建子窗口
 
 - **Client 内容窗（`ContentView` / `RibbonContentWindow`）**：无系统标题栏的 **QFluentRibbon**（`RibbonWindow`）；Ribbon「New Window」经 IPC `Invoke("demo.request_new_window")`，由 Host 再发 `CreateSubWindow`。详见 [qfr-demo-client.md](qfr-demo-client.md)。  
 - 点击后在 **同一 Client 进程** 内再建子窗口并新增 Tab。  
-- 标题递增：`Client1-Window2`、`Client1-Window3`、…
+- 标题递增：`Client1-Tab2`、`Client1-Tab3`、…
 
 ### 2.4 多 Client
 
-- 再次在 Home「创建 Client」→ `Client2-Window1`、…  
+- 再次在 Home「创建 Client」→ `Client2-Tab1`、…  
 - 不同 Client = 不同进程（形态 A）；Tab 可同壳并列。  
-- 页内可用 Ribbon Theme 组切 Light/Dark；经 Host `theme.set` **全局同步**（壳 + 全部 Client）。
+- 内容窗内可用 Ribbon Theme 组切 Light/Dark；经 Host `theme.set` **全局同步**（壳 + 全部 Client）。
 
-### 2.5 QFR 嵌入页
+### 2.5 QFR ContentView
 
-Demo Client 页为 frameless `qfluentribbon::RibbonWindow`；构建与嵌入态限制见 [qfr-demo-client.md](qfr-demo-client.md)。
+Demo Client ContentView 为 frameless `qfluentribbon::RibbonWindow`；构建与嵌入态限制见 [qfr-demo-client.md](qfr-demo-client.md)。
 
 ## 3. 标题（Tab 名）规则
 
 格式：
 
 ```text
-Client{N}-Window{M}
+Client{N}-Tab{M}
 ```
 
 | 字段 | 含义 | 递增规则 |
 |------|------|----------|
 | `N` | Client 实例序号 | 每成功创建一个新 Client 进程 +1（全局，按 Demo 会话） |
-| `M` | 该 Client 内子窗口序号 | 每在该 Client 内新建一个子窗口 +1 |
+| `M` | 该 Client 内 ContentView / Tab 序号 | 每在该 Client 内新建一个 ContentView +1 |
 
-示例：`Client1-Window1`、`Client1-Window2`、`Client2-Window1`。  
+示例：`Client1-Tab1`、`Client1-Tab2`、`Client2-Tab1`。  
 **Home** Tab 标题固定为 `Home`（不属于上述命名）。
 
 ## 4. 窗口结构
 
 ```text
 ┌─ Shell 顶层窗（自定义标题栏）──────────────────────────┐
-│  [Home] [Client1-Window1 ×] [Client2-Window1 ×]  _ □ × │
+│  [Home] [Client1-Tab1 ×] [Client2-Tab1 ×]  _ □ × │
 ├────────────────────────────────────────────────────────┤
 │  Home 激活：中央「创建 Client」                          │
-│  Client Tab 激活：嵌入 QFR Ribbon 页（无系统标题栏；「New Window」在 Ribbon） │
+│  Client Tab 激活：嵌入 QFR Ribbon ContentView（无系统标题栏；「New Window」在 Ribbon） │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -89,7 +89,7 @@ Client{N}-Window{M}
 
 拖动中：源 Tab 透明占位；同壳 / 合入目标壳其它 Tab **实时让位**（不是蓝色竖线）；源壳客户区切到上一激活 Tab。  
 **撕出后**：窗口预览一出现，源壳上原 Tab 空位即被相邻 Tab **立刻占住**（不必等松手）；拖回条上则重新让出空隙。  
-**唯一 Client Tab**（规格 §7.2 / Chrome 末页）：不走窗口预览，**真壳整窗跟手**；悬停他壳 Tab 条（较窄磁吸带）时目标让位并**自动合入**（整窗平移到槽位并淡出，无需松开）；拖到空白处松开则留在落点（不新建第二壳）。  
+**唯一 Client Tab**（规格 §7.2 / Chrome 末个 Client Tab）：不走窗口预览，**真壳整窗跟手**；悬停他壳 Tab 条（较窄磁吸带）时目标让位并**自动合入**（整窗平移到槽位并淡出，无需松开）；拖到空白处松开则留在落点（不新建第二壳）。  
 落在最小化 / 最大化 / 关闭上 → 非合入热区；**松开不 tear-out**（视为取消，Tab 回源壳）。  
 拖出进行中若 Client 点「新建窗口」→ Host **排队** `CreateSubWindow`，拖结束后再发（规格 S5）。
 
@@ -148,8 +148,8 @@ Client{N}-Window{M}
 | 1 | 浏览器式可撕出 Tab：并列 Tab、关 Tab、拖出新壳、合入他壳 |
 | 2 | 无剩余 Client Tab 的多余壳 → 销毁 |
 | 3 | 启动一壳 + 固定 **Home Tab**（框架）；Create Client / Light/Dark 在 **demo_host** Home 客户区 |
-| 4 | Client 内容窗「新建窗口」→ 同 Client 子窗 |
-| 5 | Tab 名：`Client{N}-Window{M}`；Home 除外 |
+| 4 | Client 内容窗「新建窗口」→ 同 Client 再建 ContentView / Tab |
+| 5 | Tab 名：`Client{N}-Tab{M}`；Home 除外 |
 | 6 | 关 Tab 走激活历史（含 Home），默认不强制回 Home |
 
 ## 10. IPC

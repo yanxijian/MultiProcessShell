@@ -44,11 +44,12 @@
 Object tree (logical):
 
 ```text
-ShellApp → ShellMainWindow × N
-  → TabBar / EmbedSlot × P
-    → EmbedContainer + Tab × T
+ShellApp → ShellWindow × N
+  → TabBar / EmbedContainer (docs: EmbedSlot; one per shell, multiplexes tabs)
+    → Tab × T (ContentView)
 ```
 
+`IEmbedBackend` is **planned**; Win Demo uses `EmbedContainer` directly.
 ## 4. Dual channels
 
 | Channel | Responsibility |

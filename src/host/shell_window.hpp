@@ -87,7 +87,7 @@ namespace mps::host
 			return m_activeTabId;
 		}
 		[[nodiscard]] int clientTabCount() const;
-		[[nodiscard]] EmbedContainer* embed()
+		[[nodiscard]] EmbedContainer* embedContainer()
 		{
 			return m_embed;
 		}
@@ -127,7 +127,7 @@ namespace mps::host
 		/// Global rect of the drag slot (for cancel snap-back).
 		[[nodiscard]] QRect tabDragSlotGlobalRect(qint64 tabId) const;
 		/// Stop tracking active HWND without Hide (tear-out/merge handoff).
-		void releaseEmbedOwnershipForTab(qint64 tabId);
+		void releaseEmbedTrackingForTab(qint64 tabId);
 		/// Keep layout slot but make the dragged tab invisible.
 		void setTabDragHidden(qint64 tabId, bool hidden);
 		[[nodiscard]] qint64 previousActivationTarget(qint64 closingTabId) const;
@@ -192,7 +192,7 @@ namespace mps::host
 		QPushButton* m_closeBtn = nullptr;
 		QHBoxLayout* m_tabRow = nullptr;
 		QStackedWidget* m_stack = nullptr;
-		QWidget* m_homeSlot = nullptr;
+		QWidget* m_homeSlot = nullptr; // empty host for HomeContent; not HomeContent itself
 		EmbedContainer* m_embed = nullptr;
 		QVector<TabInfo> m_tabs;
 		qint64 m_activeTabId = kHomeTabId;

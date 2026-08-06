@@ -28,7 +28,7 @@ namespace mps::client
 		{
 		}
 
-		std::function<void()> onRequestNewWindow;
+		std::function<void()> onRequestNewContentView;
 		std::function<void(mps::theme::Scheme)> onRequestTheme;
 	};
 

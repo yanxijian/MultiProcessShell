@@ -141,22 +141,23 @@ macOS **禁止**将「跨进程 `SetParent` / `fromWinId`」作为主路径。Ma
 
 ```
 ShellApp
- └─ ShellMainWindow × N          // 可拖出多个壳窗
+ └─ ShellWindow × N              // 可拖出多个壳窗（代码名；文档旧称 ShellMainWindow）
      ├─ HeaderBar
      ├─ TabBar → TabItem × M     // 视图；绑定 tabId
      └─ CentralArea
-         └─ EmbedSlot × P       // 一 Client 主窗 / 一嵌入会话
-             ├─ EmbedContainer   // EmbedBackend 挂接点
-             └─ Tab × T    // 每个业务子窗口
+         └─ EmbedContainer       // 每 ShellWindow 一个；多 ContentView/Tab 复用（文档概念 EmbedSlot）
+             └─ Tab × T          // 每个 ContentView / 业务子窗
 ```
 
 | 壳对象 | Client 对象 | 稳定 ID | 易变凭证 |
 |--------|-------------|---------|----------|
-| `EmbedSlot` | Client 主窗口 | `sessionId`（Host 生成） | `wid`（HWND/XID/`QWidget*`） |
-| `Tab` | 业务子窗口 | `tabId`（Host 生成，单调） | Client 侧 `subId`（可选映射） |
+| `EmbedContainer`（文档亦称 EmbedSlot） | Client 嵌入根 HWND（`MainWindowAdded` 握手） | `sessionId`（Host 生成） | `wid`（HWND/XID/`QWidget*`） |
+| `Tab` | ContentView | `tabId`（Host 生成，单调） | （Client 侧 `subId`：**未实现**） |
 | `ClientSession` | 进程或模块 | `sessionId` + `appName` | `pid` / 模块句柄 |
 
-**改进点（相对原文档）**：上层逻辑一律用 `sessionId`/`tabId`；`wid` 仅出现在 EmbedBackend 与握手瞬间。避免「`find(winId)` 作为唯一查找键」导致的短暂失效问题（原 C4）。
+**改进点（相对原文档）**：上层逻辑一律用 `sessionId`/`tabId`；`wid` 仅出现在 Embed 层与握手瞬间。避免「`find(winId)` 作为唯一查找键」导致的短暂失效问题（原 C4）。
+
+**Demo 现状**：一个 `ShellWindow` **一个** `EmbedContainer`，在多个 Tab 间切换激活 HWND；规格中「EmbedSlot × P / 多 Container 保活」是产品愿景，非当前 Demo。
 
 ### 2.4 可选扩展：同类型多实例
 
@@ -168,10 +169,12 @@ ShellApp
 | **扩展** | `sessionKey = appName + "#" + instanceIndex`；每实例独立进程与 `EmbedSlot` |
 | **Demo** | **不实现**；Host 注册表预留 `launch(appName, instanceKey)` |
 
-### 2.5 EmbedBackend（本版核心抽象）
+### 2.5 EmbedBackend（规划中抽象；Demo 直接用 `EmbedContainer`）
+
+> **现状**：`IEmbedBackend` **尚未落地**（见 m5-gap / dev-plan）。Win Demo 经 `EmbedContainer` 直接 `SetParent`。下列接口为产品愿景。
 
 ```text
-IEmbedBackend
+IEmbedBackend  // planned
   - capabilities() -> EmbedCaps
   - embed(sessionId, container, wid, opts) -> Result
   - updateGeometry(sessionId, rect, dpi)
@@ -183,11 +186,11 @@ IEmbedBackend
 
 | Backend | 平台 | 实现要点 |
 |---------|------|----------|
-| `WinHwndEmbedBackend` | Windows | `SetParent` + `WM_HOST_*` |
-| `X11XEmbedBackend` | Linux/X11 | XEmbed + reparent |
-| `InProcessWidgetBackend` | macOS / Debug | `layout->addWidget` + `QEvent` |
+| `WinHwndEmbedBackend` | Windows | `SetParent` + `WM_HOST_*`（规划；Demo=`EmbedContainer`） |
+| `X11XEmbedBackend` | Linux/X11 | XEmbed + reparent（规划） |
+| `InProcessWidgetBackend` | macOS / Debug | `layout->addWidget` + `QEvent`（规划） |
 
-Host 的 TabBar / 拖出状态机 **只依赖 `IEmbedBackend`**，不直接 `#ifdef` 散落业务代码。
+Host 的 TabBar / 拖出状态机 **目标**只依赖 `IEmbedBackend`；当前 Demo 直接依赖 `EmbedContainer`。
 
 ---
 
@@ -217,13 +220,10 @@ Host                              Client
  |-- spawn ----------------------->|
  |<-- hello{protocol,caps,pid} ----|
  |-- helloAck{protocol,hostCaps} ->|
- |<-- applicationConnected --------|
- |<-- mainWindowAdded{wid} -----------|
- |-- embed.begin(sessionId) --------->|   // IPC 意图
- |-- BUILDPARENT / XEmbed -------->|   // 平台通道
- |<-- FINISHPARENT / embed.ok -----|
- |-- createWindow{tabId} --------->|
- |<-- subWindowAdded{tabId,...} ---|
+ |<-- mainWindowAdded{wid} -----------|   // 首 ContentView HWND 作嵌入根（无 ApplicationConnected）
+ |-- embed / SetParent --------------->|   // 平台通道（Demo：EmbedContainer）
+ |-- CreateSubWindow{tabId,title} -->|
+ |<-- SubWindowAdded{tabId,...} ---|
  |-- TabBar add + activate --------|
 ```
 
@@ -232,11 +232,11 @@ Host                              Client
 ```
 Host
  |-- load client_alpha
- |-- 主线程创建 ClientMainWindow*
+ |-- 主线程创建 Client ContentView*
  |-- sessionId 分配；wid := (i64)(uintptr_t)widget
- |-- InProcessWidgetBackend.embed → addWidget
+ |-- InProcessWidgetBackend.embed → addWidget（规划）
  |-- FinishParent QEvent
- |-- 后续 createWindow / Tab 与形态 A 同形
+ |-- 后续 CreateSubWindow / Tab 与形态 A 同形
 ```
 
 ### 3.4 能力协商
@@ -250,7 +250,7 @@ Client `Hello.caps`（Protobuf 字段，逻辑等价于下表）：
 | `modal_report` | bool | 是否上报模态 |
 | `heartbeat` | bool | 是否发心跳 |
 | `dpi_sync` | bool | 是否接受 DPI 同步 |
-| `multi_sub_window` | bool | 是否支持多子窗 Tab |
+| `multi_tab` | bool | 是否支持多 ContentView / Tab |
 
 Host 按 caps 关闭 UI 入口（例如 Client 不支持 `tab_drag` 则 Tab 禁止拖出）。**禁止**假设所有 Client 能力相同。多语言 Client 若无法嵌入，必须报 `EMBED_NONE`，由 Host 降级。
 
@@ -470,7 +470,7 @@ message Capabilities {
   bool modal_report = 3;
   bool heartbeat = 4;
   bool dpi_sync = 5;
-  bool multi_sub_window = 6;
+  bool multi_tab = 6; // multi ContentView / Tab
 }
 
 message RpcError {
@@ -489,31 +489,26 @@ message Envelope {
     // handshake
     Hello hello = 10;
     HelloAck hello_ack = 11;
-    ApplicationConnected application_connected = 12;
-    ApplicationDestroyed application_destroyed = 13;
+    // ApplicationConnected / ApplicationDestroyed：产品愿景；**不在 Demo proto**
 
-    // windows
+    // windows / ContentView（wire 名保留 SubWindow*）
     MainWindowAdded main_window_added = 20;
     MainWindowDestroyed main_window_destroyed = 21;
-    NewMainWindow new_main_window = 22;
-    CreateWindow create_window = 23;
-    SubWindowAdded sub_window_added = 24;
-    SubWindowRemoved sub_window_removed = 25;
-    SubWindowTitleChanged sub_window_title_changed = 26;
-    SubWindowActivated sub_window_activated = 27;
-    ActiveSubWindow active_sub_window = 28;
-    QueryCloseSubWindow query_close_sub_window = 29;
-    QueryCloseMainWindow query_close_main_window = 30;
-    MoveSubWindowTo move_sub_window_to = 31;
-    NotifyMainWindowReattachment notify_main_window_reattachment = 32;
+    CreateSubWindow create_sub_window = 22; // Demo 名；旧文档 CreateWindow 因 Win32 宏改名
+    SubWindowAdded sub_window_added = 23;
+    SubWindowRemoved sub_window_removed = 24;
+    ActiveSubWindow active_sub_window = 25;
+    QueryCloseSubWindow query_close_sub_window = 26;
+    QueryCloseSubWindowResult query_close_sub_window_result = 27;
+    NotifyMainWindowReattachment notify_main_window_reattachment = 30;
+    SetDragSuppress set_drag_suppress = 31;
 
-    // misc
-    ModalChanged modal_changed = 40;
-    SetDragSuppress set_drag_suppress = 41;
-    Heartbeat heartbeat = 42;
-    Ping ping = 43;
-    Pong pong = 44;
-    Unhealthy unhealthy = 45;
+    // misc（下列部分为愿景，Demo 子集见 proto/shell/ipc/v1/ipc.proto）
+    Heartbeat heartbeat = 40;
+    Ping ping = 41;
+    Pong pong = 42;
+    Invoke invoke = 50;
+    InvokeResult invoke_result = 51;
 
     RpcError error = 100;    // 仅 DIR_RES
   }
@@ -533,34 +528,34 @@ message HelloAck {
   Capabilities host_caps = 3;
 }
 
+// Handshake EVT: first ContentView HWND as embed root (not a separate main QWidget).
 message MainWindowAdded {
   uint64 wid = 1;            // HWND / XID / QWidget* 指针值
   uint32 pid = 2;            // 必须与 Hello.pid 一致，供 Host 校验
   bool visible = 3;
 }
 
-message CreateWindow {
+// Host asks Client to create another ContentView; title scheme Client{N}-Tab{M}.
+message CreateSubWindow {
   // session_id / tab_id 在 Envelope 头；Host 分配 tab_id 后下发
+  string title = 1; // scheme A: Client{N}-Tab{M}
 }
 
 message SubWindowAdded {
   string title = 1;
+  uint64 wid = 2;
 }
 
-message MoveSubWindowTo {
-  int64 target_session_id = 1;
-  int32 insert_index = 2;
+message NotifyMainWindowReattachment {
+  int64 host_shell_id = 1; // Host ShellWindow id，非 sessionId
 }
 
 message Heartbeat {}
 message Ping {}
 message Pong {}
-message Unhealthy { string reason = 1; }
-message ModalChanged { bool modal = 1; }
 message SetDragSuppress { bool suppress = 1; }
-// 其余消息体按同风格补全；无字段的用空 message 占位
+// 完整字段以仓库 `proto/shell/ipc/v1/ipc.proto` 为准；本节为规格说明摘要
 ```
-
 **版本规则**
 
 - `Envelope.protocol` / `Hello.min_protocol`/`max_protocol`：主版本不交叠 → 断连，`ERROR_PROTOCOL`。  
@@ -570,14 +565,14 @@ message SetDragSuppress { bool suppress = 1; }
 ### 5.4 方向与方法子集
 
 **Client → Host（多为 `DIR_EVT`）**  
-`Hello` / `ApplicationConnected` / `MainWindowAdded` / `MainWindowDestroyed` /  
-`SubWindowAdded|Removed|TitleChanged|Activated` / `ModalChanged` / `Heartbeat` /  
-`ApplicationDestroyed` / `Unhealthy`
+`Hello` / `MainWindowAdded` / `MainWindowDestroyed` /  
+`SubWindowAdded|Removed`（ContentView 生命周期；wire 名保留） / `Heartbeat`  
+（愿景、**非 Demo**：`ApplicationConnected` / `ModalChanged` / `Unhealthy` / TitleChanged…）
 
 **Host → Client（多为 `DIR_REQ`，配对 `DIR_RES`）**  
-`HelloAck` / `NewMainWindow` / `CreateWindow` / `ActiveSubWindow` /  
-`QueryCloseSubWindow` / `QueryCloseMainWindow` / `MoveSubWindowTo` /  
-`NotifyMainWindowReattachment` / `SetDragSuppress` / `Ping`
+`HelloAck` / `CreateSubWindow`（旧文档 CreateWindow） / `ActiveSubWindow` /  
+`QueryCloseSubWindow` / `NotifyMainWindowReattachment`（`host_shell_id`） / `SetDragSuppress` / `Ping` / `Invoke`  
+（愿景、**非 Demo**：`NewMainWindow` / `QueryCloseMainWindow` / `MoveSubWindowTo`…）
 
 **超时**：凡 `DIR_REQ` 必须有超时（建议默认 3–5s）；超时对内标记 session `Unhealthy`，对外可 `ERROR_TIMEOUT`，**禁止无限阻塞 Host UI 线程**。
 
@@ -613,7 +608,7 @@ QLocalSocket.readyRead
   → Envelope.ParseFromArray
   → SessionManager.dispatch(body)
        ├─ 更新 TabModel / 状态机
-       └─ 需挂接 → IEmbedBackend（平台第二通道）
+       └─ 需挂接 → EmbedContainer / IEmbedBackend（后者规划中）
 ```
 
 ### 5.9 多语言 Client 形态
@@ -715,7 +710,7 @@ Idle → PressOnTab → DragThresholdExceeded → Dragging
 6. **合入权限**：Client 可暂时 `canMergeInto=false`。  
 7. **附属面板宽度**：新壳几何扣除侧栏。  
 8. **DnD 只在 Host 模型内完成**：先改 Tab 归属，再 `reattach`。  
-9. **新增**：拖出进行中禁止对该 `session_id` 发起 `CreateWindow`（队列化）。
+9. **新增**：拖出进行中禁止对该 `session_id` 发起 `CreateSubWindow`（队列化）。
 
 ---
 
@@ -726,8 +721,8 @@ Idle → PressOnTab → DragThresholdExceeded → Dragging
 ```
 用户请求 → 解析 app_name
  → 无 Session 则 launch / loadModule
- → 确保 EmbedSlot + EmbedContainer
- → CreateWindow(tab_id) → SubWindowAdded → 加 Tab → 激活
+ → 确保 ShellWindow 的 EmbedContainer（文档概念 EmbedSlot；无 ensureEmbedSlot API）
+ → CreateSubWindow(tab_id, title=Client{N}-Tab{M}) → SubWindowAdded → 加 Tab → 激活
 ```
 
 启动限流：同时 launching 的 Session 数建议 ≤ 2；其余显示加载占位。
@@ -735,7 +730,8 @@ Idle → PressOnTab → DragThresholdExceeded → Dragging
 ### 8.2 切换 Tab
 
 1. 更新 current `tab_id`  
-2. 跨 EmbedSlot：切换 Central 显隐（**多 Container 保活**，避免重挂接）  
+2. 同壳多 Tab：在**同一** `EmbedContainer` 上切换激活 HWND（Demo）；跨壳则 `transferBinding`  
+   （愿景「多 EmbedSlot / 多 Container 保活」见 §2.3）  
 3. `ActiveSubWindow` + Backend `activate`  
 4. macOS：刷新全局菜单栏  
 
@@ -757,7 +753,7 @@ Idle → PressOnTab → DragThresholdExceeded → Dragging
 | S2 | 协议版本不匹配 | hello 失败；Tab 显示「版本不兼容」 |
 | S3 | 管道名可预测被连 | token + ACL（§10） |
 | S4 | 重复销毁回调 | 幂等；状态机拒绝非法迁移 |
-| S5 | 拖出中 createWindow | 队列至 Drag 结束 |
+| S5 | 拖出中 CreateSubWindow | 队列至 Drag 结束 |
 | S6 | 完整性级别导致 SetParent 失败 | 明确错误；勿静默重试死循环 |
 | A1 | 读屏找不到客户区 | 后续：暴露 accessible 代理（非 Demo） |
 
@@ -885,30 +881,28 @@ MultiProcessShell/
 
 ### 12.5 伪代码
 
-**Win：mainWindowAdded**
+**Win：MainWindowAdded（Demo）**
 
 ```cpp
-auto slot = session->ensureEmbedSlot(sessionId);
-backend->embed(sessionId, slot->container(), wid, {.visible=vis});
-// 内部：PostMessage(client, WM_HOST_BUILDPARENT, container->winId(), vis);
+// 无 ensureEmbedSlot：ShellWindow 已有 EmbedContainer*
+shell->embedContainer()->bind(tabId, wid);
+shell->embedContainer()->activate(tabId);
 ```
 
-**Mac：mainWindowAdded**
+**Mac：mainWindowAdded（规划）**
 
 ```cpp
 auto* clientMw = reinterpret_cast<QWidget*>(static_cast<uintptr_t>(wid));
-backend->embed(sessionId, container, wid, {});
+backend->embed(sessionId, container, wid, {}); // IEmbedBackend planned
 // 内部：ensureLayout(container)->addWidget(clientMw);
 ```
 
-**拖出**
+**拖出（Demo）**
 
 ```cpp
-auto* newShell = app->createMainWindow();
-tabModel->moveTab(tabId, newShell);
-backend->reattach(sessionId, newShell->containerFor(sessionId));
+auto* newShell = app->createShell();
+// move tab model + EmbedContainer::transferBinding(...)
 ```
-
 ### 12.6 禁止事项
 
 - Mac 上把跨进程 `SetParent`/`fromWinId` 当主路径。  
@@ -945,7 +939,7 @@ backend->reattach(sessionId, newShell->containerFor(sessionId));
 从里程碑 M0 开始交付。
 
 架构要求：
-- Host 只做外壳与 Tab 编排；挂接通过 IEmbedBackend。
+- Host 只做外壳与 Tab 编排；挂接经 `EmbedContainer`（目标抽象 `IEmbedBackend`，规划中）。
 - 开源 Qt 6.8+（兼容基线 6.8 LTS；CMAKE_PREFIX_PATH=$QTDIR；
   find_package(Qt6 6.8 REQUIRED COMPONENTS Widgets Network)；禁止仅 6.9+ API）。
 - 工程通过环境变量引用 Qt：%QTDIR% / $env:QTDIR。

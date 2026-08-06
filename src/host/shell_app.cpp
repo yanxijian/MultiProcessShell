@@ -386,7 +386,7 @@ namespace mps::host
 						de->acceptProposedAction();
 						return true;
 					}
-					// No foreign strip under cursor — keep the moved shell as-is.
+					// No other shell strip under cursor — keep the moved shell as-is.
 					clearAllDropIndicators();
 					clearAllTabYieldPreviews();
 					noteTabDragDropHandled();
@@ -450,24 +450,24 @@ namespace mps::host
 			}
 		}
 		m_clientLaunchInFlight = true;
-		const int clientIndex = m_nextClientIndex++;
-		m_nextWindowIndex[clientIndex] = 1;
-		auto session = std::make_unique<ClientSession>(clientIndex, m_endpoint, m_requestNewWindowMethod, this);
+		const int instanceIndex = m_nextInstanceIndex++;
+		m_nextContentIndex[instanceIndex] = 1;
+		auto session = std::make_unique<ClientSession>(instanceIndex, m_endpoint, m_requestNewContentViewMethod, this);
 		auto* raw = session.get();
 		m_pendingFirstShell.insert(raw, shell);
 		connect(raw, &ClientSession::sessionHelloOk, this, &ShellApp::onSessionHelloOk);
-		connect(raw, &ClientSession::subWindowAdded, this, &ShellApp::onSubWindowAdded);
-		connect(raw, &ClientSession::subWindowRemoved, this, &ShellApp::onSubWindowRemoved);
+		connect(raw, &ClientSession::contentViewReady, this, &ShellApp::onContentViewReady);
+		connect(raw, &ClientSession::contentViewClosed, this, &ShellApp::onContentViewClosed);
 		connect(raw, &ClientSession::sessionDead, this, &ShellApp::onSessionDead);
 		connect(raw, &ClientSession::sessionUnhealthy, this, &ShellApp::onSessionUnhealthy);
 		connect(raw, &ClientSession::sessionHealthy, this, &ShellApp::onSessionHealthy);
 		connect(raw, &ClientSession::themeSetRequested, this, &ShellApp::onThemeSetRequested);
-		connect(raw, &ClientSession::invokeNewWindow, this,
+		connect(raw, &ClientSession::createContentViewRequested, this,
 				[this](ClientSession* session, qint64 sourceTabId)
 				{
-					const int m = m_nextWindowIndex[session->clientIndex()]++;
+					const int m = m_nextContentIndex[session->instanceIndex()]++;
 					const qint64 tabId = m_nextTabId++;
-					const QString title = makeTitle(session->clientIndex(), m);
+					const QString title = makeTitle(session->instanceIndex(), m);
 					// Prefer the shell that hosts the content where the user clicked.
 					ShellWindow* shell = shellForTab(sourceTabId);
 					if (!shell)
@@ -498,7 +498,7 @@ namespace mps::host
 					{
 						m_pendingFirstShell.insert(session, shell);
 					}
-					session->requestCreateSubWindow(tabId, title);
+					session->requestCreateContentView(tabId, title);
 				});
 		raw->startClientProcess(m_clientExe, m_token);
 		m_sessions.push_back(std::move(session));
@@ -544,10 +544,10 @@ namespace mps::host
 		{
 			return;
 		}
-		const int m = m_nextWindowIndex[session->clientIndex()]++;
+		const int m = m_nextContentIndex[session->instanceIndex()]++;
 		const qint64 tabId = m_nextTabId++;
-		const QString title = makeTitle(session->clientIndex(), m);
-		session->requestCreateSubWindow(tabId, title);
+		const QString title = makeTitle(session->instanceIndex(), m);
+		session->requestCreateContentView(tabId, title);
 	}
 
 	void ShellApp::setScheme(mps::theme::Scheme scheme, ThemeOrigin origin)
@@ -603,7 +603,7 @@ namespace mps::host
 		}
 	}
 
-	void ShellApp::onSubWindowAdded(ClientSession* session, qint64 tabId, QString title, quintptr wid)
+	void ShellApp::onContentViewReady(ClientSession* session, qint64 tabId, QString title, quintptr wid)
 	{
 		ShellWindow* shell = m_pendingFirstShell.take(session);
 		if (!shell)
@@ -632,23 +632,23 @@ namespace mps::host
 		TabInfo info;
 		info.sessionId = session->sessionId();
 		info.tabId = tabId;
-		info.clientIndex = session->clientIndex();
+		info.instanceIndex = session->instanceIndex();
 		info.title = title;
 		info.session = session;
 		info.unhealthy = session->isUnhealthy();
-		// parse window index from title ClientN-WindowM
+		// parse content index from title ClientN-TabM
 		const auto parts = title.split(QLatin1Char('-'));
-		if (parts.size() == 2 && parts[1].startsWith(QStringLiteral("Window")))
+		if (parts.size() == 2 && parts[1].startsWith(QStringLiteral("Tab")))
 		{
-			info.windowIndex = parts[1].mid(6).toInt();
+			info.contentIndex = parts[1].mid(3).toInt();
 		}
-		if (!shell->embed() || !wid)
+		if (!shell->embedContainer() || !wid)
 		{
 			session->requestClose(tabId);
 			return;
 		}
-		shell->embed()->bind(tabId, wid);
-		if (!shell->embed()->has(tabId))
+		shell->embedContainer()->bind(tabId, wid);
+		if (!shell->embedContainer()->has(tabId))
 		{
 			// Invalid / dead HWND — do not leave a permanent Home-only client tab.
 			session->requestClose(tabId);
@@ -659,7 +659,7 @@ namespace mps::host
 		session->notifyReattachment(shell->shellId());
 	}
 
-	void ShellApp::onSubWindowRemoved(ClientSession* session, qint64 tabId)
+	void ShellApp::onContentViewClosed(ClientSession* session, qint64 tabId)
 	{
 		Q_UNUSED(session);
 		if (auto* shell = m_tabToShell.take(tabId))
@@ -699,7 +699,7 @@ namespace mps::host
 		{
 			if (auto* shell = m_tabToShell.take(id))
 			{
-				shell->releaseEmbedOwnershipForTab(id);
+				shell->releaseEmbedTrackingForTab(id);
 				shell->removeTab(id);
 				destroyShellIfEmpty(shell);
 			}
@@ -772,7 +772,7 @@ namespace mps::host
 				continue;
 			}
 			m_tabToShell.remove(t.tabId);
-			shell->releaseEmbedOwnershipForTab(t.tabId);
+			shell->releaseEmbedTrackingForTab(t.tabId);
 			shell->removeTab(t.tabId);
 			if (t.session)
 			{
@@ -884,7 +884,7 @@ namespace mps::host
 		clearAllDropIndicators();
 		clearAllTabYieldPreviews();
 		// Keep HWND visible for reparent; preview still covers the transition.
-		const quintptr wid = EmbedContainer::transferBinding(source->embed(), nullptr, tabId);
+		const quintptr wid = EmbedContainer::transferBinding(source->embedContainer(), nullptr, tabId);
 		source->removeTab(tabId);
 		m_tabToShell.remove(tabId);
 
@@ -902,9 +902,9 @@ namespace mps::host
 		// Create hidden, embed first, then show — preview stays on top until first paints.
 		auto* neu = createShell(pos, sz, /*showNow=*/false);
 		m_tabToShell.insert(tabId, neu);
-		if (neu->embed() && wid)
+		if (neu->embedContainer() && wid)
 		{
-			neu->embed()->bind(tabId, wid);
+			neu->embedContainer()->bind(tabId, wid);
 		}
 		neu->addTab(moved);
 		if (moved.session)
@@ -912,9 +912,9 @@ namespace mps::host
 			moved.session->notifyReattachment(neu->shellId());
 			moved.session->requestActivate(tabId);
 		}
-		if (neu->embed() && wid)
+		if (neu->embedContainer() && wid)
 		{
-			neu->embed()->resyncActive();
+			neu->embedContainer()->resyncActive();
 		}
 		if (m_tearOutPreview)
 		{
@@ -932,9 +932,9 @@ namespace mps::host
 		neu->show();
 		neu->raise();
 		neu->activateWindow();
-		if (neu->embed())
+		if (neu->embedContainer())
 		{
-			neu->embed()->resyncActive();
+			neu->embedContainer()->resyncActive();
 			QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 		}
 		// Keep the preview covering the new shell briefly so the first embed paint
@@ -985,7 +985,7 @@ namespace mps::host
 		}
 		clearAllDropIndicators();
 		// Detach from source embed without Hide — target will reparent immediately.
-		const quintptr wid = EmbedContainer::transferBinding(source->embed(), target->embed(), tabId);
+		const quintptr wid = EmbedContainer::transferBinding(source->embedContainer(), target->embedContainer(), tabId);
 		source->removeTab(tabId);
 		m_tabToShell.insert(tabId, target);
 		if (insertIndex < 0)
@@ -1001,9 +1001,9 @@ namespace mps::host
 			moved.session->notifyReattachment(target->shellId());
 			moved.session->requestActivate(tabId);
 		}
-		if (target->embed() && wid)
+		if (target->embedContainer() && wid)
 		{
-			target->embed()->resyncActive();
+			target->embedContainer()->resyncActive();
 		}
 		target->raise();
 		target->activateWindow();
@@ -1039,9 +1039,9 @@ namespace mps::host
 	ShellWindow* ShellApp::tabDropZoneShellAtGlobal(QPoint globalPos) const
 	{
 		// Sole-Client whole-shell tear-out: the moving source sits under the cursor and
-		// would always win hit-tests. Prefer foreign strips so merge remains possible.
-		const bool preferForeign = m_dragActive && m_dragMoveWholeShell && m_tearOutDetached;
-		if (preferForeign)
+		// would always win hit-tests. Prefer other shells' strips so merge remains possible.
+		const bool preferOtherShell = m_dragActive && m_dragMoveWholeShell && m_tearOutDetached;
+		if (preferOtherShell)
 		{
 			// Exact strip hit first, then a wider magnetic band (Chrome-like merge aim).
 			for (const auto& shell : m_shells)
@@ -1123,7 +1123,7 @@ namespace mps::host
 			{
 				m_pendingFirstShell.insert(item.session, item.preferredShell);
 			}
-			item.session->requestCreateSubWindow(item.tabId, item.title);
+			item.session->requestCreateContentView(item.tabId, item.title);
 		}
 	}
 
@@ -1192,9 +1192,9 @@ namespace mps::host
 		m_dragTabWidth = tabLogicalSize.width() > 0 ? tabLogicalSize.width() : 80;
 		const QPixmap tabGhostPm = source->grabTabButton(tabId);
 		QPixmap contentSnap;
-		if (source->embed())
+		if (source->embedContainer())
 		{
-			contentSnap = source->embed()->grabContent(tabId, m_dragPreviewSize);
+			contentSnap = source->embedContainer()->grabContent(tabId, m_dragPreviewSize);
 		}
 
 		if (m_dragMoveWholeShell)
@@ -1387,8 +1387,8 @@ namespace mps::host
 			return;
 		}
 		const QPoint g = QCursor::pos();
-		ShellWindow* foreign = tabDropZoneShellAtGlobal(g);
-		if (!foreign || foreign == m_dragSource || !foreign->hasTabYieldPreview())
+		ShellWindow* otherShell = tabDropZoneShellAtGlobal(g);
+		if (!otherShell || otherShell == m_dragSource || !otherShell->hasTabYieldPreview())
 		{
 			return;
 		}
@@ -1398,10 +1398,10 @@ namespace mps::host
 			return;
 		}
 
-		int insertIndex = foreign->yieldInsertIndex();
+		int insertIndex = otherShell->yieldInsertIndex();
 		if (insertIndex < 0)
 		{
-			insertIndex = foreign->tabInsertIndexAt(g);
+			insertIndex = otherShell->tabInsertIndexAt(g);
 		}
 
 		const qint64 tabId = m_dragTabId;
@@ -1413,7 +1413,7 @@ namespace mps::host
 		clearAllDropIndicators();
 		for (auto& s : m_shells)
 		{
-			if (s && s.get() != foreign)
+			if (s && s.get() != otherShell)
 			{
 				s->clearTabYieldPreview();
 			}
@@ -1423,7 +1423,7 @@ namespace mps::host
 			m_tearOutPreview->hide();
 		}
 
-		startAutoMergeAnimation(source, foreign, tabId, insertIndex);
+		startAutoMergeAnimation(source, otherShell, tabId, insertIndex);
 		requestAbortOleDrag();
 	}
 
@@ -1953,7 +1953,7 @@ namespace mps::host
 		const bool wasDetached = m_tearOutDetached;
 		if (m_dragMoveWholeShell)
 		{
-			// Stay detached for the whole drag (merge is foreign-strip hover/drop).
+			// Stay detached for the whole drag (merge is other-shell strip hover/drop).
 			m_tearOutDetached = true;
 		}
 		else
@@ -2080,20 +2080,20 @@ namespace mps::host
 				}
 				m_dragSource->raise();
 			}
-			ShellWindow* foreign = tabDropZoneShellAtGlobal(g);
+			ShellWindow* otherShell = tabDropZoneShellAtGlobal(g);
 			const int guestW = m_dragTabWidth > 0 ? m_dragTabWidth : 80;
-			if (foreign && foreign != m_dragSource && m_dragTabId != 0)
+			if (otherShell && otherShell != m_dragSource && m_dragTabId != 0)
 			{
 				for (auto& s : m_shells)
 				{
-					if (s && s.get() != foreign)
+					if (s && s.get() != otherShell)
 					{
 						s->clearTabYieldPreview();
 						s->clearDropInsertIndicator();
 					}
 				}
-				foreign->clearDropInsertIndicator();
-				foreign->previewTabYieldAtCursor(m_dragTabId, g, guestW, contentHotX);
+				otherShell->clearDropInsertIndicator();
+				otherShell->previewTabYieldAtCursor(m_dragTabId, g, guestW, contentHotX);
 				tryCommitMagneticAutoMerge();
 			}
 			else
@@ -2217,8 +2217,8 @@ namespace mps::host
 		}
 	}
 
-	QString ShellApp::makeTitle(int clientIndex, int windowIndex) const
+	QString ShellApp::makeTitle(int instanceIndex, int contentIndex) const
 	{
-		return QStringLiteral("Client%1-Window%2").arg(clientIndex).arg(windowIndex);
+		return QStringLiteral("Client%1-Tab%2").arg(instanceIndex).arg(contentIndex);
 	}
 } // namespace mps::host

@@ -34,7 +34,7 @@ namespace
 		caps->set_embed(shell::ipc::v1::EMBED_HWND);
 		caps->set_heartbeat(true);
 		caps->set_invoke(true);
-		caps->set_multi_sub_window(true);
+		caps->set_multi_tab(true);
 		return env;
 	}
 } // namespace
@@ -109,14 +109,14 @@ TEST(EnvelopeProto, CreateSubWindowTitleSchemeA)
 	env->set_dir(shell::ipc::v1::DIR_REQ);
 	env->set_session_id(1);
 	env->set_tab_id(7);
-	env->mutable_create_sub_window()->set_title("Client1-Window2");
+	env->mutable_create_sub_window()->set_title("Client1-Tab2");
 
 	std::string bytes;
 	ASSERT_TRUE(serializeEnvelope(*env, &bytes));
 	const auto parsed = parseEnvelope(bytes);
 	ASSERT_TRUE(parsed);
 	ASSERT_TRUE(parsed->has_create_sub_window());
-	EXPECT_EQ(parsed->create_sub_window().title(), "Client1-Window2");
+	EXPECT_EQ(parsed->create_sub_window().title(), "Client1-Tab2");
 	EXPECT_EQ(parsed->tab_id(), 7);
 }
 

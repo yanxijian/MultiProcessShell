@@ -41,7 +41,7 @@ message Capabilities {
   bool modal_report = 3;
   bool heartbeat = 4;
   bool dpi_sync = 5;
-  bool multi_sub_window = 6;
+  bool multi_tab = 6; // multi ContentView / Tab
   bool invoke = 7; // generic bidirectional Invoke support
 }
 
@@ -101,6 +101,7 @@ message HelloAck {
   Capabilities host_caps = 3;
 }
 
+// Handshake EVT: first ContentView HWND as embed root (not a separate main QWidget).
 message MainWindowAdded {
   uint64 wid = 1;
   uint32 pid = 2;
@@ -109,32 +110,38 @@ message MainWindowAdded {
 
 message MainWindowDestroyed {}
 
+// Host asks Client to create another ContentView; title scheme Client{N}-Tab{M}.
 message CreateSubWindow {
   // session_id / tab_id on Envelope
-  string title = 1; // scheme A: Host-assigned Client{N}-Window{M}
+  string title = 1; // scheme A: Host-assigned Client{N}-Tab{M}
 }
 
+// ContentView/tab lifecycle (legacy SubWindow name kept for wire stability).
 message SubWindowAdded {
   string title = 1; // echo Host title
-  uint64 wid = 2;   // native window handle for this child (may equal main wid)
+  uint64 wid = 2;   // native handle for this ContentView (may equal embed-root wid)
 }
 
+// ContentView/tab lifecycle (legacy SubWindow name kept for wire stability).
 message SubWindowRemoved {}
 
+// ContentView/tab lifecycle (legacy SubWindow name kept for wire stability).
 message ActiveSubWindow {
   // tab_id on Envelope
 }
 
+// ContentView/tab lifecycle (legacy SubWindow name kept for wire stability).
 message QueryCloseSubWindow {
   // tab_id on Envelope
 }
 
+// ContentView/tab lifecycle (legacy SubWindow name kept for wire stability).
 message QueryCloseSubWindowResult {
   bool accept = 1;
 }
 
 message NotifyMainWindowReattachment {
-  int64 shell_id = 1; // Host-defined shell window id; 0 if unknown
+  int64 host_shell_id = 1; // Host ShellWindow id, not sessionId; 0 if unknown
 }
 
 message SetDragSuppress {

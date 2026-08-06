@@ -298,7 +298,7 @@ namespace mps::host
 		}
 		else
 		{
-			accent = m_info.unhealthy ? QColor(180, 120, 20) : ((m_info.clientIndex % 2 == 0) ? QColor(200, 60, 60) : QColor(120, 70, 180));
+			accent = m_info.unhealthy ? QColor(180, 120, 20) : ((m_info.instanceIndex % 2 == 0) ? QColor(200, 60, 60) : QColor(120, 70, 180));
 			penWidth = 1.5;
 		}
 
@@ -705,7 +705,7 @@ namespace mps::host
 		}
 	}
 
-	void ShellWindow::releaseEmbedOwnershipForTab(qint64 tabId)
+	void ShellWindow::releaseEmbedTrackingForTab(qint64 tabId)
 	{
 		if (!m_embed)
 		{
@@ -1871,7 +1871,7 @@ namespace mps::host
 			{
 				if (other->m_tabs[i].tabId == id)
 				{
-					EmbedContainer::transferBinding(other->embed(), m_embed, id);
+					EmbedContainer::transferBinding(other->embedContainer(), m_embed, id);
 					m_tabs.push_back(other->m_tabs[i]);
 					other->m_tabs.removeAt(i);
 					other->m_activationHistory.removeAll(id);

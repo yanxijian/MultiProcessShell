@@ -63,14 +63,14 @@ namespace mps::host
 		{
 			m_shellWindowTitle = std::move(title);
 		}
-		/// Client Invoke method that requests another sub-window in the same session.
-		void setRequestNewWindowMethod(QString method)
+		/// Client Invoke method that requests another ContentView in the same session.
+		void setRequestNewContentViewMethod(QString method)
 		{
-			m_requestNewWindowMethod = std::move(method);
+			m_requestNewContentViewMethod = std::move(method);
 		}
-		[[nodiscard]] QString requestNewWindowMethod() const
+		[[nodiscard]] QString requestNewContentViewMethod() const
 		{
-			return m_requestNewWindowMethod;
+			return m_requestNewContentViewMethod;
 		}
 
 		[[nodiscard]] mps::theme::Scheme scheme() const
@@ -91,8 +91,8 @@ namespace mps::host
 		void bindShell(ShellWindow* shell);
 		void onSessionReady(ClientSession* session);
 		void onSessionHelloOk(ClientSession* session);
-		void onSubWindowAdded(ClientSession* session, qint64 tabId, QString title, quintptr wid);
-		void onSubWindowRemoved(ClientSession* session, qint64 tabId);
+		void onContentViewReady(ClientSession* session, qint64 tabId, QString title, quintptr wid);
+		void onContentViewClosed(ClientSession* session, qint64 tabId);
 		void onSessionDead(ClientSession* session);
 		void onSessionUnhealthy(ClientSession* session);
 		void onSessionHealthy(ClientSession* session);
@@ -113,7 +113,7 @@ namespace mps::host
 		void showDragDropSink(bool on);
 		[[nodiscard]] bool isDragDropSink(QObject* watched) const;
 		[[nodiscard]] bool shellStillAlive(ShellWindow* shell) const;
-		[[nodiscard]] QString makeTitle(int clientIndex, int windowIndex) const;
+		[[nodiscard]] QString makeTitle(int instanceIndex, int contentIndex) const;
 
 		struct DeferredCreate
 		{
@@ -127,7 +127,7 @@ namespace mps::host
 		QString m_endpoint;
 		QString m_token;
 		QString m_shellWindowTitle = QStringLiteral("Shell");
-		QString m_requestNewWindowMethod = QStringLiteral("shell.request_new_window");
+		QString m_requestNewContentViewMethod = QStringLiteral("demo.request_new_window");
 		HomeContentFactory m_homeContentFactory;
 		QLocalServer* m_server = nullptr;
 		mps::theme::Scheme m_scheme = mps::theme::Scheme::Light;
@@ -135,8 +135,8 @@ namespace mps::host
 		std::vector<std::unique_ptr<ClientSession>> m_sessions;
 		QHash<qint64, ShellWindow*> m_tabToShell;
 		qint64 m_nextTabId = 1;
-		int m_nextClientIndex = 1;
-		QHash<int, int> m_nextWindowIndex;
+		int m_nextInstanceIndex = 1;
+		QHash<int, int> m_nextContentIndex;
 		QHash<ClientSession*, ShellWindow*> m_pendingFirstShell;
 		std::vector<DeferredCreate> m_deferredCreatesDuringDrag;
 		bool m_clientLaunchInFlight = false;

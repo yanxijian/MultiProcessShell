@@ -166,13 +166,13 @@ namespace mps::client
 		caps->set_tab_drag(true);
 		caps->set_heartbeat(m_enableHeartbeat);
 		caps->set_invoke(true);
-		caps->set_multi_sub_window(true);
+		caps->set_multi_tab(true);
 		m_channel->send(env);
 	}
 
-	void ClientApp::ensureMainReported()
+	void ClientApp::ensureMainWindowAddedSent()
 	{
-		if (m_mainReported || m_views.isEmpty())
+		if (m_mainWindowAddedSent || m_views.isEmpty())
 		{
 			return;
 		}
@@ -193,7 +193,7 @@ namespace mps::client
 #endif
 		added->set_visible(true);
 		m_channel->send(env);
-		m_mainReported = true;
+		m_mainWindowAddedSent = true;
 	}
 
 	void ClientApp::createView(qint64 tabId, const QString& title)
@@ -215,11 +215,11 @@ namespace mps::client
 			return;
 		}
 		ContentView* view = owned.get();
-		view->onRequestNewWindow = [this, tabId]()
+		view->onRequestNewContentView = [this, tabId]()
 		{
 			auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(),
 											  0, tabId);
-			env->mutable_invoke()->set_method(m_requestNewWindowMethod.toStdString());
+			env->mutable_invoke()->set_method(m_requestNewContentViewMethod.toStdString());
 			m_channel->send(env);
 		};
 		view->onRequestTheme = [this, tabId](mps::theme::Scheme scheme)
@@ -252,9 +252,9 @@ namespace mps::client
 		w->show();
 		w->winId();
 
-		if (!m_mainReported)
+		if (!m_mainWindowAddedSent)
 		{
-			ensureMainReported();
+			ensureMainWindowAddedSent();
 		}
 
 		auto env =
@@ -308,7 +308,7 @@ namespace mps::client
 			return;
 		}
 		// Do NOT hide other views: each may be SetParent'd into a different Host shell.
-		// Visibility of non-active embeds is owned by the Host (ShowWindow / clearForeignWindow).
+		// Visibility of non-active embeds is owned by the Host (ShowWindow / clearClientWindow).
 		if (QWidget* w = view->widget())
 		{
 			w->show();

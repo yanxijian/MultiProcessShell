@@ -142,7 +142,7 @@ namespace mps::demo
 
 		auto* newWindowBtn = new QPushButton(QStringLiteral("新建窗口"), this);
 		newWindowBtn->setFixedSize(140, 36);
-		connect(newWindowBtn, &QPushButton::clicked, this, &RibbonContentWindow::requestNewWindow);
+		connect(newWindowBtn, &QPushButton::clicked, this, &RibbonContentWindow::requestNewContentView);
 
 		auto* central = new QWidget(this);
 		auto* lay = new QVBoxLayout(central);
@@ -224,7 +224,7 @@ namespace mps::demo
 
 		auto* windowGroup = home->addGroup(QStringLiteral("Window"));
 		(void)windowGroup->addAction(newWindow);
-		connect(newWindow, &QAction::triggered, this, &RibbonContentWindow::requestNewWindow);
+		connect(newWindow, &QAction::triggered, this, &RibbonContentWindow::requestNewContentView);
 
 		auto* themeGroup = home->addGroup(QStringLiteral("Theme"));
 		(void)themeGroup->addAction(light);

@@ -17,12 +17,12 @@ namespace mps::demo
 		, m_bridge(bridge)
 		, m_window(std::make_unique<RibbonContentWindow>(tabId, title, bridge))
 	{
-		QObject::connect(m_window.get(), &RibbonContentWindow::requestNewWindow, m_window.get(),
+		QObject::connect(m_window.get(), &RibbonContentWindow::requestNewContentView, m_window.get(),
 						 [this]()
 						 {
-							 if (onRequestNewWindow)
+							 if (onRequestNewContentView)
 							 {
-								 onRequestNewWindow();
+								 onRequestNewContentView();
 							 }
 						 });
 		QObject::connect(m_window.get(), &RibbonContentWindow::requestThemeScheme, m_window.get(),

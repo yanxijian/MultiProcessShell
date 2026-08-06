@@ -7,8 +7,10 @@
 | `common/` | 拼帧 + 生成的 `shell.ipc.v1`（`mps::ipc`） |
 | `ipc_qt/` | 基于 `QIODevice` / `QLocalSocket` 的 `EnvelopeChannel` |
 | `host/` | 壳 UI、Tab 模型、Client 会话、Win `EmbedContainer`、拖出预览（`tear_out_preview`） |
-| `client/` | Demo Client 进程（`ClientApp` / `ContentView`） |
+| `client/` | 框架侧 `ClientApp` / `ContentView`（Demo 具体 UI 在 `demos/demo_client`） |
 
 CMake：`MPS_BUILD_SRC` 或 `MPS_BUILD_DEMOS` 为 ON 时编译（二者默认 ON；`--no-demos` 会一起关掉）。
 
 平台嵌入说明：`host/embed/win`、`x11`、`inproc`。
+
+**术语**：文档里的 **EmbedSlot** 指「每个壳窗上的嵌入位」概念；代码实现是每个 `ShellWindow` 一个 `EmbedContainer`，在多个 ContentView/Tab 间复用。
