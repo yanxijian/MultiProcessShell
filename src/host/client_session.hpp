@@ -29,9 +29,9 @@ namespace mps::host
 		{
 			return m_clientIndex;
 		}
-		[[nodiscard]] qint64 pageId() const
+		[[nodiscard]] qint64 sessionId() const
 		{
-			return m_pageId;
+			return m_sessionId;
 		}
 		[[nodiscard]] bool ready() const
 		{
@@ -84,7 +84,7 @@ namespace mps::host
 		void onHeartbeatWatchTick();
 
 		int m_clientIndex = 0;
-		qint64 m_pageId = 0;
+		qint64 m_sessionId = 0;
 		QString m_endpoint;
 		QString m_requestNewWindowMethod;
 		bool m_ready = false;

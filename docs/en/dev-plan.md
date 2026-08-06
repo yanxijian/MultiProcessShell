@@ -31,7 +31,7 @@ Scan top recommendation: ~~**wid → embed** first~~ **done**; peel Shell rules 
 
 - Pre-refactor for a future IPC stack swap  
 - A second-platform Backend interface with no second adapter planned  
-- One-shot rewrite of Host into the full paper object tree (`ClientPage`, …)
+- One-shot rewrite of Host into the full paper object tree (`EmbedSlot` / `ContentView`, …)
 
 ## Milestone hooks (notes)
 

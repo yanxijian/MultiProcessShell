@@ -22,7 +22,7 @@ namespace
 		env->set_protocol(1);
 		env->set_id("corr-1");
 		env->set_dir(shell::ipc::v1::DIR_EVT);
-		env->set_page_id(0);
+		env->set_session_id(0);
 		env->set_tab_id(0);
 		env->set_ts_ms(1710000000000);
 		auto* hello = env->mutable_hello();
@@ -47,7 +47,7 @@ TEST(EnvelopeBuilder, MakeEnvelopeAndResponse)
 	EXPECT_EQ(env->id(), "id-a");
 	EXPECT_EQ(env->dir(), shell::ipc::v1::DIR_EVT);
 	EXPECT_EQ(env->ts_ms(), 99);
-	EXPECT_EQ(env->page_id(), 2);
+	EXPECT_EQ(env->session_id(), 2);
 	EXPECT_EQ(env->tab_id(), 3);
 
 	auto res = mps::ipc::makeResponse(1, "req-1", 100, 7);
@@ -55,7 +55,7 @@ TEST(EnvelopeBuilder, MakeEnvelopeAndResponse)
 	EXPECT_EQ(res->dir(), shell::ipc::v1::DIR_RES);
 	EXPECT_EQ(res->id(), "req-1");
 	EXPECT_EQ(res->tab_id(), 7);
-	EXPECT_EQ(res->page_id(), 0);
+	EXPECT_EQ(res->session_id(), 0);
 }
 
 TEST(EnvelopeProto, SerializeParseRoundTrip)
@@ -107,7 +107,7 @@ TEST(EnvelopeProto, CreateSubWindowTitleSchemeA)
 	env->set_protocol(1);
 	env->set_id("req-create-1");
 	env->set_dir(shell::ipc::v1::DIR_REQ);
-	env->set_page_id(1);
+	env->set_session_id(1);
 	env->set_tab_id(7);
 	env->mutable_create_sub_window()->set_title("Client1-Window2");
 

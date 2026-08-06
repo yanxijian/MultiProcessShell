@@ -1,4 +1,4 @@
-﻿#include "page_window.hpp"
+#include "ribbon_content_window.hpp"
 
 #include "qfluentribbon/qfluentribbon.hpp"
 
@@ -31,7 +31,7 @@ namespace mps::demo
 		}
 	} // namespace
 
-	PageWindow::PageWindow(qint64 tabId, QString title, qfluentribbon::ThemeBridge* bridge, QWidget* parent)
+	RibbonContentWindow::RibbonContentWindow(qint64 tabId, QString title, qfluentribbon::ThemeBridge* bridge, QWidget* parent)
 		: qfluentribbon::RibbonWindow(parent)
 		, m_tabId(tabId)
 		, m_pendingBridge(bridge)
@@ -46,7 +46,7 @@ namespace mps::demo
 		// Ribbon/icons are built in realizeChrome() after HWND+screen are bound.
 	}
 
-	void PageWindow::realizeChrome()
+	void RibbonContentWindow::realizeChrome()
 	{
 		if (m_chromeReady || !m_pendingBridge)
 		{
@@ -58,7 +58,7 @@ namespace mps::demo
 		m_chromeReady = true;
 	}
 
-	bool PageWindow::nativeEvent(const QByteArray& eventType, void* message, qintptr* result)
+	bool RibbonContentWindow::nativeEvent(const QByteArray& eventType, void* message, qintptr* result)
 	{
 #ifdef Q_OS_WIN
 		if (eventType == QByteArrayLiteral("windows_generic_MSG") || eventType == QByteArrayLiteral("windows_dispatcher_MSG"))
@@ -86,7 +86,7 @@ namespace mps::demo
 		return qfluentribbon::RibbonWindow::nativeEvent(eventType, message, result);
 	}
 
-	void PageWindow::syncAfterEmbed()
+	void RibbonContentWindow::syncAfterEmbed()
 	{
 #ifdef Q_OS_WIN
 		const HWND hwnd = reinterpret_cast<HWND>(winId());
@@ -130,7 +130,7 @@ namespace mps::demo
 #endif
 	}
 
-	void PageWindow::buildRibbon(qfluentribbon::ThemeBridge* bridge)
+	void RibbonContentWindow::buildRibbon(qfluentribbon::ThemeBridge* bridge)
 	{
 		auto* status = new QLabel(windowTitle(), this);
 		status->setAlignment(Qt::AlignCenter);
@@ -142,7 +142,7 @@ namespace mps::demo
 
 		auto* newWindowBtn = new QPushButton(QStringLiteral("新建窗口"), this);
 		newWindowBtn->setFixedSize(140, 36);
-		connect(newWindowBtn, &QPushButton::clicked, this, &PageWindow::requestNewWindow);
+		connect(newWindowBtn, &QPushButton::clicked, this, &RibbonContentWindow::requestNewWindow);
 
 		auto* central = new QWidget(this);
 		auto* lay = new QVBoxLayout(central);
@@ -224,7 +224,7 @@ namespace mps::demo
 
 		auto* windowGroup = home->addGroup(QStringLiteral("Window"));
 		(void)windowGroup->addAction(newWindow);
-		connect(newWindow, &QAction::triggered, this, &PageWindow::requestNewWindow);
+		connect(newWindow, &QAction::triggered, this, &RibbonContentWindow::requestNewWindow);
 
 		auto* themeGroup = home->addGroup(QStringLiteral("Theme"));
 		(void)themeGroup->addAction(light);

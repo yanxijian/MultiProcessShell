@@ -37,7 +37,7 @@
 
 - 为换 IPC 栈（gRPC / Cap’n / Zenoh）预重构（见 [ipc-alternatives.md](ipc-alternatives.md)）  
 - 空抽第二平台 Backend 而无第二 Adapter 计划  
-- 把 Host UI 与进程生命周期一次性「大拆」成规格全文对象树（`ClientPage` 等）——按需加深，不一次对齐纸面
+- 把 Host UI 与进程生命周期一次性「大拆」成规格全文对象树（`EmbedSlot` / `ContentView` 等）——按需加深，不一次对齐纸面
 
 ---
 

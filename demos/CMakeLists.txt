@@ -10,10 +10,10 @@ set_target_properties(mps_demo_host PROPERTIES AUTOMOC ON)
 
 add_executable(mps_demo_client
   demo_client/main.cpp
-  demo_client/page_window.cpp
-  demo_client/page_window.hpp
-  demo_client/ribbon_page.cpp
-  demo_client/ribbon_page.hpp
+  demo_client/ribbon_content_window.cpp
+  demo_client/ribbon_content_window.hpp
+  demo_client/ribbon_content_view.cpp
+  demo_client/ribbon_content_view.hpp
 )
 target_link_libraries(mps_demo_client PRIVATE mps::client ${MPS_QFR_TARGET} ${MPS_QTE_TARGET})
 set_target_properties(mps_demo_client PROPERTIES AUTOMOC ON)

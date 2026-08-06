@@ -1,5 +1,5 @@
 ﻿// demo_client sources (parent wires demos/CMakeLists.txt):
-//   main.cpp, page_window.cpp, page_window.hpp, ribbon_page.cpp, ribbon_page.hpp
+//   main.cpp, ribbon_content_window.*, ribbon_content_view.*
 #include "client_app.hpp"
 #include "qfluentribbon/ribbon_tokens.hpp"
 #include "qfluentribbon/theme_bridge.hpp"
@@ -7,7 +7,7 @@
 #include "qtheme/engine.hpp"
 #include "qtheme/store.hpp"
 #include "qtheme/types.hpp"
-#include "ribbon_page.hpp"
+#include "ribbon_content_view.hpp"
 
 #include <QApplication>
 #include <QColor>
@@ -85,9 +85,9 @@ int main(int argc, char* argv[])
 	qfluentribbon::ThemeBridge bridge;
 	syncRibbonTokensFromEngine(&engine, &bridge);
 
-	mps::client::PageFactory factory = [&engine, &bridge](qint64 tabId, const QString& title)
+	mps::client::ContentViewFactory factory = [&engine, &bridge](qint64 tabId, const QString& title)
 	{
-		return std::make_unique<mps::demo::RibbonPage>(tabId, title, &engine, &bridge);
+		return std::make_unique<mps::demo::RibbonContentView>(tabId, title, &engine, &bridge);
 	};
 
 	mps::client::ClientApp client(parser.value(endpoint), parser.value(token), std::move(factory), !parser.isSet(noHeartbeat));

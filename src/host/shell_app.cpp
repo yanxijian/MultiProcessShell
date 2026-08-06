@@ -630,7 +630,7 @@ namespace mps::host
 			return;
 		}
 		TabInfo info;
-		info.pageId = session->pageId();
+		info.sessionId = session->sessionId();
 		info.tabId = tabId;
 		info.clientIndex = session->clientIndex();
 		info.title = title;

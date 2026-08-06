@@ -17,7 +17,7 @@
 
 ## 2. 帧与方向
 
-`Envelope`：`protocol`, `id`, `dir` (`REQ`/`RES`/`EVT`), `page_id`, `tab_id`, `ts_ms`, `oneof body`。
+`Envelope`：`protocol`, `id`, `dir` (`REQ`/`RES`/`EVT`), `session_id`, `tab_id`, `ts_ms`, `oneof body`。
 
 | dir | 含义 |
 |-----|------|

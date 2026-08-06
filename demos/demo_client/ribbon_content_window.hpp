@@ -1,5 +1,5 @@
-﻿#ifndef __MPS_DEMO_CLIENT_PAGE_WINDOW_H__
-#define __MPS_DEMO_CLIENT_PAGE_WINDOW_H__
+#ifndef __MPS_DEMO_CLIENT_RIBBON_CONTENT_WINDOW_H__
+#define __MPS_DEMO_CLIENT_RIBBON_CONTENT_WINDOW_H__
 
 #include "qfluentribbon/ribbon_window.hpp"
 #include "theme_scheme.hpp"
@@ -14,11 +14,11 @@ namespace qfluentribbon
 namespace mps::demo
 {
 	/// Frameless Ribbon page reported to the Host via SubWindowAdded (HWND embed).
-	class PageWindow final : public qfluentribbon::RibbonWindow
+	class RibbonContentWindow final : public qfluentribbon::RibbonWindow
 	{
 		Q_OBJECT
 	public:
-		PageWindow(qint64 tabId, QString title, qfluentribbon::ThemeBridge* bridge, QWidget* parent = nullptr);
+		RibbonContentWindow(qint64 tabId, QString title, qfluentribbon::ThemeBridge* bridge, QWidget* parent = nullptr);
 		[[nodiscard]] qint64 tabId() const
 		{
 			return m_tabId;
@@ -46,4 +46,4 @@ namespace mps::demo
 	};
 } // namespace mps::demo
 
-#endif // __MPS_DEMO_CLIENT_PAGE_WINDOW_H__
+#endif // __MPS_DEMO_CLIENT_RIBBON_CONTENT_WINDOW_H__

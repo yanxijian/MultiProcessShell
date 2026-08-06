@@ -22,7 +22,7 @@
 | 架构 | 角色、挂接、IPC 轮廓 | **EmbedBackend 抽象**、稳定 ID、能力协商、降级矩阵 |
 | 进程模型 | 一类型一进程 | 明确「一类型一进程」为默认，并给出多实例扩展点 |
 | 协议 | 方法名列表 | **Protobuf IDL**、`Envelope`、correlationId、心跳、错误码、幂等、多语言 |
-| 生命周期 | 创建/关闭流程 | **ClientPage / EmbedSession 状态机**、崩溃恢复策略 |
+| 生命周期 | 创建/关闭流程 | **EmbedSlot / ClientSession 状态机**、崩溃恢复策略 |
 | 安全 | 较少 | Pipe ACL、句柄校验、禁止跨完整性盲目 SetParent |
 | 可观测 | 缺陷清单 | 日志字段、诊断模式、验收自动化建议 |
 | Mac | 同进程直调 | 明确为 **一等公民路径**，而非「Win 方案的残缺移植」 |
@@ -31,7 +31,7 @@
 **设计原则（本版新增）**
 
 1. **Host 拥有编排，Client 拥有内容**：壳不理解业务；Client 不绘制壳外框。  
-2. **稳定逻辑 ID 优先于原生句柄**：`tabId` / `pageId` 永不复用；`wid` 仅作挂接凭证，可失效。  
+2. **稳定逻辑 ID 优先于原生句柄**：`tabId` / `sessionId` 永不复用；`wid` 仅作挂接凭证，可失效。  
 3. **双通道职责分离**：Protobuf IPC = 意图与状态；平台消息/`QEvent` = 嵌入几何与焦点。  
 4. **同步调用必须有超时与降级**：壳线程永不被 Client 无限阻塞。  
 5. **平台差异收敛到 EmbedBackend**：上层 Tab/拖出逻辑与挂接实现解耦。  
@@ -81,7 +81,7 @@
 1. **感知一致**：用户感觉是「一个窗口里的多个文档/页面」。  
 2. **故障域清晰**：Client 挂死/崩溃不拖死 Host UI 线程。  
 3. **平台诚实**：Mac 不以假多进程冒充隔离；文档与 UI 行为一致。  
-4. **可演进**：新增 `pageDelta` 类型时，Host 只需注册启动器与能力，不改 Tab 核心。  
+4. **可演进**：新增 `kindDelta` 类型时，Host 只需注册启动器与能力，不改 Tab 核心。  
 5. **多语言 Client**：任意语言只要实现 `shell.ipc.v1` + 本地连接 +（可选）EmbedHelper，即可接入壳。
 
 ---
@@ -107,13 +107,13 @@
 
 **类型 ↔ 进程（约定示例）**
 
-| pageType | appName | 可执行体 / 模块 | 说明 |
+| clientKind | appName | 可执行体 / 模块 | 说明 |
 |----------|---------|-----------------|------|
-| pageAlpha | `alpha` | `alpha` / `client_alpha` | 类型 A |
-| pageBeta | `beta` | `beta` / `client_beta` | 类型 B |
-| pageGamma | `gamma` | `gamma` / `client_gamma` | 类型 C |
+| kindAlpha | `alpha` | `alpha` / `client_alpha` | 类型 A |
+| kindBeta | `beta` | `beta` / `client_beta` | 类型 B |
+| kindGamma | `gamma` | `gamma` / `client_gamma` | 类型 C |
 
-壳侧默认维护 **「一 pageType ↔ 一个 ClientSession（进程或模块）」**。跨类型可同壳多 `ClientPage`。
+壳侧默认维护 **「一 clientKind ↔ 一个 ClientSession（进程或模块）」**。跨类型可同壳多 `EmbedSlot`。
 
 ### 2.2 部署形态
 
@@ -145,18 +145,18 @@ ShellApp
      ├─ HeaderBar
      ├─ TabBar → TabItem × M     // 视图；绑定 tabId
      └─ CentralArea
-         └─ ClientPage × P       // 一 Client 主窗 / 一嵌入会话
+         └─ EmbedSlot × P       // 一 Client 主窗 / 一嵌入会话
              ├─ EmbedContainer   // EmbedBackend 挂接点
-             └─ ClientTab × T    // 每个业务子窗口
+             └─ Tab × T    // 每个业务子窗口
 ```
 
 | 壳对象 | Client 对象 | 稳定 ID | 易变凭证 |
 |--------|-------------|---------|----------|
-| `ClientPage` | Client 主窗口 | `pageId`（Host 生成） | `wid`（HWND/XID/`QWidget*`） |
-| `ClientTab` | 业务子窗口 | `tabId`（Host 生成，单调） | Client 侧 `subId`（可选映射） |
+| `EmbedSlot` | Client 主窗口 | `sessionId`（Host 生成） | `wid`（HWND/XID/`QWidget*`） |
+| `Tab` | 业务子窗口 | `tabId`（Host 生成，单调） | Client 侧 `subId`（可选映射） |
 | `ClientSession` | 进程或模块 | `sessionId` + `appName` | `pid` / 模块句柄 |
 
-**改进点（相对原文档）**：上层逻辑一律用 `pageId`/`tabId`；`wid` 仅出现在 EmbedBackend 与握手瞬间。避免「`find(winId)` 作为唯一查找键」导致的短暂失效问题（原 C4）。
+**改进点（相对原文档）**：上层逻辑一律用 `sessionId`/`tabId`；`wid` 仅出现在 EmbedBackend 与握手瞬间。避免「`find(winId)` 作为唯一查找键」导致的短暂失效问题（原 C4）。
 
 ### 2.4 可选扩展：同类型多实例
 
@@ -165,7 +165,7 @@ ShellApp
 | 策略 | 说明 |
 |------|------|
 | **默认** | 一 `appName` 一 `ClientSession` |
-| **扩展** | `sessionKey = appName + "#" + instanceIndex`；每实例独立进程与 `ClientPage` |
+| **扩展** | `sessionKey = appName + "#" + instanceIndex`；每实例独立进程与 `EmbedSlot` |
 | **Demo** | **不实现**；Host 注册表预留 `launch(appName, instanceKey)` |
 
 ### 2.5 EmbedBackend（本版核心抽象）
@@ -173,12 +173,12 @@ ShellApp
 ```text
 IEmbedBackend
   - capabilities() -> EmbedCaps
-  - embed(pageId, container, wid, opts) -> Result
-  - updateGeometry(pageId, rect, dpi)
-  - activate(pageId, tabId?)
-  - detach(pageId)
-  - reattach(pageId, newContainer)   // 拖出后
-  - onClientDied(pageId)
+  - embed(sessionId, container, wid, opts) -> Result
+  - updateGeometry(sessionId, rect, dpi)
+  - activate(sessionId, tabId?)
+  - detach(sessionId)
+  - reattach(sessionId, newContainer)   // 拖出后
+  - onClientDied(sessionId)
 ```
 
 | Backend | 平台 | 实现要点 |
@@ -219,7 +219,7 @@ Host                              Client
  |-- helloAck{protocol,hostCaps} ->|
  |<-- applicationConnected --------|
  |<-- mainWindowAdded{pageHint,wid}|
- |-- embed.begin(pageId) --------->|   // IPC 意图
+ |-- embed.begin(sessionId) --------->|   // IPC 意图
  |-- BUILDPARENT / XEmbed -------->|   // 平台通道
  |<-- FINISHPARENT / embed.ok -----|
  |-- createWindow{tabId} --------->|
@@ -233,7 +233,7 @@ Host                              Client
 Host
  |-- load client_alpha
  |-- 主线程创建 ClientMainWindow*
- |-- pageId 分配；wid := (i64)(uintptr_t)widget
+ |-- sessionId 分配；wid := (i64)(uintptr_t)widget
  |-- InProcessWidgetBackend.embed → addWidget
  |-- FinishParent QEvent
  |-- 后续 createWindow / Tab 与形态 A 同形
@@ -482,7 +482,7 @@ message Envelope {
   uint32 protocol = 1;       // 主版本；不兼容则拒绝
   string id = 2;             // correlation id；DIR_EVT 可空
   Dir dir = 3;
-  int64 page_id = 4;         // 无则 0
+  int64 session_id = 4;         // 无则 0
   int64 tab_id = 5;
   int64 ts_ms = 6;
   oneof body {
@@ -541,7 +541,7 @@ message MainWindowAdded {
 }
 
 message CreateWindow {
-  // page_id / tab_id 在 Envelope 头；Host 分配 tab_id 后下发
+  // session_id / tab_id 在 Envelope 头；Host 分配 tab_id 后下发
 }
 
 message SubWindowAdded {
@@ -549,7 +549,7 @@ message SubWindowAdded {
 }
 
 message MoveSubWindowTo {
-  int64 target_page_id = 1;
+  int64 target_session_id = 1;
   int32 insert_index = 2;
 }
 
@@ -602,8 +602,7 @@ message SetDragSuppress { bool suppress = 1; }
 
 | ID | 分配者 | 生命周期 |
 |----|--------|----------|
-| `session_id` | Host（`HelloAck`） | ClientSession 存活期 |
-| `page_id` | Host | Page 存活期；销毁后不复用 |
+| `session_id`（`HelloAck` 十进制字符串；Envelope 为 int64） | Host | ClientSession / EmbedSlot 存活期；销毁后不复用 |
 | `tab_id` | Host | Tab 存活期；销毁后不复用 |
 | `wid` | Client（`MainWindowAdded`） | 可随 reparent 变化；仅 Backend 使用 |
 
@@ -663,7 +662,7 @@ Idle → Launching → Handshaking → Ready → Unhealthy
                                  Crashed / Exited
 ```
 
-### 6.2 ClientPage / EmbedSession
+### 6.2 EmbedSlot / ClientSession
 
 ```
 Created → Embedding → Embedded → Detaching → Detached
@@ -680,7 +679,7 @@ Created → Embedding → Embedded → Detaching → Detached
 |------|-----------|
 | 进程退出 / 断连 | 幂等清理；受影响 Tab → 错误占位或关闭（Demo：**关闭**） |
 | unhealthy 超时 | 不自动杀（避免误杀）；提供用户操作「终止」 |
-| 终止后 | 允许「重新打开」→ 新 session（新 pageId/tabId） |
+| 终止后 | 允许「重新打开」→ 新 session（新 sessionId/tabId） |
 
 形态 C：无进程崩溃隔离；模块 `abort` 仍会导致整壳退出——规格中写明。
 
@@ -717,7 +716,7 @@ Idle → PressOnTab → DragThresholdExceeded → Dragging
 6. **合入权限**：Client 可暂时 `canMergeInto=false`。  
 7. **附属面板宽度**：新壳几何扣除侧栏。  
 8. **DnD 只在 Host 模型内完成**：先改 Tab 归属，再 `reattach`。  
-9. **新增**：拖出进行中禁止对该 `page_id` 发起 `CreateWindow`（队列化）。
+9. **新增**：拖出进行中禁止对该 `session_id` 发起 `CreateWindow`（队列化）。
 
 ---
 
@@ -728,7 +727,7 @@ Idle → PressOnTab → DragThresholdExceeded → Dragging
 ```
 用户请求 → 解析 app_name
  → 无 Session 则 launch / loadModule
- → 确保 ClientPage + EmbedContainer
+ → 确保 EmbedSlot + EmbedContainer
  → CreateWindow(tab_id) → SubWindowAdded → 加 Tab → 激活
 ```
 
@@ -789,7 +788,7 @@ Demo 也需满足最低安全默认值：
 
 ### 11.1 日志字段
 
-每条关键日志建议带：`sessionId,pageId,tabId,appName,pid,envelope.body_case,elapsedMs,errorCode`。
+每条关键日志建议带：`sessionId,tabId,appName,pid,envelope.body_case,elapsedMs,errorCode`。
 
 诊断时可对 Envelope 做 **短 hex / 字段摘要**，不要默认把整帧当 JSON 打日志。
 
@@ -798,7 +797,7 @@ Demo 也需满足最低安全默认值：
 `host --embed-debug`：
 
 - 容器绘制半透明边框  
-- 显示当前 `pageId/tabId/wid`  
+- 显示当前 `sessionId/tabId/wid`  
 - 记录每次 embed/detach 耗时  
 
 ### 11.3 崩溃信息
@@ -890,8 +889,8 @@ MultiProcessShell/
 **Win：mainWindowAdded**
 
 ```cpp
-auto page = session->ensurePage(pageId);
-backend->embed(pageId, page->container(), wid, {.visible=vis});
+auto slot = session->ensureEmbedSlot(sessionId);
+backend->embed(sessionId, slot->container(), wid, {.visible=vis});
 // 内部：PostMessage(client, WM_HOST_BUILDPARENT, container->winId(), vis);
 ```
 
@@ -899,7 +898,7 @@ backend->embed(pageId, page->container(), wid, {.visible=vis});
 
 ```cpp
 auto* clientMw = reinterpret_cast<QWidget*>(static_cast<uintptr_t>(wid));
-backend->embed(pageId, container, wid, {});
+backend->embed(sessionId, container, wid, {});
 // 内部：ensureLayout(container)->addWidget(clientMw);
 ```
 
@@ -908,7 +907,7 @@ backend->embed(pageId, container, wid, {});
 ```cpp
 auto* newShell = app->createMainWindow();
 tabModel->moveTab(tabId, newShell);
-backend->reattach(pageId, newShell->containerFor(pageId));
+backend->reattach(sessionId, newShell->containerFor(sessionId));
 ```
 
 ### 12.6 禁止事项
@@ -916,7 +915,7 @@ backend->reattach(pageId, newShell->containerFor(pageId));
 - Mac 上把跨进程 `SetParent`/`fromWinId` 当主路径。  
 - DnD mime 传 HWND/WId。  
 - 无超时同步调用 Client。  
-- 一个原生主窗同时承载两种 `pageType`。  
+- 一个原生主窗同时承载两种 `clientKind`。  
 - Linux 忽略浮动窗 owner 重挂。  
 - 用易变 `wid` 作为 Tab 主键。  
 - 假设所有 Client 具备相同 caps。  
@@ -956,7 +955,7 @@ backend->reattach(pageId, newShell->containerFor(pageId));
 - IPC：Protobuf shell.ipc.v1；Envelope + uint32 BE 长度前缀；
   传输为 Named Pipe / UDS（QLocalSocket 仅作字节流）；同进程用同一 Envelope。
 - 支持 Hello 能力协商、Heartbeat、REQ/RES 超时、RpcError。
-- 稳定 ID：page_id/tab_id 由 Host 分配；wid 仅给 Backend；校验 wid 的 PID。
+- 稳定 ID：session_id/tab_id 由 Host 分配；wid 仅给 Backend；校验 wid 的 PID。
 - 多语言：.proto 为唯一 IDL；可选 EmbedHelper C ABI；M4b 使用 Python 做 Hello 烟测。
 - 本期不上 gRPC/Thrift/Mojo/JSON 主协议。
 - 处理：几何稳定、焦点、模态 owner、拖出抑制、空壳关闭、超时、销毁顺序、多屏钳制、
@@ -989,13 +988,13 @@ backend->reattach(pageId, newShell->containerFor(pageId));
 | Host / Shell | 壳进程（C++/Qt） |
 | Client | 业务进程或模块（可为多语言） |
 | ClientSession | 一次 Client 连接（进程或模块实例） |
-| ClientPage | 与一个 Client 主窗对应的嵌入页 |
-| ClientTab | 与一个业务子窗对应的标签 |
+| EmbedSlot | 壳内嵌入槽（对应一个 ClientSession / 主窗挂接） |
+| Tab / TabInfo | 壳标签；稳定 ID 为 `tabId`；Client 侧内容面为 `ContentView` |
 | EmbedBackend | Host 侧平台挂接实现 |
 | EmbedHelper | 可选 C ABI，供多语言 Client 做平台嵌入 |
 | Envelope | `shell.ipc.v1` 统一外层消息 |
 | wid | 原生窗口凭证（易变） |
-| page_id / tab_id | Host 稳定逻辑 ID |
+| session_id（int64，Envelope）/ HelloAck.session_id（十进制字符串）/ tab_id | Host 稳定逻辑 ID |
 
 ---
 

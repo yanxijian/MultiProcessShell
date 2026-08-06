@@ -15,13 +15,13 @@ namespace mps::host
 {
 	namespace
 	{
-		qint64 g_nextPageId = 1;
+		qint64 g_nextSessionId = 1;
 	}
 
 	ClientSession::ClientSession(int clientIndex, QString endpoint, QString requestNewWindowMethod, QObject* parent)
 		: QObject(parent)
 		, m_clientIndex(clientIndex)
-		, m_pageId(g_nextPageId++)
+		, m_sessionId(g_nextSessionId++)
 		, m_endpoint(std::move(endpoint))
 		, m_requestNewWindowMethod(std::move(requestNewWindowMethod))
 	{
@@ -181,7 +181,7 @@ namespace mps::host
 		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch());
 		auto* ack = env->mutable_hello_ack();
 		ack->set_protocol(1);
-		ack->set_session_id(QString::number(m_pageId).toStdString());
+		ack->set_session_id(QString::number(m_sessionId).toStdString());
 		auto* caps = ack->mutable_host_caps();
 		caps->set_embed(shell::ipc::v1::EMBED_HWND);
 		caps->set_tab_drag(true);
@@ -203,7 +203,7 @@ namespace mps::host
 		}
 		m_pendingTabs.push_back(tabId);
 		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(),
-										  m_pageId, tabId);
+										  m_sessionId, tabId);
 		env->mutable_create_sub_window()->set_title(title.toStdString());
 		m_channel->send(env);
 	}
@@ -215,7 +215,7 @@ namespace mps::host
 			return;
 		}
 		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(),
-										  m_pageId, tabId);
+										  m_sessionId, tabId);
 		env->mutable_active_sub_window();
 		m_channel->send(env);
 	}
@@ -227,7 +227,7 @@ namespace mps::host
 			return;
 		}
 		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(),
-										  m_pageId, tabId);
+										  m_sessionId, tabId);
 		env->mutable_query_close_sub_window();
 		m_channel->send(env);
 	}
@@ -239,7 +239,7 @@ namespace mps::host
 			return;
 		}
 		auto env =
-			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(), m_pageId);
+			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(), m_sessionId);
 		env->mutable_notify_main_window_reattachment()->set_shell_id(shellId);
 		m_channel->send(env);
 	}
@@ -251,7 +251,7 @@ namespace mps::host
 			return;
 		}
 		auto env =
-			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(), m_pageId);
+			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(), m_sessionId);
 		env->mutable_set_drag_suppress()->set_suppress(on);
 		m_channel->send(env);
 	}
@@ -263,7 +263,7 @@ namespace mps::host
 			return;
 		}
 		auto env =
-			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(), m_pageId);
+			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(), m_sessionId);
 		env->mutable_invoke()->set_method("theme.set");
 		env->mutable_invoke()->set_params(params.constData(), static_cast<int>(params.size()));
 		m_channel->send(env);

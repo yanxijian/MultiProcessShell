@@ -7,7 +7,7 @@
 | `common/` | Framing + generated `shell.ipc.v1` (`mps::ipc`) |
 | `ipc_qt/` | `EnvelopeChannel` over `QIODevice` / `QLocalSocket` |
 | `host/` | Shell UI, tab model, client sessions, Win `EmbedContainer`, tear-out preview (`tear_out_preview`) |
-| `client/` | Demo Client process (`ClientApp` / pages) |
+| `client/` | Demo Client process (`ClientApp` / `ContentView`) |
 
 CMake: built when `MPS_BUILD_SRC` or `MPS_BUILD_DEMOS` is ON (both default ON; `--no-demos` turns both off).
 

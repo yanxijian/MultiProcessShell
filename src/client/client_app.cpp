@@ -1,4 +1,4 @@
-﻿#include "client_app.hpp"
+#include "client_app.hpp"
 
 #include "envelope_builder.hpp"
 #include "heartbeat_policy.hpp"
@@ -21,7 +21,7 @@
 
 namespace mps::client
 {
-	ClientApp::ClientApp(QString endpoint, QString token, PageFactory factory, bool enableHeartbeat, QObject* parent)
+	ClientApp::ClientApp(QString endpoint, QString token, ContentViewFactory factory, bool enableHeartbeat, QObject* parent)
 		: QObject(parent)
 		, m_endpoint(std::move(endpoint))
 		, m_token(std::move(token))
@@ -32,11 +32,11 @@ namespace mps::client
 
 	ClientApp::~ClientApp()
 	{
-		for (auto it = m_pages.begin(); it != m_pages.end(); ++it)
+		for (auto it = m_views.begin(); it != m_views.end(); ++it)
 		{
 			delete it.value();
 		}
-		m_pages.clear();
+		m_views.clear();
 		m_active = nullptr;
 	}
 
@@ -50,11 +50,11 @@ namespace mps::client
 		{
 			m_appearanceHandler(scheme);
 		}
-		for (auto it = m_pages.begin(); it != m_pages.end(); ++it)
+		for (auto it = m_views.begin(); it != m_views.end(); ++it)
 		{
-			if (ClientPage* page = it.value())
+			if (ContentView* view = it.value())
 			{
-				page->applyTheme(scheme);
+				view->applyTheme(scheme);
 			}
 		}
 	}
@@ -172,11 +172,11 @@ namespace mps::client
 
 	void ClientApp::ensureMainReported()
 	{
-		if (m_mainReported || m_pages.isEmpty())
+		if (m_mainReported || m_views.isEmpty())
 		{
 			return;
 		}
-		ClientPage* first = m_pages.begin().value();
+		ContentView* first = m_views.begin().value();
 		QWidget* w = first ? first->widget() : nullptr;
 		if (!w)
 		{
@@ -196,45 +196,45 @@ namespace mps::client
 		m_mainReported = true;
 	}
 
-	void ClientApp::createPage(qint64 tabId, const QString& title)
+	void ClientApp::createView(qint64 tabId, const QString& title)
 	{
 		if (!m_factory)
 		{
-			qWarning("ClientApp: PageFactory is empty");
+			qWarning("ClientApp: ContentViewFactory is empty");
 			return;
 		}
 #ifdef Q_OS_WIN
-		// Sibling pages may be created after an earlier HWND was SetParent'd into Host;
+		// Sibling views may be created after an earlier HWND was SetParent'd into Host;
 		// re-assert PMV2 so the new top-level HWND is not born under a degraded thread context.
 		SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 #endif
-		std::unique_ptr<ClientPage> owned = m_factory(tabId, title);
+		std::unique_ptr<ContentView> owned = m_factory(tabId, title);
 		if (!owned)
 		{
-			qWarning("ClientApp: PageFactory returned null for tabId=%lld", static_cast<long long>(tabId));
+			qWarning("ClientApp: ContentViewFactory returned null for tabId=%lld", static_cast<long long>(tabId));
 			return;
 		}
-		ClientPage* page = owned.get();
-		page->onRequestNewWindow = [this, tabId]()
+		ContentView* view = owned.get();
+		view->onRequestNewWindow = [this, tabId]()
 		{
 			auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(),
 											  0, tabId);
 			env->mutable_invoke()->set_method(m_requestNewWindowMethod.toStdString());
 			m_channel->send(env);
 		};
-		page->onRequestTheme = [this, tabId](mps::theme::Scheme scheme)
+		view->onRequestTheme = [this, tabId](mps::theme::Scheme scheme)
 		{
 			requestThemeFromHost(scheme, tabId);
 		};
 
-		QWidget* w = page->widget();
+		QWidget* w = view->widget();
 		if (!w)
 		{
-			qWarning("ClientApp: page widget is null for tabId=%lld", static_cast<long long>(tabId));
+			qWarning("ClientApp: content view widget is null for tabId=%lld", static_cast<long long>(tabId));
 			return;
 		}
 
-		m_pages.insert(tabId, owned.release());
+		m_views.insert(tabId, owned.release());
 
 		w->createWinId();
 		if (QWindow* wh = w->windowHandle())
@@ -244,7 +244,7 @@ namespace mps::client
 				wh->setScreen(screen);
 			}
 		}
-		page->realizeChrome();
+		view->realizeChrome();
 #ifdef Q_OS_WIN
 		// Defer first on-screen paint until Host SetParent + SetWindowPos (see syncAfterEmbed).
 		w->setAttribute(Qt::WA_DontShowOnScreen, true);
@@ -264,13 +264,13 @@ namespace mps::client
 		added->set_wid(static_cast<uint64_t>(w->winId()));
 		m_channel->send(env);
 
-		activatePage(tabId);
+		activateView(tabId);
 #ifdef Q_OS_WIN
 		// Fallback if WM_SIZE was missed; syncAfterEmbed no-ops until GetParent is set.
 		QTimer::singleShot(50, this,
 						   [this, tabId]
 						   {
-							   if (ClientPage* p = m_pages.value(tabId, nullptr))
+							   if (ContentView* p = m_views.value(tabId, nullptr))
 							   {
 								   p->syncAfterEmbed();
 							   }
@@ -278,42 +278,42 @@ namespace mps::client
 #endif
 	}
 
-	void ClientApp::closePage(qint64 tabId)
+	void ClientApp::closeView(qint64 tabId)
 	{
-		ClientPage* page = m_pages.take(tabId);
-		if (!page)
+		ContentView* view = m_views.take(tabId);
+		if (!view)
 		{
 			return;
 		}
-		if (m_active == page)
+		if (m_active == view)
 		{
 			m_active = nullptr;
 		}
-		if (QWidget* w = page->widget())
+		if (QWidget* w = view->widget())
 		{
 			w->hide();
 		}
-		delete page;
+		delete view;
 		auto env =
 			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(), 0, tabId);
 		env->mutable_sub_window_removed();
 		m_channel->send(env);
 	}
 
-	void ClientApp::activatePage(qint64 tabId)
+	void ClientApp::activateView(qint64 tabId)
 	{
-		ClientPage* page = m_pages.value(tabId, nullptr);
-		if (!page)
+		ContentView* view = m_views.value(tabId, nullptr);
+		if (!view)
 		{
 			return;
 		}
-		// Do NOT hide other pages: each may be SetParent'd into a different Host shell.
+		// Do NOT hide other views: each may be SetParent'd into a different Host shell.
 		// Visibility of non-active embeds is owned by the Host (ShowWindow / clearForeignWindow).
-		if (QWidget* w = page->widget())
+		if (QWidget* w = view->widget())
 		{
 			w->show();
 		}
-		m_active = page;
+		m_active = view;
 	}
 
 	void ClientApp::onEnvelope(mps::ipc::EnvelopePtr env)
@@ -332,12 +332,12 @@ namespace mps::client
 		}
 		if (env->has_create_sub_window())
 		{
-			createPage(env->tab_id(), QString::fromStdString(env->create_sub_window().title()));
+			createView(env->tab_id(), QString::fromStdString(env->create_sub_window().title()));
 			return;
 		}
 		if (env->has_active_sub_window())
 		{
-			activatePage(env->tab_id());
+			activateView(env->tab_id());
 			return;
 		}
 		if (env->has_query_close_sub_window())
@@ -345,7 +345,7 @@ namespace mps::client
 			auto res = mps::ipc::makeResponse(1, env->id(), QDateTime::currentMSecsSinceEpoch(), env->tab_id());
 			res->mutable_query_close_sub_window_result()->set_accept(true);
 			m_channel->send(res);
-			closePage(env->tab_id());
+			closeView(env->tab_id());
 			return;
 		}
 		if (env->has_set_drag_suppress() || env->has_notify_main_window_reattachment())

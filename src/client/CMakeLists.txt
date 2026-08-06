@@ -2,13 +2,13 @@ if(MPS_BUILD_SHARED)
   add_library(mps_client SHARED
     client_app.cpp
     client_app.hpp
-    client_page.hpp
+    content_view.hpp
   )
 else()
   add_library(mps_client STATIC
     client_app.cpp
     client_app.hpp
-    client_page.hpp
+    content_view.hpp
   )
 endif()
 add_library(mps::client ALIAS mps_client)

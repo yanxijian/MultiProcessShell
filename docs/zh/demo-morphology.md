@@ -26,7 +26,7 @@
 - 壳上有一个固定 **Home** Tab（不可关闭、不可拖出）——由 **`mps_host`** 提供。  
 - **Home 客户区**（「创建 Client」、Light/Dark）由 **`demo_host`** 经 `ShellApp::setHomeContentFactory` 注入；框架默认仅为空白槽。**不**自动拉起任何 Client 进程。
 
-### 2.2 创建 Client（新进程 / 新 pageType 会话）
+### 2.2 创建 Client（新进程 / 新 clientKind / ClientSession）
 
 - 在 **Home** 点击「创建 Client」→ 启动一个 Client 进程，并在当前壳新增一个 Client Tab。  
 - 首个该 Client 下的子窗口标题形如：`Client1-Window1`。  
@@ -138,7 +138,7 @@ Client{N}-Window{M}
 | `demos/demo_host/` | Host Demo：`ThemeService`、Home 客户区（`home_page`）、组装配方 |
 | `demos/demo_client/` | Client Demo：QFR Ribbon 页 |
 | `src/host/` | 壳、Tab、会话、Win embed、Home **空槽**；拖出：`tear_out_preview.*`（**无**业务客户区控件） |
-| `src/client/` | Client 进程与抽象 `ClientPage`（无具体业务 UI） |
+| `src/client/` | Client 进程与抽象 `ContentView`（无具体业务 UI） |
 | `src/common/` + `proto/` | 帧与 IDL |
 
 ## 9. 已决议摘要

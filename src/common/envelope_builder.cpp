@@ -2,7 +2,7 @@
 
 namespace mps::ipc
 {
-	EnvelopePtr makeEnvelope(std::uint32_t protocol, std::string id, shell::ipc::v1::Dir dir, std::int64_t tsMs, std::int64_t pageId,
+	EnvelopePtr makeEnvelope(std::uint32_t protocol, std::string id, shell::ipc::v1::Dir dir, std::int64_t tsMs, std::int64_t sessionId,
 							 std::int64_t tabId)
 	{
 		auto env = createEnvelope();
@@ -10,9 +10,9 @@ namespace mps::ipc
 		env->set_id(std::move(id));
 		env->set_dir(dir);
 		env->set_ts_ms(tsMs);
-		if (pageId != 0)
+		if (sessionId != 0)
 		{
-			env->set_page_id(pageId);
+			env->set_session_id(sessionId);
 		}
 		if (tabId != 0)
 		{

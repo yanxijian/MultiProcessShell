@@ -38,15 +38,15 @@
 ## 3. Roles
 
 - **Host (shell):** shell UI (title bar / tabs), Client lifecycle, EmbedBackend, IPC server (C++/Qt).  
-- **Client:** owns real content windows; one process (or module) per `pageType` by default.  
-- **Stable IDs:** `page_id` / `tab_id` assigned by Host; `wid` is an embed credential only.
+- **Client:** owns real content windows; one process (or module) per `clientKind` by default.  
+- **Stable IDs:** `session_id` / `tab_id` assigned by Host; `wid` is an embed credential only.
 
 Object tree (logical):
 
 ```text
 ShellApp → ShellMainWindow × N
-  → TabBar / ClientPage × P
-    → EmbedContainer + ClientTab × T
+  → TabBar / EmbedSlot × P
+    → EmbedContainer + Tab × T
 ```
 
 ## 4. Dual channels
@@ -65,7 +65,7 @@ ShellApp → ShellMainWindow × N
 - **Dependency:** CMake `FetchContent` for protobuf  
 - **Multi-language smoke (M4b):** Python  
 
-Envelope fields (conceptual): `protocol`, `id`, `dir` (REQ/RES/EVT), `page_id`, `tab_id`, `ts_ms`, `oneof body`.
+Envelope fields (conceptual): `protocol`, `id`, `dir` (REQ/RES/EVT), `session_id`, `tab_id`, `ts_ms`, `oneof body`.
 
 Required capability negotiation via `Hello` / `HelloAck` (`Capabilities.embed`, `tab_drag`, `heartbeat`, …).
 

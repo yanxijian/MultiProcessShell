@@ -1,4 +1,4 @@
-﻿#include "ribbon_page.hpp"
+#include "ribbon_content_view.hpp"
 
 #include "qfluentribbon/ribbon_bar.hpp"
 #include "qfluentribbon/ribbon_tokens.hpp"
@@ -12,12 +12,12 @@
 
 namespace mps::demo
 {
-	RibbonPage::RibbonPage(qint64 tabId, const QString& title, qtheme::Engine* engine, qfluentribbon::ThemeBridge* bridge)
+	RibbonContentView::RibbonContentView(qint64 tabId, const QString& title, qtheme::Engine* engine, qfluentribbon::ThemeBridge* bridge)
 		: m_engine(engine)
 		, m_bridge(bridge)
-		, m_window(std::make_unique<PageWindow>(tabId, title, bridge))
+		, m_window(std::make_unique<RibbonContentWindow>(tabId, title, bridge))
 	{
-		QObject::connect(m_window.get(), &PageWindow::requestNewWindow, m_window.get(),
+		QObject::connect(m_window.get(), &RibbonContentWindow::requestNewWindow, m_window.get(),
 						 [this]()
 						 {
 							 if (onRequestNewWindow)
@@ -25,7 +25,7 @@ namespace mps::demo
 								 onRequestNewWindow();
 							 }
 						 });
-		QObject::connect(m_window.get(), &PageWindow::requestThemeScheme, m_window.get(),
+		QObject::connect(m_window.get(), &RibbonContentWindow::requestThemeScheme, m_window.get(),
 						 [this](mps::theme::Scheme scheme)
 						 {
 							 if (onRequestTheme)
@@ -35,19 +35,19 @@ namespace mps::demo
 						 });
 	}
 
-	RibbonPage::~RibbonPage() = default;
+	RibbonContentView::~RibbonContentView() = default;
 
-	QWidget* RibbonPage::widget()
+	QWidget* RibbonContentView::widget()
 	{
 		return m_window.get();
 	}
 
-	qint64 RibbonPage::tabId() const
+	qint64 RibbonContentView::tabId() const
 	{
 		return m_window ? m_window->tabId() : 0;
 	}
 
-	void RibbonPage::realizeChrome()
+	void RibbonContentView::realizeChrome()
 	{
 		if (m_window)
 		{
@@ -59,7 +59,7 @@ namespace mps::demo
 		}
 	}
 
-	void RibbonPage::syncAfterEmbed()
+	void RibbonContentView::syncAfterEmbed()
 	{
 		if (m_window)
 		{
@@ -67,7 +67,7 @@ namespace mps::demo
 		}
 	}
 
-	void RibbonPage::syncRibbonTokens()
+	void RibbonContentView::syncRibbonTokens()
 	{
 		if (!m_engine || !m_bridge)
 		{
@@ -94,7 +94,7 @@ namespace mps::demo
 									 pick(QStringLiteral("accent.text"), QColor(Qt::white)));
 	}
 
-	void RibbonPage::applyTheme(mps::theme::Scheme scheme)
+	void RibbonContentView::applyTheme(mps::theme::Scheme scheme)
 	{
 		if (!m_engine)
 		{

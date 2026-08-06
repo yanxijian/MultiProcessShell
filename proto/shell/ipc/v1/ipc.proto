@@ -54,7 +54,8 @@ message Envelope {
   uint32 protocol = 1;
   string id = 2;
   Dir dir = 3;
-  int64 page_id = 4;
+  // Stable ClientSession id (Host-assigned). HelloAck.session_id is the decimal string form.
+  int64 session_id = 4;
   int64 tab_id = 5;
   int64 ts_ms = 6;
 
@@ -109,7 +110,7 @@ message MainWindowAdded {
 message MainWindowDestroyed {}
 
 message CreateSubWindow {
-  // page_id / tab_id on Envelope
+  // session_id / tab_id on Envelope
   string title = 1; // scheme A: Host-assigned Client{N}-Window{M}
 }
 
