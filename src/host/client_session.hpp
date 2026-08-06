@@ -21,8 +21,8 @@ namespace mps::host
 	{
 		Q_OBJECT
 	public:
-		ClientSession(int instanceIndex, QString endpoint,
-					  QString requestNewContentViewMethod = QStringLiteral("demo.request_new_window"), QObject* parent = nullptr);
+		ClientSession(int instanceIndex, QString endpoint, QString requestNewContentViewMethod = QStringLiteral("demo.request_new_window"),
+					  QObject* parent = nullptr);
 		~ClientSession() override;
 
 		[[nodiscard]] int instanceIndex() const

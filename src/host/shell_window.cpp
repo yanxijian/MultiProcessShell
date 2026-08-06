@@ -298,7 +298,8 @@ namespace mps::host
 		}
 		else
 		{
-			accent = m_info.unhealthy ? QColor(180, 120, 20) : ((m_info.instanceIndex % 2 == 0) ? QColor(200, 60, 60) : QColor(120, 70, 180));
+			accent =
+				m_info.unhealthy ? QColor(180, 120, 20) : ((m_info.instanceIndex % 2 == 0) ? QColor(200, 60, 60) : QColor(120, 70, 180));
 			penWidth = 1.5;
 		}
 

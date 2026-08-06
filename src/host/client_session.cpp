@@ -238,8 +238,8 @@ namespace mps::host
 		{
 			return;
 		}
-		auto env =
-			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(), m_sessionId);
+		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(),
+										  m_sessionId);
 		env->mutable_notify_main_window_reattachment()->set_host_shell_id(shellId);
 		m_channel->send(env);
 	}
@@ -250,8 +250,8 @@ namespace mps::host
 		{
 			return;
 		}
-		auto env =
-			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(), m_sessionId);
+		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_EVT, QDateTime::currentMSecsSinceEpoch(),
+										  m_sessionId);
 		env->mutable_set_drag_suppress()->set_suppress(on);
 		m_channel->send(env);
 	}
@@ -262,8 +262,8 @@ namespace mps::host
 		{
 			return;
 		}
-		auto env =
-			mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(), m_sessionId);
+		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(),
+										  m_sessionId);
 		env->mutable_invoke()->set_method("theme.set");
 		env->mutable_invoke()->set_params(params.constData(), static_cast<int>(params.size()));
 		m_channel->send(env);
