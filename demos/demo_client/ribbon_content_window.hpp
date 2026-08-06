@@ -13,7 +13,7 @@ namespace qfluentribbon
 
 namespace mps::demo
 {
-	/// Frameless Ribbon page reported to the Host via SubWindowAdded (HWND embed).
+	/// Frameless Ribbon content window reported to the Host via SubWindowAdded (HWND embed).
 	class RibbonContentWindow final : public qfluentribbon::RibbonWindow
 	{
 		Q_OBJECT

@@ -138,7 +138,7 @@ namespace mps::demo
 		f.setPointSize(16);
 		f.setBold(true);
 		status->setFont(f);
-		const QString pageTitle = windowTitle();
+		const QString windowLabel = windowTitle();
 
 		auto* newWindowBtn = new QPushButton(QStringLiteral("新建窗口"), this);
 		newWindowBtn->setFixedSize(140, 36);
@@ -202,7 +202,7 @@ namespace mps::demo
 		auto* ruler = makeAction(this, QStringLiteral("view.ruler"), QStringLiteral("Ruler"), QStyle::SP_DesktopIcon,
 								 QStringLiteral("Toggle the ruler."));
 		auto* newWindow = makeAction(this, QStringLiteral("window.new"), QStringLiteral("New Window"), QStyle::SP_FileDialogNewFolder,
-									 QStringLiteral("Request another embedded page."));
+									 QStringLiteral("Request another embedded content window."));
 		auto* light = makeAction(this, QStringLiteral("theme.light"), QStringLiteral("Light"), QStyle::SP_DialogApplyButton,
 								 QStringLiteral("Fluent Light skin."));
 		auto* dark = makeAction(this, QStringLiteral("theme.dark"), QStringLiteral("Dark"), QStyle::SP_ComputerIcon,
@@ -291,12 +291,12 @@ namespace mps::demo
 			connect(clearQat, &QPushButton::clicked, qat, &qfluentribbon::QuickAccessBar::clear);
 		}
 
-		auto wireStatus = [status, pageTitle](QAction* action)
+		auto wireStatus = [status, windowLabel](QAction* action)
 		{
 			connect(action, &QAction::triggered, status,
-					[status, pageTitle, action]()
+					[status, windowLabel, action]()
 					{
-						status->setText(QStringLiteral("%1 — %2").arg(pageTitle, action->text()));
+						status->setText(QStringLiteral("%1 — %2").arg(windowLabel, action->text()));
 					});
 		};
 		for (QAction* action : {paste, cut, copy, bold, italic, underline, bullets, align, table, chart, grid, ruler, newWindow})

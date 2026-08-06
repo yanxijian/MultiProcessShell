@@ -468,7 +468,7 @@ namespace mps::host
 					const int m = m_nextWindowIndex[session->clientIndex()]++;
 					const qint64 tabId = m_nextTabId++;
 					const QString title = makeTitle(session->clientIndex(), m);
-					// Prefer the shell that hosts the page where the user clicked.
+					// Prefer the shell that hosts the content where the user clicked.
 					ShellWindow* shell = shellForTab(sourceTabId);
 					if (!shell)
 					{
@@ -532,7 +532,7 @@ namespace mps::host
 	void ShellApp::onSessionHelloOk(ClientSession* session)
 	{
 		m_clientLaunchInFlight = false;
-		// Push SSOT skin before the first CreateSubWindow so the Client page is born correct.
+		// Push SSOT skin before the first CreateSubWindow so the Client content view is born correct.
 		pushThemeToSession(session);
 		onSessionReady(session);
 	}

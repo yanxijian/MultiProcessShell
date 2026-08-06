@@ -21,7 +21,7 @@
 
 - Tab 拖出状态机；壳外松开 → 新壳；命中 Tab 条 → 合入；模型先行再 reattach  
 - `SetDragSuppress`、源壳激活上一 Tab、空壳销毁  
-- **S5**：拖出进行中对该 page **排队** `CreateSubWindow`  
+- **S5**：拖出进行中对该 session **排队** `CreateSubWindow`  
 
 ## 2. 已落地（证据）
 

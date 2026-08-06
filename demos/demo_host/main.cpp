@@ -1,4 +1,4 @@
-﻿#include "home_page.hpp"
+﻿#include "home_content.hpp"
 #include "shell_app.hpp"
 #include "theme_service.hpp"
 
@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
 	shellApp.setHomeContentFactory(
 		[&shellApp](mps::host::ShellWindow* shell) -> QWidget*
 		{
-			return new mps::demo_host::HomePage(&shellApp, shell);
+			return new mps::demo_host::HomeContent(&shellApp, shell);
 		});
 	QObject::connect(&shellApp, &mps::host::ShellApp::schemeChanged, &theme,
 					 [&theme](mps::theme::Scheme scheme, mps::host::ThemeOrigin origin)

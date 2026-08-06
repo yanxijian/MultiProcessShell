@@ -34,7 +34,7 @@
 
 ### 2.3 同 Client 再建子窗口
 
-- **Client 窗口（page）**：无系统标题栏的 **QFluentRibbon** 页（`RibbonWindow`）；Ribbon「New Window」经 IPC `Invoke("demo.request_new_window")`，由 Host 再发 `CreateSubWindow`。详见 [qfr-demo-client.md](qfr-demo-client.md)。  
+- **Client 内容窗（`ContentView` / `RibbonContentWindow`）**：无系统标题栏的 **QFluentRibbon**（`RibbonWindow`）；Ribbon「New Window」经 IPC `Invoke("demo.request_new_window")`，由 Host 再发 `CreateSubWindow`。详见 [qfr-demo-client.md](qfr-demo-client.md)。  
 - 点击后在 **同一 Client 进程** 内再建子窗口并新增 Tab。  
 - 标题递增：`Client1-Window2`、`Client1-Window3`、…
 
@@ -135,8 +135,8 @@ Client{N}-Window{M}
 
 | 路径 | 角色 |
 |------|------|
-| `demos/demo_host/` | Host Demo：`ThemeService`、Home 客户区（`home_page`）、组装配方 |
-| `demos/demo_client/` | Client Demo：QFR Ribbon 页 |
+| `demos/demo_host/` | Host Demo：`ThemeService`、Home 客户区（`home_content` / `HomeContent`）、组装配方 |
+| `demos/demo_client/` | Client Demo：QFR Ribbon 内容 |
 | `src/host/` | 壳、Tab、会话、Win embed、Home **空槽**；拖出：`tear_out_preview.*`（**无**业务客户区控件） |
 | `src/client/` | Client 进程与抽象 `ContentView`（无具体业务 UI） |
 | `src/common/` + `proto/` | 帧与 IDL |
@@ -148,7 +148,7 @@ Client{N}-Window{M}
 | 1 | 浏览器式可撕出 Tab：并列 Tab、关 Tab、拖出新壳、合入他壳 |
 | 2 | 无剩余 Client Tab 的多余壳 → 销毁 |
 | 3 | 启动一壳 + 固定 **Home Tab**（框架）；Create Client / Light/Dark 在 **demo_host** Home 客户区 |
-| 4 | Client page「新建窗口」→ 同 Client 子窗 |
+| 4 | Client 内容窗「新建窗口」→ 同 Client 子窗 |
 | 5 | Tab 名：`Client{N}-Window{M}`；Home 除外 |
 | 6 | 关 Tab 走激活历史（含 Home），默认不强制回 Home |
 

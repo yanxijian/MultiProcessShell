@@ -1,4 +1,4 @@
-# Resolve QFluentRibbon for Demo Client ribbon pages only.
+# Resolve QFluentRibbon for Demo Client ribbon content only.
 # Not used by mps_* libraries. Default: find_package. Embed only when MPS_DEV_EMBED_QFR=ON.
 
 set(MPS_QFR_SOURCE_DIR "" CACHE PATH "Path to QFluentRibbon sources when MPS_DEV_EMBED_QFR=ON")
@@ -33,7 +33,7 @@ endif()
 
 if(NOT _mps_have_qfr)
   message(FATAL_ERROR
-    "QFluentRibbon not found (required for Demo Client ribbon pages).\n"
+    "QFluentRibbon not found (required for Demo Client ribbon content).\n"
     "  Install QFR and pass -DCMAKE_PREFIX_PATH=<prefix>;<qt>\n"
     "  Or: -DMPS_DEV_EMBED_QFR=ON [-DMPS_QFR_SOURCE_DIR=...]")
 endif()

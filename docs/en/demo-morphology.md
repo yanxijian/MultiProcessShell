@@ -34,7 +34,7 @@ Phase-1 platform: **Windows (form A)**.
 
 ### 2.3 Same Client, new child window
 
-- Client page is a **frameless QFluentRibbon** `RibbonWindow`; Ribbon **New Window** → IPC `Invoke("demo.request_new_window")` → Host `CreateSubWindow` in the **same Client process**. See Chinese [qfr-demo-client.md](../zh/qfr-demo-client.md).  
+- Client content is a **frameless QFluentRibbon** `RibbonWindow` (`ContentView` / `RibbonContentWindow`); Ribbon **New Window** → IPC `Invoke("demo.request_new_window")` → Host `CreateSubWindow` in the **same Client process**. See Chinese [qfr-demo-client.md](../zh/qfr-demo-client.md).  
 - Titles: `Client1-Window2`, `Client1-Window3`, …
 
 ### 2.4 Multiple Clients
@@ -127,8 +127,8 @@ Manual checklist: [demo-acceptance.md](demo-acceptance.md).
 
 | Path | Role |
 |------|------|
-| `demos/demo_host/` | Host Demo: `ThemeService`, Home client area (`home_page`), composition |
-| `demos/demo_client/` | Client Demo: QFR Ribbon page |
+| `demos/demo_host/` | Host Demo: `ThemeService`, Home client area (`home_content` / `HomeContent`), composition |
+| `demos/demo_client/` | Client Demo: QFR Ribbon content |
 | `src/host/` | Shell, tabs, sessions, Win embed, Home **slot**; tear-out: `tear_out_preview.*` (**no** business client-area widgets) |
 | `src/client/` | Client process + abstract `ContentView` (no concrete business UI) |
 | `src/common/` + `proto/` | Framing and IDL |
@@ -140,7 +140,7 @@ Manual checklist: [demo-acceptance.md](demo-acceptance.md).
 | 1 | Browser-style detachable tabs / close / tear-out / merge |
 | 2 | Spare shell with no Client tabs → destroy |
 | 3 | One shell + permanent **Home tab** (framework); Create Client / Light/Dark in **demo_host** Home client area |
-| 4 | Client page New Window → same-Client child |
+| 4 | Client content New Window → same-Client child |
 | 5 | Titles: `Client{N}-Window{M}`; Home excluded |
 | 6 | Close uses activation history (includes Home); not forced to Home |
 

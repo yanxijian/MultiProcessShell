@@ -484,7 +484,7 @@ namespace mps::host
 		setAcceptDrops(true);
 	}
 
-	void ShellWindow::setHomeContent(QWidget* page)
+	void ShellWindow::setHomeContent(QWidget* content)
 	{
 		if (!m_homeSlot)
 		{
@@ -505,9 +505,9 @@ namespace mps::host
 			}
 			delete item;
 		}
-		if (page)
+		if (content)
 		{
-			lay->addWidget(page);
+			lay->addWidget(content);
 		}
 		applyThemeChrome();
 		syncWorkspace();

@@ -15,7 +15,7 @@ namespace mps::host
 		: QWidget(parent)
 	{
 		// Defer WA_NativeWindow until applyEmbed(): an idle native HWND in the
-		// stack steals Home-page clicks. Keep ancestors non-native so chrome stays Qt.
+		// stack steals Home-content clicks. Keep ancestors non-native so chrome stays Qt.
 		setAttribute(Qt::WA_DontCreateNativeAncestors, true);
 		setMinimumSize(200, 150);
 	}

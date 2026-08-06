@@ -136,7 +136,7 @@ namespace mps::host
 		[[nodiscard]] QSize tabButtonSize(qint64 tabId) const;
 		void installStripDropFilter(QObject* filter);
 		/// Replace Home client-area content (framework owns only the empty slot by default).
-		void setHomeContent(QWidget* page);
+		void setHomeContent(QWidget* content);
 		void takeTabsFrom(ShellWindow* other, const QList<qint64>& tabIds);
 		/// Close without emitting shellCloseRequested (app-driven teardown).
 		void forceClose();

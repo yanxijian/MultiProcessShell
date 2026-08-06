@@ -218,7 +218,7 @@ Host                              Client
  |<-- hello{protocol,caps,pid} ----|
  |-- helloAck{protocol,hostCaps} ->|
  |<-- applicationConnected --------|
- |<-- mainWindowAdded{pageHint,wid}|
+ |<-- mainWindowAdded{wid} -----------|
  |-- embed.begin(sessionId) --------->|   // IPC 意图
  |-- BUILDPARENT / XEmbed -------->|   // 平台通道
  |<-- FINISHPARENT / embed.ok -----|
@@ -270,7 +270,7 @@ Host 按 caps 关闭 UI 入口（例如 Client 不支持 `tab_drag` 则 Tab 禁�
 | 浮动窗 | `GWLP_HWNDPARENT` / owner | transient / property | Qt modality / `NSWindow` parent |
 | 输入 | 可转发 `NCHITTEST` | XEmbed focus | 正常 Qt 冒泡 |
 | Tab 拖出反馈 | pixmap `QDrag` | 同左 | 建议独立 `NSWindow`+CALayer |
-| 菜单 | 窗内 / 自绘 | 同左 | **全局菜单栏**随前台 Page 切换 |
+| 菜单 | 窗内 / 自绘 | 同左 | **全局菜单栏**随前台 EmbedSlot 切换 |
 | 控制面 IPC | Named Pipe + Protobuf | UDS + Protobuf | InProcess 队列 + 同一 Envelope |
 
 ### 4.2 Windows（形态 A）
@@ -506,7 +506,6 @@ message Envelope {
     QueryCloseMainWindow query_close_main_window = 30;
     MoveSubWindowTo move_sub_window_to = 31;
     NotifyMainWindowReattachment notify_main_window_reattachment = 32;
-    ContainerPageVisibleChanged container_page_visible_changed = 33;
 
     // misc
     ModalChanged modal_changed = 40;
@@ -578,7 +577,7 @@ message SetDragSuppress { bool suppress = 1; }
 **Host → Client（多为 `DIR_REQ`，配对 `DIR_RES`）**  
 `HelloAck` / `NewMainWindow` / `CreateWindow` / `ActiveSubWindow` /  
 `QueryCloseSubWindow` / `QueryCloseMainWindow` / `MoveSubWindowTo` /  
-`NotifyMainWindowReattachment` / `ContainerPageVisibleChanged` / `SetDragSuppress` / `Ping`
+`NotifyMainWindowReattachment` / `SetDragSuppress` / `Ping`
 
 **超时**：凡 `DIR_REQ` 必须有超时（建议默认 3–5s）；超时对内标记 session `Unhealthy`，对外可 `ERROR_TIMEOUT`，**禁止无限阻塞 Host UI 线程**。
 
@@ -671,7 +670,7 @@ Created → Embedding → Embedded → Detaching → Detached
 ```
 
 拖出合入：`Embedded → Detaching → Detached → Reembedding → Embedded`。  
-关闭：先 `queryClose*`，成功后 `Detaching` → 毁 Tab/Page → 会话可停。
+关闭：先 `queryClose*`，成功后 `Detaching` → 毁 Tab / EmbedSlot → 会话可停。
 
 ### 6.3 崩溃与退出策略
 
@@ -736,14 +735,14 @@ Idle → PressOnTab → DragThresholdExceeded → Dragging
 ### 8.2 切换 Tab
 
 1. 更新 current `tab_id`  
-2. 跨 Page：切换 Central 显隐（**多 Container 保活**，避免重挂接）  
+2. 跨 EmbedSlot：切换 Central 显隐（**多 Container 保活**，避免重挂接）  
 3. `ActiveSubWindow` + Backend `activate`  
 4. macOS：刷新全局菜单栏  
 
 ### 8.3 关闭
 
 1. `QueryCloseSubWindow`（可确认）  
-2. 成功删 Tab；Page 空则拆挂接并考虑结束 Session  
+2. 成功删 Tab；EmbedSlot 空则拆挂接并考虑结束 Session  
 3. **销毁顺序**：先 `detach` → 再允许 Client 毁窗 → 再毁 Container  
 
 ---
@@ -878,7 +877,7 @@ MultiProcessShell/
 | M1 进程内挂接 | 同进程 SetParent 实验 | addWidget | `IEmbedBackend` 接口冻结 |
 | M2 跨进程挂接 | spawn + Protobuf 握手 + BUILDPARENT/XEmbed | 跳过→load 模块 | `Hello` 能力协商 |
 | M3 多子窗 Tab | `ActiveSubWindow` | 进程内 | 稳定 `tab_id` |
-| M4 跨类型同壳 | 双进程双 Container | 双模块双 Page | Session 状态机 |
+| M4 跨类型同壳 | 双进程双 Container | 双模块双 EmbedSlot | Session 状态机 |
 | **M4b 多语言烟测** | Python Client `Hello`（嵌入可 `EMBED_NONE`） | 同左或跳过 | 验证 IDL 跨语言 |
 | M5 拖出合入 | reattach | addWidget+可选动画 | 拖出中请求队列 |
 | M6 关闭崩溃 | 超时与僵尸 Tab | 模块异常说明 | 心跳 + 无响应 UI |
@@ -972,7 +971,7 @@ backend->reattach(sessionId, newShell->containerFor(sessionId));
 | Q1 | 同类型是否允许多进程实例？ | Demo 否；接口预留 |
 | Q2 | Client 无响应是否自动杀？ | 否，需用户确认 |
 | Q3 | 空壳是否保留？ | 否，Tab 归零关窗 |
-| Q4 | Host 是否允许无 Client 的「欢迎页」？ | 允许，非嵌入 Page |
+| Q4 | Host 是否允许无 Client 的「欢迎页」？ | 允许，非嵌入 HomeContent / 非 EmbedSlot |
 | Q5 | 是否统一自绘标题栏？ | Demo 可先用系统标题栏+Tab |
 | Q6 | Wayland 是否进正式路线图？ | 另项评估（附录 B） |
 | Q7 | 本期是否引入 gRPC？ | 否；仅 Protobuf 长度前缀帧 |
