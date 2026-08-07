@@ -113,11 +113,13 @@ file(WRITE "${MPS_GENERATED_INCLUDE_DIR}/mps/mps_export.hpp"
 
 if(MPS_INSTALL)
   if(MPS_QTE_VIA_SOURCE OR MPS_QFR_VIA_SOURCE)
-    message(FATAL_ERROR
-      "MPS_INSTALL=ON is incompatible with MPS_DEV_EMBED_QTE/QFR.\n"
-      "Install QTE+QFR for demos separately; keep embed OFF when installing mps_*.")
+    message(STATUS
+      "MultiProcessShell: MPS_INSTALL disabled (incompatible with QTE/QFR add_subdirectory embed)")
+    set(MPS_INSTALL OFF CACHE BOOL "Install libraries, headers, and CMake package" FORCE)
   endif()
+endif()
 
+if(MPS_INSTALL)
   include(CMakePackageConfigHelpers)
 
   set(_mps_install_targets mps_ipc mps_tab_strip)
