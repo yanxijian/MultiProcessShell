@@ -28,6 +28,8 @@ Phase-1 platform: **Windows (form A)**; macOS / Linux directories are placeholde
 
 ## Quick start (Windows)
 
+Install [QThemeEngine](https://github.com/yanxijian/QThemeEngine) → [QFluentRibbon](https://github.com/yanxijian/QFluentRibbon) → MPS into a shared prefix (`build-shared`):
+
 ```bat
 :: QTDIR required; PREFIX optional (default: sibling prefix/ of the three repos)
 set QTDIR=<Qt-6.8+-prefix>

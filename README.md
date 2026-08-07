@@ -30,7 +30,7 @@ C++/Qt 多进程壳：**Host 壳框 + Client 原生窗嵌入 + Protobuf IPC**。
 
 1. 打开 **x64 Native Tools / vcvars** 环境。  
 2. 设置 `QTDIR` 为 Qt **6.8+** 前缀，并把 `%QTDIR%\bin` 加入 `PATH`。  
-3. 推荐：安装 QTE→QFR→MPS 到本地 prefix（共享库，构建目录 `build-shared`）：
+3. 推荐：安装 [QThemeEngine](https://github.com/yanxijian/QThemeEngine)（QTE）→[QFluentRibbon](https://github.com/yanxijian/QFluentRibbon)（QFR）→MPS 到本地 prefix（共享库，构建目录 `build-shared`）：
 
 ```bat
 :: QTDIR = Qt 6.8+ 前缀；PREFIX = 安装根（可选，默认三仓同级的 prefix/）
