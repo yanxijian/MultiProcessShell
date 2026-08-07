@@ -134,6 +134,18 @@ function(mps_copy_protobuf_runtime dest_target)
       )
     endif()
   endforeach()
+  # AbseilPin may not expose a CMake target in this scope; copy the pin DLL by path.
+  if(MPS_ABSEIL_PIN_PREFIX AND NOT MPS_ABSEIL_PIN_PREFIX STREQUAL "")
+    set(_mps_pin_absl_dll "${MPS_ABSEIL_PIN_PREFIX}/bin/abseil_dll.dll")
+    if(EXISTS "${_mps_pin_absl_dll}")
+      add_custom_command(TARGET ${dest_target} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${_mps_pin_absl_dll}"
+                $<TARGET_FILE_DIR:${dest_target}>
+        VERBATIM
+      )
+    endif()
+  endif()
 endfunction()
 
 function(mps_fetch_googletest)
