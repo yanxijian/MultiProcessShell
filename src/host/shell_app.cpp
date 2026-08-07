@@ -491,6 +491,18 @@ namespace mps::host
 		}
 	}
 
+	void ShellApp::setTabTitle(qint64 tabId, const QString& title)
+	{
+		if (tabId == 0 || tabId == kHomeTabId || title.isEmpty())
+		{
+			return;
+		}
+		if (ShellWindow* shell = m_tabToShell.value(tabId, nullptr))
+		{
+			shell->setTabTitle(tabId, title);
+		}
+	}
+
 	QString ShellApp::resolveClientExe(const QString& appName) const
 	{
 		if (!appName.isEmpty())
@@ -545,7 +557,7 @@ namespace mps::host
 		}
 		const int m = m_nextContentIndex[session->instanceIndex()]++;
 		const qint64 tabId = m_nextTabId++;
-		const QString title = makeTitle(session->instanceIndex(), m);
+		const QString title = makeTitle(session, m);
 		if (tab_strip::shouldDeferCreateDuringDrag(m_dragActive))
 		{
 			m_deferredCreatesDuringDrag.push_back(DeferredCreate{session, tabId, title, shell});
@@ -594,12 +606,17 @@ namespace mps::host
 		connect(raw, &ClientSession::sessionUnhealthy, this, &ShellApp::onSessionUnhealthy);
 		connect(raw, &ClientSession::sessionHealthy, this, &ShellApp::onSessionHealthy);
 		connect(raw, &ClientSession::themeSetRequested, this, &ShellApp::onThemeSetRequested);
+		connect(raw, &ClientSession::tabTitleChanged, this,
+				[this](ClientSession* /*session*/, qint64 tabId, const QString& title)
+				{
+					setTabTitle(tabId, title);
+				});
 		connect(raw, &ClientSession::createContentViewRequested, this,
 				[this](ClientSession* session, qint64 sourceTabId)
 				{
 					const int m = m_nextContentIndex[session->instanceIndex()]++;
 					const qint64 tabId = m_nextTabId++;
-					const QString title = makeTitle(session->instanceIndex(), m);
+					const QString title = makeTitle(session, m);
 					// Prefer the shell that hosts the content where the user clicked.
 					ShellWindow* shell = shellForTab(sourceTabId);
 					if (!shell)
@@ -678,7 +695,7 @@ namespace mps::host
 		}
 		const int m = m_nextContentIndex[session->instanceIndex()]++;
 		const qint64 tabId = m_nextTabId++;
-		const QString title = makeTitle(session->instanceIndex(), m);
+		const QString title = makeTitle(session, m);
 		session->requestCreateContentView(tabId, title);
 	}
 
@@ -768,11 +785,19 @@ namespace mps::host
 		info.title = title;
 		info.session = session;
 		info.unhealthy = session->isUnhealthy();
-		// parse content index from title ClientN-TabM
+		// Content index from a trailing `-File{n}` / `-Tab{n}` suffix.
 		const auto parts = title.split(QLatin1Char('-'));
-		if (parts.size() == 2 && parts[1].startsWith(QStringLiteral("Tab")))
+		if (!parts.isEmpty())
 		{
-			info.contentIndex = parts[1].mid(3).toInt();
+			const QString& last = parts.last();
+			if (last.startsWith(QStringLiteral("File")))
+			{
+				info.contentIndex = last.mid(4).toInt();
+			}
+			else if (last.startsWith(QStringLiteral("Tab")))
+			{
+				info.contentIndex = last.mid(3).toInt();
+			}
 		}
 		if (!shell->embedContainer() || !wid)
 		{
@@ -2366,8 +2391,34 @@ namespace mps::host
 		}
 	}
 
-	QString ShellApp::makeTitle(int instanceIndex, int contentIndex) const
+	QString ShellApp::tabLabelForAppName(const QString& appName)
 	{
-		return QStringLiteral("Client%1-Tab%2").arg(instanceIndex).arg(contentIndex);
+		if (appName.compare(QLatin1String("text"), Qt::CaseInsensitive) == 0)
+		{
+			return QStringLiteral("Text");
+		}
+		if (appName.compare(QLatin1String("markdown"), Qt::CaseInsensitive) == 0)
+		{
+			return QStringLiteral("MD");
+		}
+		if (appName.compare(QLatin1String("pdf"), Qt::CaseInsensitive) == 0)
+		{
+			return QStringLiteral("PDF");
+		}
+		if (appName.contains(QLatin1String("demo"), Qt::CaseInsensitive))
+		{
+			return QStringLiteral("Demo");
+		}
+		if (appName.isEmpty())
+		{
+			return QStringLiteral("Client");
+		}
+		return appName.left(1).toUpper() + appName.mid(1);
+	}
+
+	QString ShellApp::makeTitle(ClientSession* session, int contentIndex) const
+	{
+		const QString appName = session ? m_sessionToAppName.value(session) : QString();
+		return QStringLiteral("%1-File%2").arg(tabLabelForAppName(appName)).arg(contentIndex);
 	}
 } // namespace mps::host

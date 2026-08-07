@@ -45,7 +45,7 @@ Phase-1 platform: **Windows (form A)**.
 ## 3. Tab title rules
 
 ```text
-Client{N}-Tab{M}
+Kind-File{M}
 ```
 
 | Field | Meaning | Increment |
@@ -141,7 +141,7 @@ Manual checklist: [demo-acceptance.md](demo-acceptance.md).
 | 2 | Spare shell with no Client tabs → destroy |
 | 3 | One shell + permanent **Home tab** (framework); Create Client / Light/Dark in **demo_host** Home client area |
 | 4 | Client content New Window → same-Client child |
-| 5 | Titles: `Client{N}-Tab{M}`; Home excluded |
+| 5 | Titles: `Kind-File{M}`; Home excluded |
 | 6 | Close uses activation history (includes Home); not forced to Home |
 
 ## 10. IPC

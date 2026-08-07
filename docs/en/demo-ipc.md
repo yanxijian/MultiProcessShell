@@ -9,7 +9,7 @@
 
 | # | Decision |
 |---|----------|
-| 1 | Minimal commands + **title scheme A** (Host assigns `Client{N}-Tab{M}` via `CreateSubWindow`) |
+| 1 | Minimal commands + **title scheme A** (Host assigns `Kind-File{M}` (e.g. Demo-File1) via `CreateSubWindow`) |
 | 2 | **No** `ApplicationConnected` |
 | 3 | **Yes** `NotifyMainWindowReattachment` |
 | 4 | Bidirectional IPC; reserve `Invoke` / `InvokeResult` |
@@ -43,7 +43,7 @@
 | Command | dir | Notes |
 |---------|-----|-------|
 | `HelloAck` | EVT | `session_id`, `protocol`, `host_caps` |
-| `CreateSubWindow` | REQ | Host-assigned `tab_id` + **`title`** (renamed from CreateWindow for Win32 macros) |
+| `CreateSubWindow` | REQ | Host-assigned `tab_id` + **`title`** |
 | `ActiveSubWindow` | EVT | Activate child |
 | `QueryCloseSubWindow` | REQ | Close tab; Demo accepts immediately |
 | `QueryCloseSubWindowResult` | RES | `accept` |
@@ -62,8 +62,8 @@ Tear-out/merge: **Host tab model + embed reattach**; no HWND in mime.
 
 | UI | Host | IPC |
 |----|------|-----|
-| Home **Create Client** | `QProcess` → `Hello` → `MainWindowAdded` → `CreateSubWindow(title=ClientN-Tab1)` | §3 |
-| Client **新建窗口** | `Invoke("demo.request_new_window")` → `CreateSubWindow(ClientN-TabM)` | Invoke + CreateSubWindow |
+| Home **Create Client** | `QProcess` → `Hello` → `MainWindowAdded` → `CreateSubWindow(title=Demo-File1)` | §3 |
+| Client **新建窗口** | `Invoke("demo.request_new_window")` → `CreateSubWindow(Demo-FileM)` | Invoke + CreateSubWindow |
 | Close tab | `QueryCloseSubWindow` → accept → remove tab; Client `SubWindowRemoved` idempotent backup | §3 |
 | Tear-out / merge | Reassign + reattach | `SetDragSuppress` + `NotifyMainWindowReattachment` |
 | 「新建窗口」during tear-out | Host **queues** `CreateSubWindow` until `endTabDrag` (spec S5) | Invoke still ACKs immediately |
@@ -95,7 +95,7 @@ InvokeResult {
 
 ## 7. Title scheme A
 
-Host keeps `instance_index` / per-Client `content_index`, writes `Client{N}-Tab{M}` into `CreateSubWindow.title`; Client sets the window title and echoes it in `SubWindowAdded.title`.
+Host keeps `instance_index` / per-Client `content_index`, writes `Kind-File{M}` into `CreateSubWindow.title`; Client sets the window title and echoes it in `SubWindowAdded.title`.
 
 ## 8. Implementation
 

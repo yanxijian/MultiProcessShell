@@ -1,4 +1,4 @@
-#ifndef __MPS_CLIENT_CONTENT_VIEW_H__
+﻿#ifndef __MPS_CLIENT_CONTENT_VIEW_H__
 #define __MPS_CLIENT_CONTENT_VIEW_H__
 
 #include "theme_scheme.hpp"
@@ -35,6 +35,8 @@ namespace mps::client
 
 		std::function<void()> onRequestNewContentView;
 		std::function<void(mps::theme::Scheme)> onRequestTheme;
+		/// Client → Host: update this ContentView's Host tab label (UTF-8 title in Invoke params).
+		std::function<void(const QString& title)> onRequestTabTitle;
 	};
 
 	using ContentViewFactory = std::function<std::unique_ptr<ContentView>(qint64 tabId, const QString& title)>;

@@ -52,12 +52,11 @@ function(mps_fetch_protobuf)
   if(MPS_ABSEIL_PIN_PREFIX AND NOT MPS_ABSEIL_PIN_PREFIX STREQUAL "")
     list(PREPEND CMAKE_PREFIX_PATH "${MPS_ABSEIL_PIN_PREFIX}")
     set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" PARENT_SCOPE)
-    # Pin absl_DIR so a previously cached package path does not take precedence.
+    # Force absl_DIR to the AbseilPin prefix ahead of any cached absl_DIR.
     set(absl_DIR "${MPS_ABSEIL_PIN_PREFIX}/lib/cmake/absl" CACHE PATH
       "Abseil CONFIG dir when MPS_ABSEIL_PIN_PREFIX is set" FORCE)
     # protobuf ≥v33: find_package(absl CONFIG) via PREFIX_PATH.
     set(protobuf_FORCE_FETCH_DEPENDENCIES OFF CACHE BOOL "" FORCE)
-    # Legacy flag (ignored by ≥v33); keep for older tags if someone retargets GIT_TAG.
     set(protobuf_ABSL_PROVIDER "package" CACHE STRING "" FORCE)
     message(STATUS "MPS: using AbseilPin from ${MPS_ABSEIL_PIN_PREFIX}")
     message(STATUS "MPS: absl_DIR=${absl_DIR}")

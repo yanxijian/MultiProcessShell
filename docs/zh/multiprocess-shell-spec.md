@@ -491,10 +491,10 @@ message Envelope {
     HelloAck hello_ack = 11;
     // ApplicationConnected / ApplicationDestroyed：产品愿景；**不在 Demo proto**
 
-    // windows / ContentView（wire 名保留 SubWindow*）
+    // windows / ContentView（wire 名：SubWindow*）
     MainWindowAdded main_window_added = 20;
     MainWindowDestroyed main_window_destroyed = 21;
-    CreateSubWindow create_sub_window = 22; // Demo 名；旧文档 CreateWindow 因 Win32 宏改名
+    CreateSubWindow create_sub_window = 22;
     SubWindowAdded sub_window_added = 23;
     SubWindowRemoved sub_window_removed = 24;
     ActiveSubWindow active_sub_window = 25;
@@ -535,10 +535,10 @@ message MainWindowAdded {
   bool visible = 3;
 }
 
-// Host asks Client to create another ContentView; title scheme Client{N}-Tab{M}.
+// Host asks Client to create another ContentView; title scheme Kind-File{M}.
 message CreateSubWindow {
   // session_id / tab_id 在 Envelope 头；Host 分配 tab_id 后下发
-  string title = 1; // scheme A: Client{N}-Tab{M}
+  string title = 1; // Host-assigned Kind-File{M}
 }
 
 message SubWindowAdded {
@@ -566,11 +566,11 @@ message SetDragSuppress { bool suppress = 1; }
 
 **Client → Host（多为 `DIR_EVT`）**  
 `Hello` / `MainWindowAdded` / `MainWindowDestroyed` /  
-`SubWindowAdded|Removed`（ContentView 生命周期；wire 名保留） / `Heartbeat`  
+`SubWindowAdded|Removed`（ContentView 生命周期；wire 名 SubWindow*） / `Heartbeat`  
 （愿景、**非 Demo**：`ApplicationConnected` / `ModalChanged` / `Unhealthy` / TitleChanged…）
 
 **Host → Client（多为 `DIR_REQ`，配对 `DIR_RES`）**  
-`HelloAck` / `CreateSubWindow`（旧文档 CreateWindow） / `ActiveSubWindow` /  
+`HelloAck` / `CreateSubWindow` / `ActiveSubWindow` /  
 `QueryCloseSubWindow` / `NotifyMainWindowReattachment`（`host_shell_id`） / `SetDragSuppress` / `Ping` / `Invoke`  
 （愿景、**非 Demo**：`NewMainWindow` / `QueryCloseMainWindow` / `MoveSubWindowTo`…）
 
@@ -722,7 +722,7 @@ Idle → PressOnTab → DragThresholdExceeded → Dragging
 用户请求 → 解析 app_name
  → 无 Session 则 launch / loadModule
  → 确保 ShellWindow 的 EmbedContainer（文档概念 EmbedSlot；无 ensureEmbedSlot API）
- → CreateSubWindow(tab_id, title=Client{N}-Tab{M}) → SubWindowAdded → 加 Tab → 激活
+ → CreateSubWindow(tab_id, title=Kind-File{M}) → SubWindowAdded → 加 Tab → 激活
 ```
 
 启动限流：同时 launching 的 Session 数建议 ≤ 2；其余显示加载占位。

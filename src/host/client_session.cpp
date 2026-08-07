@@ -370,6 +370,25 @@ namespace mps::host
 				m_channel->send(res);
 				return;
 			}
+			if (env->invoke().method() == "shell.set_tab_title")
+			{
+				const qint64 tabId = env->tab_id();
+				const QString title = QString::fromUtf8(env->invoke().params().data(), static_cast<int>(env->invoke().params().size()));
+				if (tabId == 0 || title.isEmpty())
+				{
+					auto res = mps::ipc::makeResponse(1, env->id(), QDateTime::currentMSecsSinceEpoch());
+					auto* err = res->mutable_error();
+					err->set_code(shell::ipc::v1::ERROR_PROTOCOL);
+					err->set_message("shell.set_tab_title requires tab_id and non-empty UTF-8 title");
+					m_channel->send(res);
+					return;
+				}
+				emit tabTitleChanged(this, tabId, title);
+				auto res = mps::ipc::makeResponse(1, env->id(), QDateTime::currentMSecsSinceEpoch());
+				res->mutable_invoke_result()->set_payload("ok");
+				m_channel->send(res);
+				return;
+			}
 			auto res = mps::ipc::makeResponse(1, env->id(), QDateTime::currentMSecsSinceEpoch());
 			auto* err = res->mutable_error();
 			err->set_code(shell::ipc::v1::ERROR_UNIMPLEMENTED);

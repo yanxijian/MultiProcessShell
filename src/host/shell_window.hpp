@@ -46,13 +46,16 @@ namespace mps::host
 
 	protected:
 		void paintEvent(QPaintEvent* event) override;
+		void resizeEvent(QResizeEvent* event) override;
 		void mousePressEvent(QMouseEvent* event) override;
 		void mouseMoveEvent(QMouseEvent* event) override;
 		void mouseReleaseEvent(QMouseEvent* event) override;
 		bool eventFilter(QObject* watched, QEvent* event) override;
+		[[nodiscard]] QSize sizeHint() const override;
 
 	private:
 		void updateTitlePalette();
+		void updateElidedTitle();
 
 		TabInfo m_info;
 		QLabel* m_title = nullptr;
@@ -78,6 +81,8 @@ namespace mps::host
 		void moveTab(qint64 tabId, int insertIndex);
 		void removeTab(qint64 tabId);
 		void setActiveTab(qint64 tabId);
+		/// Update the Host tab label for `tabId`.
+		void setTabTitle(qint64 tabId, const QString& title);
 		[[nodiscard]] QVector<TabInfo> tabs() const
 		{
 			return m_tabs;

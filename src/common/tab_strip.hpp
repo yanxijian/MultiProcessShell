@@ -273,8 +273,7 @@ namespace mps::tab_strip
 		return clientTabCount == 0 && shellCount > 1;
 	}
 
-	/// Spec §7.2: sole Client tab → move the real shell with the cursor (Chrome last-tab),
-	/// instead of a TearOutPreview while a Home husk stays put.
+	/// Spec §7.2: sole Client tab → move the real shell with the cursor (Chrome last-tab).
 	inline bool shouldMoveWholeShellOnTearOut(int clientTabCount)
 	{
 		return clientTabCount == 1;

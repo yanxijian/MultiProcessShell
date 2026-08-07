@@ -9,7 +9,7 @@
 
 | # | 决议 |
 |---|------|
-| 1 | 精简命令 + **标题方案 A**（Host 生成 `Client{N}-Tab{M}`，经 `CreateSubWindow` 下发） |
+| 1 | 精简命令 + **标题方案 A**（Host 生成 `Kind-File{M}`（如 Demo-File1），经 `CreateSubWindow` 下发） |
 | 2 | **不要** `ApplicationConnected` |
 | 3 | **要** `NotifyMainWindowReattachment` |
 | 4 | IPC **双向**：框架预留 `Invoke` / `InvokeResult` |
@@ -43,7 +43,7 @@
 | 命令 | dir | 说明 |
 |------|-----|------|
 | `HelloAck` | EVT | `session_id`, `protocol`, `host_caps` |
-| `CreateSubWindow` | REQ | 已分配 `tab_id` + **`title`**（原名 CreateWindow，因 Win32 宏冲突改名） |
+| `CreateSubWindow` | REQ | 已分配 `tab_id` + **`title`** |
 | `ActiveSubWindow` | EVT | 激活对应 ContentView |
 | `QueryCloseSubWindow` | REQ | 关 Tab；Demo 直接同意并关 ContentView |
 | `QueryCloseSubWindowResult` | RES | `accept` |
@@ -62,8 +62,8 @@
 
 | UI | Host | IPC |
 |----|------|-----|
-| Home「创建 Client」 | `QProcess` → `Hello` → `MainWindowAdded` → `CreateSubWindow(title=ClientN-Tab1)` | §3 |
-| Client「新建窗口」 | 收到 `Invoke("demo.request_new_window")` → `CreateSubWindow(ClientN-TabM)` | Invoke + CreateSubWindow |
+| Home「创建 Client」 | `QProcess` → `Hello` → `MainWindowAdded` → `CreateSubWindow(title=Demo-File1)` | §3 |
+| Client「新建窗口」 | 收到 `Invoke("demo.request_new_window")` → `CreateSubWindow(Demo-FileM)` | Invoke + CreateSubWindow |
 | 关 Tab | `QueryCloseSubWindow` → accept → 拆 Tab；Client `SubWindowRemoved` 幂等兜底 | §3 |
 | 拖出/合入 | 改归属 + reattach | `SetDragSuppress` + `NotifyMainWindowReattachment` |
 | 拖出中点「新建窗口」 | Host **排队** `CreateSubWindow`，`endTabDrag` 后再发（规格 S5） | Invoke 仍立即 ACK |
@@ -95,7 +95,7 @@ InvokeResult {
 
 ## 7. 标题方案 A
 
-Host 维护 `instance_index` / 每 Client 的 `content_index`，生成 `Client{N}-Tab{M}`，写入 `CreateSubWindow.title`；Client 设置窗口标题并在 `SubWindowAdded.title` 回传相同字符串。
+Host 维护 `instance_index` / 每 Client 的 `content_index`，生成 `Kind-File{M}`，写入 `CreateSubWindow.title`；Client 设置窗口标题并在 `SubWindowAdded.title` 回传相同字符串。
 
 ## 8. 实现
 

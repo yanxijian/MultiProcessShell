@@ -42,6 +42,8 @@ namespace mps::host
 		[[nodiscard]] qint64 findTabIdForApp(const QString& appName) const;
 		/// Host → Client Invoke on a ContentView tab (requires live session owning tabId).
 		void invokeOnTab(qint64 tabId, const QString& method, const QByteArray& params);
+		/// Update Host tab label for tabId (no-op if unknown / empty).
+		void setTabTitle(qint64 tabId, const QString& title);
 		void closeTab(qint64 tabId);
 		void activateTab(ShellWindow* shell, qint64 tabId);
 		void tearOutTab(ShellWindow* source, qint64 tabId, QRect suggestedGeometry);
@@ -124,7 +126,9 @@ namespace mps::host
 		void showDragDropSink(bool on);
 		[[nodiscard]] bool isDragDropSink(QObject* watched) const;
 		[[nodiscard]] bool shellStillAlive(ShellWindow* shell) const;
-		[[nodiscard]] QString makeTitle(int instanceIndex, int contentIndex) const;
+		/// Default Host tab label: `{Text|MD|PDF|…}-File{n}`.
+		[[nodiscard]] QString makeTitle(ClientSession* session, int contentIndex) const;
+		[[nodiscard]] static QString tabLabelForAppName(const QString& appName);
 		[[nodiscard]] QString resolveClientExe(const QString& appName) const;
 		void createClientOnWithExe(ShellWindow* shell, const QString& clientExe, const QString& appName = {});
 		/// Request another ContentView on an existing live session (same Client process).

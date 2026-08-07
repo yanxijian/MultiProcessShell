@@ -75,6 +75,8 @@ namespace mps::host
 		void createContentViewRequested(ClientSession* self, qint64 sourceTabId);
 		/// Validated C→H theme.set (wire scheme already parsed).
 		void themeSetRequested(ClientSession* self, mps::theme::Scheme scheme);
+		/// Client → Host: update Host tab label for tabId.
+		void tabTitleChanged(ClientSession* self, qint64 tabId, QString title);
 
 	private:
 		void onEnvelope(mps::ipc::EnvelopePtr env);

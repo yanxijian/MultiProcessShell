@@ -1,4 +1,4 @@
-#include "client_app.hpp"
+﻿#include "client_app.hpp"
 
 #include "envelope_builder.hpp"
 #include "heartbeat_policy.hpp"
@@ -225,6 +225,19 @@ namespace mps::client
 		view->onRequestTheme = [this, tabId](mps::theme::Scheme scheme)
 		{
 			requestThemeFromHost(scheme, tabId);
+		};
+		view->onRequestTabTitle = [this, tabId](const QString& title)
+		{
+			if (!m_channel)
+			{
+				return;
+			}
+			auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(),
+											  0, tabId);
+			env->mutable_invoke()->set_method("shell.set_tab_title");
+			const QByteArray params = title.toUtf8();
+			env->mutable_invoke()->set_params(params.constData(), static_cast<int>(params.size()));
+			m_channel->send(env);
 		};
 
 		QWidget* w = view->widget();

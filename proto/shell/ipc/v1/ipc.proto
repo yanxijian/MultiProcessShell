@@ -101,7 +101,7 @@ message HelloAck {
   Capabilities host_caps = 3;
 }
 
-// Handshake EVT: first ContentView HWND as embed root (not a separate main QWidget).
+// Handshake EVT: first ContentView HWND as embed root.
 message MainWindowAdded {
   uint64 wid = 1;
   uint32 pid = 2;
@@ -110,32 +110,28 @@ message MainWindowAdded {
 
 message MainWindowDestroyed {}
 
-// Host asks Client to create another ContentView; title scheme Client{N}-Tab{M}.
+// Host asks Client to create another ContentView.
 message CreateSubWindow {
   // session_id / tab_id on Envelope
-  string title = 1; // scheme A: Host-assigned Client{N}-Tab{M}
+  string title = 1; // Host-assigned default tab label
 }
 
-// ContentView/tab lifecycle (legacy SubWindow name kept for wire stability).
+// ContentView / tab lifecycle (wire names: SubWindow*).
 message SubWindowAdded {
   string title = 1; // echo Host title
   uint64 wid = 2;   // native handle for this ContentView (may equal embed-root wid)
 }
 
-// ContentView/tab lifecycle (legacy SubWindow name kept for wire stability).
 message SubWindowRemoved {}
 
-// ContentView/tab lifecycle (legacy SubWindow name kept for wire stability).
 message ActiveSubWindow {
   // tab_id on Envelope
 }
 
-// ContentView/tab lifecycle (legacy SubWindow name kept for wire stability).
 message QueryCloseSubWindow {
   // tab_id on Envelope
 }
 
-// ContentView/tab lifecycle (legacy SubWindow name kept for wire stability).
 message QueryCloseSubWindowResult {
   bool accept = 1;
 }

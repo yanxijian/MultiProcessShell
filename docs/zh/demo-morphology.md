@@ -53,7 +53,7 @@ Demo Client ContentView 为 frameless `qfluentribbon::RibbonWindow`；构建与�
 格式：
 
 ```text
-Client{N}-Tab{M}
+Kind-File{M}
 ```
 
 | 字段 | 含义 | 递增规则 |
@@ -149,7 +149,7 @@ Client{N}-Tab{M}
 | 2 | 无剩余 Client Tab 的多余壳 → 销毁 |
 | 3 | 启动一壳 + 固定 **Home Tab**（框架）；Create Client / Light/Dark 在 **demo_host** Home 客户区 |
 | 4 | Client 内容窗「新建窗口」→ 同 Client 再建 ContentView / Tab |
-| 5 | Tab 名：`Client{N}-Tab{M}`；Home 除外 |
+| 5 | Tab 名：`Kind-File{M}`；Home 除外 |
 | 6 | 关 Tab 走激活历史（含 Home），默认不强制回 Home |
 
 ## 10. IPC

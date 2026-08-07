@@ -11,6 +11,7 @@
 #include <QDrag>
 #include <QEasingCurve>
 #include <QEvent>
+#include <QFontMetrics>
 #include <QGraphicsOpacityEffect>
 #include <QHash>
 #include <QMenu>
@@ -23,6 +24,7 @@
 #include <QPropertyAnimation>
 #include <QResizeEvent>
 #include <QShowEvent>
+#include <QSizePolicy>
 #include <QStackedWidget>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -39,6 +41,8 @@ namespace mps::host
 		constexpr int kTabStripTop = 4;
 		constexpr int kTabSlideMs = 120;
 		constexpr int kTabCornerRadius = 4;
+		constexpr int kTabButtonMaxWidth = 200;
+		constexpr int kTabButtonMinWidth = 72;
 		constexpr int kDefaultWindowRadius = 8;
 		constexpr int kDefaultWindowBorderWidth = 1;
 		constexpr auto kPropWindowRadius = "qtheme.window.radius";
@@ -202,12 +206,18 @@ namespace mps::host
 		setCursor(Qt::ArrowCursor);
 		setAttribute(Qt::WA_Hover, true);
 		setAttribute(Qt::WA_StyledBackground, false);
+		if (!m_info.isHome)
+		{
+			setMinimumWidth(kTabButtonMinWidth);
+			setMaximumWidth(kTabButtonMaxWidth);
+		}
 		auto* lay = new QHBoxLayout(this);
 		lay->setContentsMargins(10, 4, 6, 4);
 		lay->setSpacing(6);
-		m_title = new QLabel(m_info.displayTitle(), this);
+		m_title = new QLabel(this);
 		m_title->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-		lay->addWidget(m_title);
+		m_title->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+		lay->addWidget(m_title, 1);
 		if (!m_info.isHome)
 		{
 			m_closeBtn = new QPushButton(QStringLiteral("×"), this);
@@ -225,13 +235,56 @@ namespace mps::host
 					});
 		}
 		refreshChrome();
+		updateElidedTitle();
 	}
 
 	void TabButton::setInfo(const TabInfo& info)
 	{
 		m_info = info;
-		m_title->setText(m_info.displayTitle());
+		updateElidedTitle();
 		refreshChrome();
+	}
+
+	void TabButton::updateElidedTitle()
+	{
+		if (!m_title)
+		{
+			return;
+		}
+		const QString full = m_info.displayTitle();
+		setToolTip(full);
+		m_title->setToolTip(full);
+		if (m_info.isHome)
+		{
+			m_title->setText(full);
+			return;
+		}
+		const QMargins margins = layout() ? layout()->contentsMargins() : QMargins();
+		const int spacing = layout() ? layout()->spacing() : 0;
+		const int closeW = m_closeBtn ? (m_closeBtn->width() + spacing) : 0;
+		const int avail = qMax(0, width() - margins.left() - margins.right() - closeW);
+		m_title->setText(QFontMetrics(m_title->font()).elidedText(full, Qt::ElideMiddle, avail));
+	}
+
+	void TabButton::resizeEvent(QResizeEvent* event)
+	{
+		QFrame::resizeEvent(event);
+		updateElidedTitle();
+	}
+
+	QSize TabButton::sizeHint() const
+	{
+		const QSize base = QFrame::sizeHint();
+		if (m_info.isHome)
+		{
+			return base;
+		}
+		const QMargins margins = layout() ? layout()->contentsMargins() : QMargins(10, 4, 6, 4);
+		const int spacing = layout() ? layout()->spacing() : 6;
+		const int closeW = m_closeBtn ? (18 + spacing) : 0;
+		const int textW = QFontMetrics(font()).horizontalAdvance(m_info.displayTitle());
+		const int ideal = margins.left() + margins.right() + closeW + textW;
+		return QSize(qBound(ideal, kTabButtonMinWidth, kTabButtonMaxWidth), base.height());
 	}
 
 	void TabButton::updateTitlePalette()
@@ -765,8 +818,6 @@ namespace mps::host
 
 	void ShellWindow::updateDropInsertIndicator(int insertIndex)
 	{
-		// Kept for optional debug; live yield (`previewTabYieldAtCursor`) is the
-		// Legacy merge/reorder cue — callers no longer show this blue bar.
 		if (!m_titleBar || m_tabButtons.isEmpty())
 		{
 			return;
@@ -1539,6 +1590,28 @@ namespace mps::host
 	void ShellWindow::addTab(const TabInfo& info)
 	{
 		insertTab(info, m_tabs.size());
+	}
+
+	void ShellWindow::setTabTitle(qint64 tabId, const QString& title)
+	{
+		if (tabId == kHomeTabId || title.isEmpty())
+		{
+			return;
+		}
+		if (TabInfo* t = findTab(tabId))
+		{
+			t->title = title;
+		}
+		for (TabButton* btn : m_tabButtons)
+		{
+			if (btn && btn->info().tabId == tabId)
+			{
+				TabInfo info = btn->info();
+				info.title = title;
+				btn->setInfo(info);
+				break;
+			}
+		}
 	}
 
 	void ShellWindow::insertTab(const TabInfo& info, int insertIndex)
