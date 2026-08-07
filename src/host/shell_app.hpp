@@ -32,7 +32,12 @@ namespace mps::host
 		explicit ShellApp(QString clientExe, QString endpointPrefix = QStringLiteral("mps"), QObject* parent = nullptr);
 		~ShellApp() override;
 		[[nodiscard]] ShellWindow* createShell(QPoint pos = {}, QSize size = {}, bool showNow = true);
+		/// Launch the default Client exe (constructor path). Demo-compatible.
 		void createClientOn(ShellWindow* shell);
+		/// Launch or reuse a registered Client by appName (Volition: one process per kind).
+		void createClientOn(ShellWindow* shell, const QString& appName);
+		/// Register appName → client executable (absolute or beside Host). Overrides prior entry.
+		void registerClientLauncher(const QString& appName, const QString& exePath);
 		void closeTab(qint64 tabId);
 		void activateTab(ShellWindow* shell, qint64 tabId);
 		void tearOutTab(ShellWindow* source, qint64 tabId, QRect suggestedGeometry);
@@ -114,6 +119,10 @@ namespace mps::host
 		[[nodiscard]] bool isDragDropSink(QObject* watched) const;
 		[[nodiscard]] bool shellStillAlive(ShellWindow* shell) const;
 		[[nodiscard]] QString makeTitle(int instanceIndex, int contentIndex) const;
+		[[nodiscard]] QString resolveClientExe(const QString& appName) const;
+		void createClientOnWithExe(ShellWindow* shell, const QString& clientExe, const QString& appName = {});
+		/// Request another ContentView on an existing live session (same Client process).
+		void requestContentViewOnSession(ClientSession* session, ShellWindow* shell);
 
 		struct DeferredCreate
 		{
@@ -124,6 +133,9 @@ namespace mps::host
 		};
 
 		QString m_clientExe;
+		QHash<QString, QString> m_clientLaunchers;
+		/// appName → live session (Volition multi-kind: one process per kind).
+		QHash<QString, ClientSession*> m_sessionsByAppName;
 		QString m_endpoint;
 		QString m_token;
 		QString m_shellWindowTitle = QStringLiteral("Shell");

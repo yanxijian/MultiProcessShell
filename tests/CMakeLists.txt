@@ -52,10 +52,10 @@ find_program(MPS_PYTHON NAMES python python3)
 if(MPS_PYTHON)
   add_test(
     NAME m4b_python_frame_envelope
-    COMMAND "${MPS_PYTHON}" "${CMAKE_SOURCE_DIR}/clients/python/test_frame_envelope.py"
+    COMMAND "${MPS_PYTHON}" "${MPS_ROOT}/clients/python/test_frame_envelope.py"
   )
   set_tests_properties(m4b_python_frame_envelope PROPERTIES
-    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/clients/python"
+    WORKING_DIRECTORY "${MPS_ROOT}/clients/python"
   )
 endif()
 
@@ -65,7 +65,7 @@ if(TARGET mps::ipc_qt)
   )
   target_compile_definitions(mps_tests_m4b_hello
     PRIVATE
-      MPS_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+      MPS_SOURCE_DIR="${MPS_ROOT}"
   )
   target_link_libraries(mps_tests_m4b_hello
     PRIVATE

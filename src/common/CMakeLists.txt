@@ -9,8 +9,8 @@ target_include_directories(mps_tab_strip
 
 # mps_ipc: generated shell.ipc.v1 + length-prefixed framing.
 
-set(MPS_PROTO_FILE "${CMAKE_SOURCE_DIR}/proto/shell/ipc/v1/ipc.proto")
-set(MPS_PROTO_IMPORT_DIR "${CMAKE_SOURCE_DIR}/proto")
+set(MPS_PROTO_FILE "${MPS_ROOT}/proto/shell/ipc/v1/ipc.proto")
+set(MPS_PROTO_IMPORT_DIR "${MPS_ROOT}/proto")
 set(MPS_PROTO_GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
 set(MPS_PROTO_GEN_SUBDIR "${MPS_PROTO_GEN_DIR}/shell/ipc/v1")
 
@@ -32,13 +32,13 @@ add_custom_command(
           -I ${MPS_PROTO_IMPORT_DIR}
           ${MPS_PROTO_FILE}
   COMMAND "${MPS_PYTHON_EXECUTABLE}"
-          "${CMAKE_SOURCE_DIR}/cmake/patch_pb_dll_exports.py"
+          "${MPS_ROOT}/cmake/patch_pb_dll_exports.py"
           "${MPS_PROTO_GEN_H}"
   DEPENDS
     "${MPS_PROTO_FILE}"
     protobuf::protoc
     protobuf::libprotobuf
-    "${CMAKE_SOURCE_DIR}/cmake/patch_pb_dll_exports.py"
+    "${MPS_ROOT}/cmake/patch_pb_dll_exports.py"
   COMMENT "Generating shell/ipc/v1/ipc.pb.cc (+ DLL export patch)"
   VERBATIM
 )

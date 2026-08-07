@@ -6,6 +6,9 @@ project(MultiProcessShell
   LANGUAGES CXX
 )
 
+# Stable when this project is add_subdirectory()'d by a consumer (e.g. Volition).
+set(MPS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)

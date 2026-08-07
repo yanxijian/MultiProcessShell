@@ -436,10 +436,85 @@ namespace mps::host
 		return QObject::eventFilter(watched, event);
 	}
 
+	void ShellApp::registerClientLauncher(const QString& appName, const QString& exePath)
+	{
+		if (appName.isEmpty() || exePath.isEmpty())
+		{
+			return;
+		}
+		m_clientLaunchers.insert(appName, exePath);
+	}
+
+	QString ShellApp::resolveClientExe(const QString& appName) const
+	{
+		if (!appName.isEmpty())
+		{
+			const auto it = m_clientLaunchers.constFind(appName);
+			if (it != m_clientLaunchers.cend() && !it.value().isEmpty())
+			{
+				return it.value();
+			}
+		}
+		return m_clientExe;
+	}
+
 	void ShellApp::createClientOn(ShellWindow* shell)
+	{
+		createClientOnWithExe(shell, m_clientExe);
+	}
+
+	void ShellApp::createClientOn(ShellWindow* shell, const QString& appName)
+	{
+		if (!appName.isEmpty())
+		{
+			if (ClientSession* existing = m_sessionsByAppName.value(appName, nullptr))
+			{
+				if (existing && !existing->isDead())
+				{
+					if (existing->channel())
+					{
+						requestContentViewOnSession(existing, shell);
+						return;
+					}
+					// Same kind still connecting — avoid a second process / pipe race.
+					qWarning("ShellApp: client kind \"%s\" still starting; skip duplicate launch", qPrintable(appName));
+					return;
+				}
+			}
+		}
+		createClientOnWithExe(shell, resolveClientExe(appName), appName);
+	}
+
+	void ShellApp::requestContentViewOnSession(ClientSession* session, ShellWindow* shell)
+	{
+		if (!session || session->isDead())
+		{
+			return;
+		}
+		const int m = m_nextContentIndex[session->instanceIndex()]++;
+		const qint64 tabId = m_nextTabId++;
+		const QString title = makeTitle(session->instanceIndex(), m);
+		if (tab_strip::shouldDeferCreateDuringDrag(m_dragActive))
+		{
+			m_deferredCreatesDuringDrag.push_back(DeferredCreate{session, tabId, title, shell});
+			return;
+		}
+		if (shell)
+		{
+			m_pendingFirstShell.insert(session, shell);
+		}
+		session->requestCreateContentView(tabId, title);
+	}
+
+	void ShellApp::createClientOnWithExe(ShellWindow* shell, const QString& clientExe, const QString& appName)
 	{
 		if (m_clientLaunchInFlight)
 		{
+			return;
+		}
+		if (clientExe.isEmpty())
+		{
+			qWarning("ShellApp: no Client executable to launch");
 			return;
 		}
 		for (const auto& existing : m_sessions)
@@ -454,6 +529,10 @@ namespace mps::host
 		m_nextContentIndex[instanceIndex] = 1;
 		auto session = std::make_unique<ClientSession>(instanceIndex, m_endpoint, m_requestNewContentViewMethod, this);
 		auto* raw = session.get();
+		if (!appName.isEmpty())
+		{
+			m_sessionsByAppName.insert(appName, raw);
+		}
 		m_pendingFirstShell.insert(raw, shell);
 		connect(raw, &ClientSession::sessionHelloOk, this, &ShellApp::onSessionHelloOk);
 		connect(raw, &ClientSession::contentViewReady, this, &ShellApp::onContentViewReady);
@@ -500,7 +579,7 @@ namespace mps::host
 					}
 					session->requestCreateContentView(tabId, title);
 				});
-		raw->startClientProcess(m_clientExe, m_token);
+		raw->startClientProcess(clientExe, m_token);
 		m_sessions.push_back(std::move(session));
 	}
 
@@ -705,6 +784,17 @@ namespace mps::host
 			}
 		}
 		m_pendingFirstShell.remove(session);
+		for (auto it = m_sessionsByAppName.begin(); it != m_sessionsByAppName.end();)
+		{
+			if (it.value() == session)
+			{
+				it = m_sessionsByAppName.erase(it);
+			}
+			else
+			{
+				++it;
+			}
+		}
 		m_deferredCreatesDuringDrag.erase(std::remove_if(m_deferredCreatesDuringDrag.begin(), m_deferredCreatesDuringDrag.end(),
 														 [&](const DeferredCreate& d)
 														 {
