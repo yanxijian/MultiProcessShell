@@ -535,10 +535,10 @@ message MainWindowAdded {
   bool visible = 3;
 }
 
-// Host asks Client to create another ContentView; title scheme Kind-File{M}.
+// Host asks Client to create another ContentView.
 message CreateSubWindow {
   // session_id / tab_id 在 Envelope 头；Host 分配 tab_id 后下发
-  string title = 1; // Host-assigned Kind-File{M}
+  string title = 1; // Host-assigned default tab label
 }
 
 message SubWindowAdded {
@@ -722,7 +722,7 @@ Idle → PressOnTab → DragThresholdExceeded → Dragging
 用户请求 → 解析 app_name
  → 无 Session 则 launch / loadModule
  → 确保 ShellWindow 的 EmbedContainer（文档概念 EmbedSlot；无 ensureEmbedSlot API）
- → CreateSubWindow(tab_id, title=Kind-File{M}) → SubWindowAdded → 加 Tab → 激活
+ → CreateSubWindow(tab_id, title=Tab{M}) → SubWindowAdded → 加 Tab → 激活
 ```
 
 启动限流：同时 launching 的 Session 数建议 ≤ 2；其余显示加载占位。

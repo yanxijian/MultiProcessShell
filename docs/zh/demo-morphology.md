@@ -29,18 +29,18 @@
 ### 2.2 创建 Client（新进程 / 新 clientKind / ClientSession）
 
 - 在 **Home** 点击「创建 Client」→ 启动一个 Client 进程，并在当前壳新增一个 Client Tab。  
-- 首个该 Client 下的子窗口标题形如：`Client1-Tab1`。  
+- 首个该 Client 下的子窗口标题形如：`Tab1`（框架默认）。  
 - 需要再建 Client 时，切回 **Home** 再点「创建 Client」。
 
 ### 2.3 同 Client 再建子窗口
 
 - **Client 内容窗（`ContentView` / `RibbonContentWindow`）**：无系统标题栏的 **QFluentRibbon**（`RibbonWindow`）；Ribbon「New Window」经 IPC `Invoke("demo.request_new_window")`，由 Host 再发 `CreateSubWindow`。详见 [qfr-demo-client.md](qfr-demo-client.md)。  
 - 点击后在 **同一 Client 进程** 内再建子窗口并新增 Tab。  
-- 标题递增：`Client1-Tab2`、`Client1-Tab3`、…
+- 标题递增：`Tab2`、`Tab3`、…
 
 ### 2.4 多 Client
 
-- 再次在 Home「创建 Client」→ `Client2-Tab1`、…  
+- 再次在 Home「创建 Client」→ `Tab1`、…  
 - 不同 Client = 不同进程（形态 A）；Tab 可同壳并列。  
 - 内容窗内可用 Ribbon Theme 组切 Light/Dark；经 Host `theme.set` **全局同步**（壳 + 全部 Client）。
 
@@ -53,22 +53,21 @@ Demo Client ContentView 为 frameless `qfluentribbon::RibbonWindow`；构建与�
 格式：
 
 ```text
-Kind-File{M}
+Tab{M}
 ```
 
 | 字段 | 含义 | 递增规则 |
 |------|------|----------|
-| `N` | Client 实例序号 | 每成功创建一个新 Client 进程 +1（全局，按 Demo 会话） |
 | `M` | 该 Client 内 ContentView / Tab 序号 | 每在该 Client 内新建一个 ContentView +1 |
 
-示例：`Client1-Tab1`、`Client1-Tab2`、`Client2-Tab1`。  
+框架默认示例：`Tab1`、`Tab2`。产品 Host 可通过 `TabTitleFactory` 注入其它默认标题。  
 **Home** Tab 标题固定为 `Home`（不属于上述命名）。
 
 ## 4. 窗口结构
 
 ```text
 ┌─ Shell 顶层窗（自定义标题栏）──────────────────────────┐
-│  [Home] [Client1-Tab1 ×] [Client2-Tab1 ×]  _ □ × │
+│  [Home] [Tab1 ×] [Tab1 ×]  _ □ × │
 ├────────────────────────────────────────────────────────┤
 │  Home 激活：中央「创建 Client」                          │
 │  Client Tab 激活：嵌入 QFR Ribbon ContentView（无系统标题栏；「New Window」在 Ribbon） │
@@ -149,7 +148,7 @@ Kind-File{M}
 | 2 | 无剩余 Client Tab 的多余壳 → 销毁 |
 | 3 | 启动一壳 + 固定 **Home Tab**（框架）；Create Client / Light/Dark 在 **demo_host** Home 客户区 |
 | 4 | Client 内容窗「新建窗口」→ 同 Client 再建 ContentView / Tab |
-| 5 | Tab 名：`Kind-File{M}`；Home 除外 |
+| 5 | Tab 名：框架默认 `Tab{M}`（产品可注入）；Home 除外 |
 | 6 | 关 Tab 走激活历史（含 Home），默认不强制回 Home |
 
 ## 10. IPC

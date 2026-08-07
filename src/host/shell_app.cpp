@@ -2391,34 +2391,17 @@ namespace mps::host
 		}
 	}
 
-	QString ShellApp::tabLabelForAppName(const QString& appName)
-	{
-		if (appName.compare(QLatin1String("text"), Qt::CaseInsensitive) == 0)
-		{
-			return QStringLiteral("Text");
-		}
-		if (appName.compare(QLatin1String("markdown"), Qt::CaseInsensitive) == 0)
-		{
-			return QStringLiteral("MD");
-		}
-		if (appName.compare(QLatin1String("pdf"), Qt::CaseInsensitive) == 0)
-		{
-			return QStringLiteral("PDF");
-		}
-		if (appName.contains(QLatin1String("demo"), Qt::CaseInsensitive))
-		{
-			return QStringLiteral("Demo");
-		}
-		if (appName.isEmpty())
-		{
-			return QStringLiteral("Client");
-		}
-		return appName.left(1).toUpper() + appName.mid(1);
-	}
-
 	QString ShellApp::makeTitle(ClientSession* session, int contentIndex) const
 	{
 		const QString appName = session ? m_sessionToAppName.value(session) : QString();
-		return QStringLiteral("%1-File%2").arg(tabLabelForAppName(appName)).arg(contentIndex);
+		if (m_tabTitleFactory)
+		{
+			const QString custom = m_tabTitleFactory(appName, contentIndex);
+			if (!custom.isEmpty())
+			{
+				return custom;
+			}
+		}
+		return QStringLiteral("Tab%1").arg(contentIndex);
 	}
 } // namespace mps::host

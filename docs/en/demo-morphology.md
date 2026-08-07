@@ -29,38 +29,37 @@ Phase-1 platform: **Windows (form A)**.
 ### 2.2 Create Client (new process / clientKind session)
 
 - On **Home**, click **Create Client** → start a Client process and add a Client tab.  
-- First child title: `Client1-Tab1`.  
+- First child title: `Tab1` (framework default).  
 - To create another Client, switch back to **Home** and click **Create Client** again.
 
 ### 2.3 Same Client, new child window
 
 - Client content is a **frameless QFluentRibbon** `RibbonWindow` (`ContentView` / `RibbonContentWindow`); Ribbon **New Window** → IPC `Invoke("demo.request_new_window")` → Host `CreateSubWindow` in the **same Client process**. See Chinese [qfr-demo-client.md](../zh/qfr-demo-client.md).  
-- Titles: `Client1-Tab2`, `Client1-Tab3`, …
+- Titles: `Tab2`, `Tab3`, …
 
 ### 2.4 Multiple Clients
 
-- Create Client again from Home → `Client2-Tab1`, …  
+- Create Client again from Home → another process / `Tab1`, …  
 - Different Clients = different processes (form A); tabs may share one shell. Theme Light/Dark is **global** (Host SSOT via `Invoke theme.set`).
 
 ## 3. Tab title rules
 
 ```text
-Kind-File{M}
+Tab{M}
 ```
 
 | Field | Meaning | Increment |
 |-------|---------|-----------|
-| `N` | Client instance index | +1 per new Client process (per Demo session) |
 | `M` | ContentView / Tab index within that Client | +1 per new ContentView in that Client |
 
-Examples: `Client1-Tab1`, `Client1-Tab2`, `Client2-Tab1`.  
+Framework default examples: `Tab1`, `Tab2`. A product Host may inject another scheme via `TabTitleFactory`.  
 **Home** title is fixed (`Home`) and outside this scheme.
 
 ## 4. Window structure
 
 ```text
 ┌─ Shell (custom title bar) ─────────────────────────────┐
-│  [Home] [Client1-Tab1 ×] [Client2-Tab1 ×]  _ □ × │
+│  [Home] [Tab1 ×] [Tab1 ×]  _ □ × │
 ├────────────────────────────────────────────────────────┤
 │  Home active → center “Create Client”                  │
 │  Client tab active → embedded Client HWND (“新建窗口”) │
@@ -141,7 +140,7 @@ Manual checklist: [demo-acceptance.md](demo-acceptance.md).
 | 2 | Spare shell with no Client tabs → destroy |
 | 3 | One shell + permanent **Home tab** (framework); Create Client / Light/Dark in **demo_host** Home client area |
 | 4 | Client content New Window → same-Client child |
-| 5 | Titles: `Kind-File{M}`; Home excluded |
+| 5 | Titles: framework default `Tab{M}` (product may inject); Home excluded |
 | 6 | Close uses activation history (includes Home); not forced to Home |
 
 ## 10. IPC

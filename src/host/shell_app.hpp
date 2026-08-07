@@ -27,6 +27,8 @@ namespace mps::host
 		Q_OBJECT
 	public:
 		using HomeContentFactory = std::function<QWidget*(ShellWindow*)>;
+		/// Product Host default tab label for a new ContentView (`appName` may be empty).
+		using TabTitleFactory = std::function<QString(const QString& appName, int contentIndex)>;
 
 		/// endpointPrefix forms the pipe name "{prefix}-{token}". Default "mps" (Demo passes "mps-demo").
 		explicit ShellApp(QString clientExe, QString endpointPrefix = QStringLiteral("mps"), QObject* parent = nullptr);
@@ -69,6 +71,10 @@ namespace mps::host
 		void setHomeContentFactory(HomeContentFactory factory)
 		{
 			m_homeContentFactory = std::move(factory);
+		}
+		void setTabTitleFactory(TabTitleFactory factory)
+		{
+			m_tabTitleFactory = std::move(factory);
 		}
 		void setShellWindowTitle(QString title)
 		{
@@ -126,9 +132,7 @@ namespace mps::host
 		void showDragDropSink(bool on);
 		[[nodiscard]] bool isDragDropSink(QObject* watched) const;
 		[[nodiscard]] bool shellStillAlive(ShellWindow* shell) const;
-		/// Default Host tab label: `{Text|MD|PDF|…}-File{n}`.
 		[[nodiscard]] QString makeTitle(ClientSession* session, int contentIndex) const;
-		[[nodiscard]] static QString tabLabelForAppName(const QString& appName);
 		[[nodiscard]] QString resolveClientExe(const QString& appName) const;
 		void createClientOnWithExe(ShellWindow* shell, const QString& clientExe, const QString& appName = {});
 		/// Request another ContentView on an existing live session (same Client process).
@@ -151,6 +155,7 @@ namespace mps::host
 		QString m_token;
 		QString m_shellWindowTitle = QStringLiteral("Shell");
 		QString m_requestNewContentViewMethod = QStringLiteral("demo.request_new_window");
+		TabTitleFactory m_tabTitleFactory;
 		HomeContentFactory m_homeContentFactory;
 		QLocalServer* m_server = nullptr;
 		mps::theme::Scheme m_scheme = mps::theme::Scheme::Light;
