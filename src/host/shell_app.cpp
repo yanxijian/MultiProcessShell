@@ -515,7 +515,13 @@ namespace mps::host
 		{
 			if (ClientSession* existing = m_sessionsByAppName.value(appName, nullptr))
 			{
-				if (existing && !existing->isDead())
+				if (existing && existing->isDead())
+				{
+					m_sessionsByAppName.remove(appName);
+					m_sessionToAppName.remove(existing);
+					existing = nullptr;
+				}
+				if (existing)
 				{
 					if (existing->channel())
 					{
