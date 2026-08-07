@@ -10,7 +10,7 @@
       "name": "windows-x64",
       "displayName": "Windows x64 (Ninja + QTDIR)",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build",
+      "binaryDir": "${sourceDir}/build-shared",
       "architecture": {
         "value": "x64",
         "strategy": "external"
