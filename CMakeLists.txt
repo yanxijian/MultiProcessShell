@@ -16,6 +16,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 if(MSVC)
   # Match Qt / shared CRT; protobuf must not force /MT.
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+  add_compile_options(/MP)
 endif()
 
 option(MPS_BUILD_SHARED "Build mps_* libraries as shared" ON)
