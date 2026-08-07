@@ -52,15 +52,15 @@ function(mps_fetch_protobuf)
   if(MPS_ABSEIL_PIN_PREFIX AND NOT MPS_ABSEIL_PIN_PREFIX STREQUAL "")
     list(PREPEND CMAKE_PREFIX_PATH "${MPS_ABSEIL_PIN_PREFIX}")
     set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" PARENT_SCOPE)
-    # Prefer pin over any previously cached vcpkg/system absl_DIR.
+    # Pin absl_DIR so a previously cached package path does not take precedence.
     set(absl_DIR "${MPS_ABSEIL_PIN_PREFIX}/lib/cmake/absl" CACHE PATH
-      "Abseil CONFIG dir (forced to AbseilPin when MPS_ABSEIL_PIN_PREFIX is set)" FORCE)
-    # protobuf ≥v33: no protobuf_ABSL_PROVIDER; find_package(absl CONFIG) via PREFIX_PATH.
+      "Abseil CONFIG dir when MPS_ABSEIL_PIN_PREFIX is set" FORCE)
+    # protobuf ≥v33: find_package(absl CONFIG) via PREFIX_PATH.
     set(protobuf_FORCE_FETCH_DEPENDENCIES OFF CACHE BOOL "" FORCE)
     # Legacy flag (ignored by ≥v33); keep for older tags if someone retargets GIT_TAG.
     set(protobuf_ABSL_PROVIDER "package" CACHE STRING "" FORCE)
     message(STATUS "MPS: using AbseilPin from ${MPS_ABSEIL_PIN_PREFIX}")
-    message(STATUS "MPS: forcing absl_DIR=${absl_DIR}")
+    message(STATUS "MPS: absl_DIR=${absl_DIR}")
   endif()
 
   FetchContent_Declare(
@@ -103,19 +103,14 @@ function(mps_fetch_protobuf)
       list(APPEND _mps_pb_runtime abseil_dll)
     elseif(TARGET absl::abseil_dll)
       list(APPEND _mps_pb_runtime absl::abseil_dll)
-    elseif(MPS_ABSEIL_PIN_PREFIX AND EXISTS "${MPS_ABSEIL_PIN_PREFIX}/bin/abseil_dll.dll")
-      # IMPORTED absl::abseil_dll can be invisible in some generator states;
-      # still record the pin path via a stamp target name for docs — apps that
-      # embed MPS should also copy the pin DLL explicitly (see Volition PDF).
     endif()
     if(TARGET utf8_validity)
       list(APPEND _mps_pb_runtime utf8_validity)
     elseif(TARGET utf8_range::utf8_validity)
       list(APPEND _mps_pb_runtime utf8_range::utf8_validity)
     endif()
-    # CACHE so consumers that embed MPS via add_subdirectory (e.g. Volition)
-    # still see the list in volition_copy_runtime_deps — function PARENT_SCOPE
-    # only reaches MultiProcessShell/CMakeLists.txt, not the top-level project.
+    # CACHE INTERNAL: visible to parents that embed MPS via add_subdirectory
+    # (function PARENT_SCOPE only reaches this project's CMakeLists.txt).
     set(MPS_PROTOBUF_RUNTIME_TARGETS "${_mps_pb_runtime}" CACHE INTERNAL
       "Shared protobuf/abseil/utf8 DLLs to copy beside apps" FORCE)
     set(MPS_PROTOBUF_RUNTIME_TARGETS "${_mps_pb_runtime}" PARENT_SCOPE)
