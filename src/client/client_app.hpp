@@ -37,6 +37,14 @@ namespace mps::client
 		{
 			m_requestNewContentViewMethod = std::move(method);
 		}
+		/// Optional: handle Host→Client Invoke methods other than theme.set.
+		/// Return true if handled (fills payload or error). view may be null.
+		using InvokeHandler =
+			std::function<bool(ContentView* view, const QString& method, const QByteArray& params, QByteArray* payload, QString* error)>;
+		void setInvokeHandler(InvokeHandler handler)
+		{
+			m_invokeHandler = std::move(handler);
+		}
 
 	private:
 		void applyThemeScheme(mps::theme::Scheme scheme);
@@ -57,6 +65,7 @@ namespace mps::client
 		QString m_requestNewContentViewMethod = QStringLiteral("demo.request_new_window");
 		ContentViewFactory m_factory;
 		AppearanceHandler m_appearanceHandler;
+		InvokeHandler m_invokeHandler;
 		bool m_enableHeartbeat = true;
 		bool m_heartbeatArmed = false;
 		QLocalSocket* m_socket = nullptr;

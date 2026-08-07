@@ -38,6 +38,10 @@ namespace mps::host
 		void createClientOn(ShellWindow* shell, const QString& appName);
 		/// Register appName → client executable (absolute or beside Host). Overrides prior entry.
 		void registerClientLauncher(const QString& appName, const QString& exePath);
+		/// First Host tab id for a live session of appName, or 0.
+		[[nodiscard]] qint64 findTabIdForApp(const QString& appName) const;
+		/// Host → Client Invoke on a ContentView tab (requires live session owning tabId).
+		void invokeOnTab(qint64 tabId, const QString& method, const QByteArray& params);
 		void closeTab(qint64 tabId);
 		void activateTab(ShellWindow* shell, qint64 tabId);
 		void tearOutTab(ShellWindow* source, qint64 tabId, QRect suggestedGeometry);
@@ -87,6 +91,8 @@ namespace mps::host
 
 	signals:
 		void schemeChanged(mps::theme::Scheme scheme, ThemeOrigin origin);
+		/// Emitted when a ContentView for a registered appName becomes ready (SubWindowAdded).
+		void appContentViewReady(const QString& appName, qint64 tabId);
 
 	protected:
 		bool eventFilter(QObject* watched, QEvent* event) override;
@@ -136,6 +142,7 @@ namespace mps::host
 		QHash<QString, QString> m_clientLaunchers;
 		/// appName → live session (Volition multi-kind: one process per kind).
 		QHash<QString, ClientSession*> m_sessionsByAppName;
+		QHash<ClientSession*, QString> m_sessionToAppName;
 		QString m_endpoint;
 		QString m_token;
 		QString m_shellWindowTitle = QStringLiteral("Shell");

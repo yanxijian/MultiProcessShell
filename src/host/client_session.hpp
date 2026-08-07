@@ -51,6 +51,8 @@ namespace mps::host
 		void setDragSuppress(bool on);
 		/// Host → Client: push global ColorScheme ("light" / "dark").
 		void pushThemeScheme(const QByteArray& params);
+		/// Host → Client: opaque Invoke (e.g. Volition open_document).
+		void sendInvoke(const QString& method, const QByteArray& params, qint64 tabId = 0);
 		[[nodiscard]] bool isDead() const
 		{
 			return m_dead;

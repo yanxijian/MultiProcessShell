@@ -269,6 +269,19 @@ namespace mps::host
 		m_channel->send(env);
 	}
 
+	void ClientSession::sendInvoke(const QString& method, const QByteArray& params, qint64 tabId)
+	{
+		if (m_dead || !m_channel || method.isEmpty())
+		{
+			return;
+		}
+		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(),
+										  m_sessionId, tabId);
+		env->mutable_invoke()->set_method(method.toStdString());
+		env->mutable_invoke()->set_params(params.constData(), static_cast<int>(params.size()));
+		m_channel->send(env);
+	}
+
 	void ClientSession::onEnvelope(mps::ipc::EnvelopePtr env)
 	{
 		if (!env)

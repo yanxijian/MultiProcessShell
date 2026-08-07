@@ -376,6 +376,34 @@ namespace mps::client
 				m_channel->send(res);
 				return;
 			}
+			if (m_invokeHandler)
+			{
+				ContentView* view = m_views.value(env->tab_id(), nullptr);
+				if (!view)
+				{
+					view = m_active;
+				}
+				const QString method = QString::fromStdString(env->invoke().method());
+				const QByteArray params = QByteArray::fromStdString(env->invoke().params());
+				QByteArray payload;
+				QString error;
+				if (m_invokeHandler(view, method, params, &payload, &error))
+				{
+					if (!error.isEmpty())
+					{
+						auto res = mps::ipc::makeResponse(1, env->id(), QDateTime::currentMSecsSinceEpoch(), env->tab_id());
+						auto* err = res->mutable_error();
+						err->set_code(shell::ipc::v1::ERROR_PROTOCOL);
+						err->set_message(error.toStdString());
+						m_channel->send(res);
+						return;
+					}
+					auto res = mps::ipc::makeResponse(1, env->id(), QDateTime::currentMSecsSinceEpoch(), env->tab_id());
+					res->mutable_invoke_result()->set_payload(payload.constData(), static_cast<int>(payload.size()));
+					m_channel->send(res);
+					return;
+				}
+			}
 			auto res = mps::ipc::makeResponse(1, env->id(), QDateTime::currentMSecsSinceEpoch());
 			auto* err = res->mutable_error();
 			err->set_code(shell::ipc::v1::ERROR_UNIMPLEMENTED);

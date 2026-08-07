@@ -27,6 +27,11 @@ namespace mps::client
 		virtual void applyTheme(mps::theme::Scheme)
 		{
 		}
+		/// Optional document open (Volition / product Clients). Default: unsupported.
+		virtual bool openDocument(const QString& /*path*/)
+		{
+			return false;
+		}
 
 		std::function<void()> onRequestNewContentView;
 		std::function<void(mps::theme::Scheme)> onRequestTheme;

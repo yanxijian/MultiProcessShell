@@ -445,6 +445,52 @@ namespace mps::host
 		m_clientLaunchers.insert(appName, exePath);
 	}
 
+	qint64 ShellApp::findTabIdForApp(const QString& appName) const
+	{
+		ClientSession* session = m_sessionsByAppName.value(appName, nullptr);
+		if (!session || session->isDead())
+		{
+			return 0;
+		}
+		for (auto it = m_tabToShell.constBegin(); it != m_tabToShell.constEnd(); ++it)
+		{
+			ShellWindow* shell = it.value();
+			if (!shell)
+			{
+				continue;
+			}
+			for (const auto& t : shell->tabs())
+			{
+				if (t.session == session && t.tabId == it.key())
+				{
+					return t.tabId;
+				}
+			}
+		}
+		return 0;
+	}
+
+	void ShellApp::invokeOnTab(qint64 tabId, const QString& method, const QByteArray& params)
+	{
+		if (tabId == 0 || method.isEmpty())
+		{
+			return;
+		}
+		ShellWindow* shell = m_tabToShell.value(tabId, nullptr);
+		if (!shell)
+		{
+			return;
+		}
+		for (const auto& t : shell->tabs())
+		{
+			if (t.tabId == tabId && t.session && !t.session->isDead())
+			{
+				t.session->sendInvoke(method, params, tabId);
+				return;
+			}
+		}
+	}
+
 	QString ShellApp::resolveClientExe(const QString& appName) const
 	{
 		if (!appName.isEmpty())
@@ -532,6 +578,7 @@ namespace mps::host
 		if (!appName.isEmpty())
 		{
 			m_sessionsByAppName.insert(appName, raw);
+			m_sessionToAppName.insert(raw, appName);
 		}
 		m_pendingFirstShell.insert(raw, shell);
 		connect(raw, &ClientSession::sessionHelloOk, this, &ShellApp::onSessionHelloOk);
@@ -736,6 +783,11 @@ namespace mps::host
 		m_tabToShell.insert(tabId, shell);
 		shell->addTab(info);
 		session->notifyReattachment(shell->shellId());
+		const QString appName = m_sessionToAppName.value(session);
+		if (!appName.isEmpty())
+		{
+			emit appContentViewReady(appName, tabId);
+		}
 	}
 
 	void ShellApp::onContentViewClosed(ClientSession* session, qint64 tabId)
@@ -784,6 +836,7 @@ namespace mps::host
 			}
 		}
 		m_pendingFirstShell.remove(session);
+		m_sessionToAppName.remove(session);
 		for (auto it = m_sessionsByAppName.begin(); it != m_sessionsByAppName.end();)
 		{
 			if (it.value() == session)
