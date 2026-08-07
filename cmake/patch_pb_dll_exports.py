@@ -1,6 +1,11 @@
-# Patch protoc-generated *.pb.h so default_instance_ data symbols use
-# dllexport/dllimport with the mps_ipc shared library (MSVC).
-# Usage: cmake -P or: python patch_pb_dll_exports.py <ipc.pb.h>
+# Patch protoc-generated *.pb.h so message globals / default_instance_ data
+# symbols use dllexport/dllimport with the mps_ipc shared library (MSVC).
+#
+# protobuf ≤29:  extern FooDefaultTypeInternal _Foo_default_instance_;
+# protobuf ≥35:  extern FooGlobalsTypeInternal Foo_globals_;
+#                (+ optional Foo_class_data_)
+#
+# Usage: python patch_pb_dll_exports.py <ipc.pb.h>
 
 import re
 import sys
@@ -8,12 +13,7 @@ from pathlib import Path
 
 MARKER = "/* mps_pb_dll_exports */"
 
-
-def patch(text: str) -> str:
-    if MARKER in text:
-        return text
-
-    guard = f"""{MARKER}
+_GUARD = f"""{MARKER}
 #if defined(_WIN32) && defined(MPS_IPC_SHARED)
 #  ifdef mps_ipc_EXPORTS
 #    define MPS_PB_API __declspec(dllexport)
@@ -25,20 +25,29 @@ def patch(text: str) -> str:
 #endif
 """
 
-    # Insert after the last include guard / first #include block opener.
-    # Prefer right after `#define ..._IPC_PB_H` style include guard body start.
-    m = re.search(r"(#define\s+\w+_IPC_PB_H\b[^\n]*\n)", text)
-    if m:
-        text = text[: m.end()] + "\n" + guard + "\n" + text[m.end() :]
-    else:
-        text = guard + "\n" + text
+# Any extern declaration of protobuf message global / class_data symbols.
+_EXTERN_DATA = re.compile(
+    r"\bextern\s+(?!MPS_PB_API\b)"
+    r"("
+    r"(?:const\s+)?"
+    r"(?:"
+    r"[\w:]+DefaultTypeInternal\s+_+\w+_default_instance_"
+    r"|[\w:]+GlobalsTypeInternal\s+\w+_globals_"
+    r"|::google::protobuf::internal::ClassDataFull\s+\w+_class_data_"
+    r")"
+    r")"
+)
 
-    # extern ProtoDefaultTypeInternal _Foo_default_instance_;
-    text = re.sub(
-        r"\bextern\s+(?!MPS_PB_API\b)([\w:]+DefaultTypeInternal\s+_+\w+_default_instance_)",
-        r"extern MPS_PB_API \1",
-        text,
-    )
+
+def patch(text: str) -> str:
+    if MARKER not in text:
+        m = re.search(r"(#define\s+\w+_IPC_PB_H\b[^\n]*\n)", text)
+        if m:
+            text = text[: m.end()] + "\n" + _GUARD + "\n" + text[m.end() :]
+        else:
+            text = _GUARD + "\n" + text
+
+    text = _EXTERN_DATA.sub(r"extern MPS_PB_API \1", text)
     return text
 
 

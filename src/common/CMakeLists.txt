@@ -21,12 +21,19 @@ set(MPS_PROTO_GEN_H "${MPS_PROTO_GEN_SUBDIR}/ipc.pb.h")
 
 find_program(MPS_PYTHON_EXECUTABLE NAMES python python3 REQUIRED)
 
+# When Abseil comes from AbseilPin (not next to libprotobuf), put pin/bin first so
+# protoc does not pick a stray abseil_dll from the ambient PATH (e.g. pdfium tree).
+set(_mps_protoc_path_prefix "")
+if(MPS_ABSEIL_PIN_PREFIX AND NOT MPS_ABSEIL_PIN_PREFIX STREQUAL "")
+  set(_mps_protoc_path_prefix "${MPS_ABSEIL_PIN_PREFIX}/bin;")
+endif()
+
 add_custom_command(
   OUTPUT
     "${MPS_PROTO_GEN_CC}"
     "${MPS_PROTO_GEN_H}"
   COMMAND ${CMAKE_COMMAND} -E env
-          "PATH=$<TARGET_FILE_DIR:protobuf::libprotobuf>;$ENV{PATH}"
+          "PATH=${_mps_protoc_path_prefix}$<TARGET_FILE_DIR:protobuf::libprotobuf>;$ENV{PATH}"
           $<TARGET_FILE:protobuf::protoc>
           --cpp_out=${MPS_PROTO_GEN_DIR}
           -I ${MPS_PROTO_IMPORT_DIR}

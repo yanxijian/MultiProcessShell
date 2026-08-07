@@ -2,7 +2,8 @@
 #
 # Optional shared Abseil from AbseilPin (https://github.com/yanxijian/AbseilPin — or sibling
 # D:/Codes/AbseilPin/prefix/<pin>): set -DMPS_ABSEIL_PIN_PREFIX=<install-prefix> so protobuf
-# uses protobuf_ABSL_PROVIDER=package and does not build a second abseil_dll from its submodule.
+# finds absl via CMAKE_PREFIX_PATH (find_package CONFIG) and does not FetchContent a second
+# abseil_dll. Target pin for pdfium_all alignment: 20260107.1.
 
 include(FetchContent)
 
@@ -30,17 +31,38 @@ function(mps_fetch_protobuf)
   set(utf8_range_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
 
   set(MPS_ABSEIL_PIN_PREFIX "" CACHE PATH
-    "AbseilPin install prefix (…/prefix/20240116.0). Empty = protobuf builds its own abseil")
+    "AbseilPin install prefix (…/prefix/20260107.1). Empty = protobuf FetchContent its own abseil")
+
+  # Sibling default when unset: prefer pdfium-aligned pin if built.
+  if(NOT MPS_ABSEIL_PIN_PREFIX OR MPS_ABSEIL_PIN_PREFIX STREQUAL "")
+    if(DEFINED MPS_ROOT AND NOT MPS_ROOT STREQUAL "")
+      set(_mps_pin_root "${MPS_ROOT}")
+    else()
+      set(_mps_pin_root "${CMAKE_SOURCE_DIR}")
+    endif()
+    set(_mps_sibling_pin "${_mps_pin_root}/../AbseilPin/prefix/20260107.1")
+    if(EXISTS "${_mps_sibling_pin}/lib/cmake/absl/abslConfig.cmake")
+      set(MPS_ABSEIL_PIN_PREFIX "${_mps_sibling_pin}" CACHE PATH
+        "AbseilPin install prefix (…/prefix/20260107.1). Empty = protobuf FetchContent its own abseil"
+        FORCE)
+      message(STATUS "MPS: auto MPS_ABSEIL_PIN_PREFIX=${MPS_ABSEIL_PIN_PREFIX}")
+    endif()
+  endif()
+
   if(MPS_ABSEIL_PIN_PREFIX AND NOT MPS_ABSEIL_PIN_PREFIX STREQUAL "")
     list(PREPEND CMAKE_PREFIX_PATH "${MPS_ABSEIL_PIN_PREFIX}")
+    set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" PARENT_SCOPE)
+    # protobuf ≥v33: no protobuf_ABSL_PROVIDER; find_package(absl CONFIG) via PREFIX_PATH.
+    set(protobuf_FORCE_FETCH_DEPENDENCIES OFF CACHE BOOL "" FORCE)
+    # Legacy flag (ignored by ≥v33); keep for older tags if someone retargets GIT_TAG.
     set(protobuf_ABSL_PROVIDER "package" CACHE STRING "" FORCE)
-    message(STATUS "MPS: using AbseilPin from ${MPS_ABSEIL_PIN_PREFIX} (protobuf_ABSL_PROVIDER=package)")
+    message(STATUS "MPS: using AbseilPin from ${MPS_ABSEIL_PIN_PREFIX}")
   endif()
 
   FetchContent_Declare(
     protobuf
     GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
-    GIT_TAG        v29.3
+    GIT_TAG        v35.1
     GIT_SHALLOW    TRUE
     UPDATE_DISCONNECTED TRUE
   )
@@ -49,6 +71,16 @@ function(mps_fetch_protobuf)
 
   if(NOT TARGET protobuf::libprotobuf)
     message(FATAL_ERROR "FetchContent protobuf did not provide protobuf::libprotobuf")
+  endif()
+
+  # Pin abseil is not built into _deps; stage next to build/bin so demos and the
+  # protoc PATH prefix can load it (ambient PATH may contain a foreign abseil_dll).
+  if(WIN32 AND MPS_ABSEIL_PIN_PREFIX AND NOT MPS_ABSEIL_PIN_PREFIX STREQUAL "")
+    set(_mps_pin_absl_dll "${MPS_ABSEIL_PIN_PREFIX}/bin/abseil_dll.dll")
+    if(EXISTS "${_mps_pin_absl_dll}")
+      file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+      file(COPY "${_mps_pin_absl_dll}" DESTINATION "${CMAKE_BINARY_DIR}/bin")
+    endif()
   endif()
 
   # Ensure protobuf_generate() can find protoc from the fetched build.

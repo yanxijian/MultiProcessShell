@@ -23,7 +23,7 @@ Phase-1 platform: **Windows (form A)**; macOS / Linux directories are placeholde
 |------|--------|
 | Qt | **6.8+** for Demo / Host (protocol-only tests can skip Qt) |
 | Toolchain | CMake, Ninja, Python 3; MSVC x64 (`vcvars`) on Windows |
-| Deps | Protobuf (optionally via CMake FetchContent) |
+| Deps | Protobuf **v35.1** (FetchContent); preferred [AbseilPin](https://github.com/yanxijian/AbseilPin) `20260107.1` (`-DMPS_ABSEIL_PIN_PREFIX=`, sibling auto-detect) |
 | Optional | `clang-format` 20 for local format checks |
 
 ## Quick start (Windows)

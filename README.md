@@ -23,7 +23,7 @@ C++/Qt 多进程壳：**Host 壳框 + Client 原生窗嵌入 + Protobuf IPC**。
 |----|------|
 | Qt | **6.8+**（编 Demo / Host；纯协议单测可不装 Qt） |
 | 工具链 | CMake、Ninja、Python 3；Windows 上 MSVC x64（`vcvars`） |
-| 依赖 | Protobuf（可由 CMake FetchContent 拉取）；可选 [AbseilPin](https://github.com/yanxijian/AbseilPin) 共享 `abseil_dll`（`-DMPS_ABSEIL_PIN_PREFIX=`） |
+| 依赖 | Protobuf **v35.1**（FetchContent）；默认/推荐 [AbseilPin](https://github.com/yanxijian/AbseilPin) `20260107.1`（`-DMPS_ABSEIL_PIN_PREFIX=`，旁路可自动探测） |
 | 可选 | `clang-format` 20（本地格式检查） |
 
 ## 快速开始（Windows）
