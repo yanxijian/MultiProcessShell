@@ -12,6 +12,7 @@
 #include <QApplication>
 #include <QColor>
 #include <QCommandLineParser>
+#include <QCoreApplication>
 #include <QDir>
 
 #include <memory>
@@ -58,6 +59,8 @@ int main(int argc, char* argv[])
 	SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 #endif
 	QApplication app(argc, argv);
+	QCoreApplication::setOrganizationName(QStringLiteral("yanxijian"));
+	QCoreApplication::setApplicationName(QStringLiteral("mps_demo_client"));
 	QCommandLineParser parser;
 	parser.addHelpOption();
 	QCommandLineOption fromHost(QStringLiteral("from-host"));

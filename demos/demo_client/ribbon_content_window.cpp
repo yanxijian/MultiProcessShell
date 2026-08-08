@@ -1,5 +1,6 @@
-#include "ribbon_content_window.hpp"
+﻿#include "ribbon_content_window.hpp"
 
+#include "demo_settings.hpp"
 #include "qfluentribbon/qfluentribbon.hpp"
 
 #include <QAction>
@@ -7,7 +8,6 @@
 #include <QHash>
 #include <QLabel>
 #include <QPushButton>
-#include <QSettings>
 #include <QStyle>
 #include <QTabBar>
 #include <QTimer>
@@ -247,11 +247,11 @@ namespace mps::demo
 
 		if (qat)
 		{
-			QSettings settings(QStringLiteral("yanxijian"), QStringLiteral("mps_demo_client"));
+			QSettings settings = mps::demos::makeDemoSettings(QStringLiteral("mps_demo_client"));
 			connect(qat, &qfluentribbon::QuickAccessBar::actionsChanged, this,
 					[qat, status]()
 					{
-						QSettings s(QStringLiteral("yanxijian"), QStringLiteral("mps_demo_client"));
+						QSettings s = mps::demos::makeDemoSettings(QStringLiteral("mps_demo_client"));
 						qat->saveState(s);
 						status->setText(QStringLiteral("QAT updated (%1 pinned)").arg(qat->actions().size()));
 					});

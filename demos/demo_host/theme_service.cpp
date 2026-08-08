@@ -1,15 +1,14 @@
 ﻿#include "theme_service.hpp"
 
+#include "demo_settings.hpp"
 #include "qtheme/api.hpp"
 
 #include <QApplication>
-#include <QSettings>
+
 namespace mps::demo_host
 {
 	namespace
 	{
-		constexpr auto kOrg = "yanxijian";
-		constexpr auto kApp = "mps_demo_host";
 		constexpr auto kSchemeKey = "appearance/colorScheme";
 	} // namespace
 
@@ -47,7 +46,7 @@ namespace mps::demo_host
 
 	mps::theme::Scheme ThemeService::loadPersistedOrDefault() const
 	{
-		QSettings settings(QString::fromUtf8(kOrg), QString::fromUtf8(kApp));
+		QSettings settings = mps::demos::makeDemoSettings(QStringLiteral("mps_demo_host"));
 		const QByteArray raw = settings.value(QString::fromUtf8(kSchemeKey), QStringLiteral("light")).toString().toUtf8();
 		mps::theme::Scheme wire = mps::theme::Scheme::Light;
 		if (!mps::theme::fromParams(raw, &wire))
@@ -59,7 +58,7 @@ namespace mps::demo_host
 
 	void ThemeService::persist(mps::theme::Scheme scheme) const
 	{
-		QSettings settings(QString::fromUtf8(kOrg), QString::fromUtf8(kApp));
+		QSettings settings = mps::demos::makeDemoSettings(QStringLiteral("mps_demo_host"));
 		settings.setValue(QString::fromUtf8(kSchemeKey), QString::fromUtf8(mps::theme::toParams(scheme)));
 	}
 } // namespace mps::demo_host

@@ -1,4 +1,5 @@
 add_executable(mps_demo_host
+  demo_settings.hpp
   demo_host/main.cpp
   demo_host/home_content.cpp
   demo_host/home_content.hpp
@@ -6,9 +7,11 @@ add_executable(mps_demo_host
   demo_host/theme_service.hpp
 )
 target_link_libraries(mps_demo_host PRIVATE mps::host ${MPS_QTE_TARGET})
+target_include_directories(mps_demo_host PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 set_target_properties(mps_demo_host PROPERTIES AUTOMOC ON)
 
 add_executable(mps_demo_client
+  demo_settings.hpp
   demo_client/main.cpp
   demo_client/ribbon_content_window.cpp
   demo_client/ribbon_content_window.hpp
@@ -16,6 +19,7 @@ add_executable(mps_demo_client
   demo_client/ribbon_content_view.hpp
 )
 target_link_libraries(mps_demo_client PRIVATE mps::client ${MPS_QFR_TARGET} ${MPS_QTE_TARGET})
+target_include_directories(mps_demo_client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 set_target_properties(mps_demo_client PROPERTIES AUTOMOC ON)
 
 # GUI subsystem: no extra console window on double-click (Windows).
