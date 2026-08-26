@@ -24,6 +24,9 @@ namespace mps::client
 		virtual void syncAfterEmbed()
 		{
 		}
+		virtual void activate()
+		{
+		}
 		virtual void applyTheme(mps::theme::Scheme)
 		{
 		}

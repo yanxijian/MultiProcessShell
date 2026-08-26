@@ -33,6 +33,10 @@
 #include <cmath>
 #include <vector>
 
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
+
 namespace mps::host
 {
 	namespace
@@ -2019,6 +2023,36 @@ namespace mps::host
 		// Route through ShellApp so tabs/sessions/shells_ stay consistent.
 		event->ignore();
 		emit shellCloseRequested(this);
+	}
+
+	bool ShellWindow::nativeEvent(const QByteArray& eventType, void* message, qintptr* result)
+	{
+#ifdef Q_OS_WIN
+		if (eventType == QByteArrayLiteral("windows_generic_MSG") || eventType == QByteArrayLiteral("windows_dispatcher_MSG"))
+		{
+			const auto* msg = static_cast<const MSG*>(message);
+			const quintptr clientWindow = m_embed ? m_embed->activeClientWindow() : 0;
+			if (msg && clientWindow
+				&& (msg->message == WM_KEYDOWN || msg->message == WM_KEYUP || msg->message == WM_CHAR || msg->message == WM_SYSKEYDOWN
+					|| msg->message == WM_SYSKEYUP || msg->message == WM_SYSCHAR))
+			{
+				if (msg->message != WM_KEYDOWN || msg->wParam != 'F' || (GetKeyState(VK_CONTROL) & 0x8000) == 0)
+				{
+					PostMessageW(reinterpret_cast<HWND>(clientWindow), msg->message, msg->wParam, msg->lParam);
+					if (result)
+					{
+						*result = 0;
+					}
+					return true;
+				}
+			}
+		}
+#else
+		Q_UNUSED(eventType);
+		Q_UNUSED(message);
+		Q_UNUSED(result);
+#endif
+		return QMainWindow::nativeEvent(eventType, message, result);
 	}
 
 	bool ShellWindow::eventFilter(QObject* watched, QEvent* event)

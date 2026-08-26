@@ -11,6 +11,10 @@
 
 namespace mps::host
 {
+#ifdef Q_OS_WIN
+	static void focusClientWindow(HWND child);
+#endif
+
 	EmbedContainer::EmbedContainer(QWidget* parent)
 		: QWidget(parent)
 	{
@@ -101,6 +105,27 @@ namespace mps::host
 			return;
 		}
 		setClientWindow(wid);
+#ifdef Q_OS_WIN
+		const HWND child = reinterpret_cast<HWND>(m_clientWid);
+		const DWORD hostThreadId = GetCurrentThreadId();
+		const DWORD clientThreadId = GetWindowThreadProcessId(child, nullptr);
+		if (m_attachedClientThreadId != 0 && m_attachedClientThreadId != clientThreadId)
+		{
+			AttachThreadInput(hostThreadId, m_attachedClientThreadId, FALSE);
+			m_attachedClientThreadId = 0;
+		}
+		if (clientThreadId != 0 && clientThreadId != hostThreadId && m_attachedClientThreadId == 0
+			&& AttachThreadInput(hostThreadId, clientThreadId, TRUE))
+		{
+			m_attachedClientThreadId = clientThreadId;
+		}
+		const HWND host = GetAncestor(reinterpret_cast<HWND>(winId()), GA_ROOT);
+		if (host && IsWindowVisible(host))
+		{
+			SetForegroundWindow(host);
+		}
+		focusClientWindow(child);
+#endif
 	}
 
 	void EmbedContainer::clearActive(bool hide)
@@ -169,6 +194,11 @@ namespace mps::host
 	void EmbedContainer::clearClientWindow(bool hide)
 	{
 #ifdef Q_OS_WIN
+		if (m_attachedClientThreadId != 0)
+		{
+			AttachThreadInput(GetCurrentThreadId(), m_attachedClientThreadId, FALSE);
+			m_attachedClientThreadId = 0;
+		}
 		if (m_clientWid && IsWindow(reinterpret_cast<HWND>(m_clientWid)))
 		{
 			const HWND child = reinterpret_cast<HWND>(m_clientWid);
@@ -187,6 +217,13 @@ namespace mps::host
 	void EmbedContainer::releaseClientWindow()
 	{
 		// Caller will reparent; avoid Hide to reduce flash during tear-out/merge.
+#ifdef Q_OS_WIN
+		if (m_attachedClientThreadId != 0)
+		{
+			AttachThreadInput(GetCurrentThreadId(), m_attachedClientThreadId, FALSE);
+			m_attachedClientThreadId = 0;
+		}
+#endif
 		m_clientWid = 0;
 	}
 
@@ -221,8 +258,18 @@ namespace mps::host
 		{
 			return;
 		}
-		ShowWindow(hwnd, SW_SHOWNA);
+		ShowWindow(hwnd, SW_SHOW);
 		EnableWindow(hwnd, TRUE);
+	}
+
+	static void focusClientWindow(HWND child)
+	{
+		if (!child || !IsWindow(child))
+		{
+			return;
+		}
+
+		SetFocus(child);
 	}
 #endif
 
@@ -251,7 +298,7 @@ namespace mps::host
 		const HWND host = reinterpret_cast<HWND>(winId());
 		const HWND child = reinterpret_cast<HWND>(m_clientWid);
 		LONG_PTR style = GetWindowLongPtrW(child, GWL_STYLE);
-		style |= WS_CHILD;
+		style |= WS_CHILD | WS_TABSTOP;
 		style &= ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_BORDER | WS_DLGFRAME);
 		SetWindowLongPtrW(child, GWL_STYLE, style);
 
@@ -260,7 +307,7 @@ namespace mps::host
 		SetWindowLongPtrW(child, GWL_EXSTYLE, ex);
 
 		SetParent(child, host);
-		SetWindowPos(child, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
+		SetWindowPos(child, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 		ensureWindowShown(child);
 		syncClientGeometry();
 		InvalidateRect(child, nullptr, FALSE);
@@ -288,7 +335,7 @@ namespace mps::host
 		GetClientRect(host, &rc);
 		const int w = qMax(1, static_cast<int>(rc.right - rc.left));
 		const int h = qMax(1, static_cast<int>(rc.bottom - rc.top));
-		SetWindowPos(child, nullptr, 0, 0, w, h, SWP_NOZORDER | SWP_SHOWWINDOW | SWP_NOACTIVATE);
+		SetWindowPos(child, nullptr, 0, 0, w, h, SWP_NOZORDER | SWP_SHOWWINDOW);
 #else
 		Q_UNUSED(this);
 #endif

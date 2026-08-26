@@ -327,6 +327,7 @@ namespace mps::client
 			w->show();
 		}
 		m_active = view;
+		view->activate();
 	}
 
 	void ClientApp::onEnvelope(mps::ipc::EnvelopePtr env)

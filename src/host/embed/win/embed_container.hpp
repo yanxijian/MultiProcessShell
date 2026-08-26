@@ -36,6 +36,10 @@ namespace mps::host
 
 		void resyncActive();
 		[[nodiscard]] QPixmap grabContent(qint64 tabId, QSize maxSize);
+		[[nodiscard]] quintptr activeClientWindow() const
+		{
+			return m_clientWid;
+		}
 
 	protected:
 		void resizeEvent(QResizeEvent* event) override;
@@ -52,6 +56,9 @@ namespace mps::host
 		mps::tab_strip::TabEmbedMap m_bindings;
 		quintptr m_clientWid = 0;
 		qint64 m_activeTabId = 0;
+#ifdef Q_OS_WIN
+		unsigned long m_attachedClientThreadId = 0;
+#endif
 	};
 } // namespace mps::host
 
