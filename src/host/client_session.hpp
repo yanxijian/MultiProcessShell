@@ -86,11 +86,13 @@ namespace mps::host
 		void startHeartbeatWatch();
 		void stopHeartbeatWatch();
 		void onHeartbeatWatchTick();
+		void onHandshakeTimeout();
 
 		int m_instanceIndex = 0;
 		qint64 m_sessionId = 0;
 		QString m_endpoint;
 		QString m_requestNewContentViewMethod;
+		QString m_expectedAuthToken;
 		bool m_ready = false;
 		bool m_helloSeen = false;
 		bool m_dead = false;
@@ -98,6 +100,7 @@ namespace mps::host
 		bool m_heartbeatNegotiated = false;
 		qint64 m_lastHeartbeatMs = 0;
 		QTimer* m_heartbeatWatch = nullptr;
+		QTimer* m_handshakeTimer = nullptr;
 		QProcess* m_process = nullptr;
 		QLocalSocket* m_socket = nullptr;
 		std::unique_ptr<mps::ipc::EnvelopeChannel> m_channel;

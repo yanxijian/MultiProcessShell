@@ -10,7 +10,6 @@
 #include <QGuiApplication>
 #include <QLocalSocket>
 #include <QScreen>
-#include <QThread>
 #include <QTimer>
 #include <QWidget>
 #include <QWindow>
@@ -79,15 +78,15 @@ namespace mps::client
 		m_channel->send(env);
 	}
 
-	bool ClientApp::connectToHost()
+	void ClientApp::connectToHost()
 	{
 		m_socket = new QLocalSocket(this);
-		m_socket->connectToServer(m_endpoint);
-		if (!m_socket->waitForConnected(5000))
-		{
-			qWarning("connect failed: %s", qPrintable(m_socket->errorString()));
-			return false;
-		}
+		connect(m_socket, &QLocalSocket::connected, this, &ClientApp::sendHello);
+		connect(m_socket, &QLocalSocket::errorOccurred, this,
+				[this](QLocalSocket::LocalSocketError)
+				{
+					failConnection(m_socket ? m_socket->errorString() : QStringLiteral("socket error"));
+				});
 		m_channel = std::make_unique<mps::ipc::EnvelopeChannel>(m_socket, this);
 		m_channel->setHandler(
 			[this](mps::ipc::EnvelopePtr env)
@@ -98,18 +97,44 @@ namespace mps::client
 				[this]
 				{
 					stopHeartbeatTimer();
-					qApp->quit();
+					if (!m_connectionReady)
+					{
+						failConnection(QStringLiteral("disconnected before HelloAck"));
+					}
+					else if (qApp)
+					{
+						qApp->quit();
+					}
 				});
-		// Give Host a moment to attach the socket and set the Envelope handler.
-		QThread::msleep(150);
-		if (!m_socket || m_socket->state() != QLocalSocket::ConnectedState)
+		m_handshakeTimer = new QTimer(this);
+		m_handshakeTimer->setSingleShot(true);
+		m_handshakeTimer->setInterval(5000);
+		connect(m_handshakeTimer, &QTimer::timeout, this,
+				[this]
+				{
+					failConnection(QStringLiteral("HelloAck timeout"));
+				});
+		m_handshakeTimer->start();
+		m_socket->connectToServer(m_endpoint);
+	}
+
+	void ClientApp::failConnection(const QString& reason)
+	{
+		if (m_connectionReady)
 		{
-			qWarning("disconnected before Hello");
-			return false;
+			return;
 		}
-		sendHello();
-		m_socket->flush();
-		return true;
+		if (m_connectionFailed)
+		{
+			return;
+		}
+		m_connectionFailed = true;
+		if (m_handshakeTimer)
+		{
+			m_handshakeTimer->stop();
+		}
+		qWarning("ClientApp connection failed: %s", qPrintable(reason));
+		emit connectionFailed(reason);
 	}
 
 	void ClientApp::startHeartbeatTimer()
@@ -161,6 +186,7 @@ namespace mps::client
 		hello->set_pid(static_cast<uint32_t>(QCoreApplication::applicationPid()));
 #endif
 		hello->set_app_name(m_appName.toStdString());
+		hello->set_auth_token(m_token.toStdString());
 		auto* caps = hello->mutable_caps();
 		caps->set_embed(shell::ipc::v1::EMBED_HWND);
 		caps->set_tab_drag(true);
@@ -338,6 +364,15 @@ namespace mps::client
 		}
 		if (env->has_hello_ack())
 		{
+			if (m_handshakeTimer)
+			{
+				m_handshakeTimer->stop();
+			}
+			if (!m_connectionReady)
+			{
+				m_connectionReady = true;
+				emit connectionReady();
+			}
 			if (m_enableHeartbeat && env->hello_ack().host_caps().heartbeat())
 			{
 				startHeartbeatTimer();

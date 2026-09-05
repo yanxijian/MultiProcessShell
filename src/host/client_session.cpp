@@ -49,6 +49,7 @@ namespace mps::host
 
 	void ClientSession::startClientProcess(const QString& clientExe, const QString& token)
 	{
+		m_expectedAuthToken = token;
 		m_process = new QProcess(this);
 		connect(m_process, &QProcess::finished, this,
 				[this](int, QProcess::ExitStatus)
@@ -99,6 +100,23 @@ namespace mps::host
 				{
 					markDead();
 				});
+		if (!m_handshakeTimer)
+		{
+			m_handshakeTimer = new QTimer(this);
+			m_handshakeTimer->setSingleShot(true);
+			m_handshakeTimer->setInterval(5000);
+			connect(m_handshakeTimer, &QTimer::timeout, this, &ClientSession::onHandshakeTimeout);
+		}
+		m_handshakeTimer->start();
+	}
+
+	void ClientSession::onHandshakeTimeout()
+	{
+		if (!m_helloSeen)
+		{
+			qWarning("ClientSession %lld: Hello timeout", static_cast<long long>(m_sessionId));
+			markDead();
+		}
 	}
 
 	void ClientSession::markDead()
@@ -108,6 +126,10 @@ namespace mps::host
 			return;
 		}
 		m_dead = true;
+		if (m_handshakeTimer)
+		{
+			m_handshakeTimer->stop();
+		}
 		stopHeartbeatWatch();
 		emit sessionDead(this);
 	}
@@ -290,7 +312,17 @@ namespace mps::host
 		}
 		if (env->has_hello() && !m_helloSeen)
 		{
+			if (QString::fromStdString(env->hello().auth_token()) != m_expectedAuthToken)
+			{
+				qWarning("ClientSession %lld: invalid Hello token", static_cast<long long>(m_sessionId));
+				markDead();
+				return;
+			}
 			m_helloSeen = true;
+			if (m_handshakeTimer)
+			{
+				m_handshakeTimer->stop();
+			}
 			m_heartbeatNegotiated = env->hello().caps().heartbeat();
 			sendHelloAck();
 			emit sessionHelloOk(this);

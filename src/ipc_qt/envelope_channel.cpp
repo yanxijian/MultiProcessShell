@@ -15,10 +15,20 @@ namespace mps::ipc
 		Q_ASSERT(m_device);
 		if (auto* ls = qobject_cast<QLocalSocket*>(m_device))
 		{
-			connect(ls, &QLocalSocket::disconnected, this, &EnvelopeChannel::disconnected);
+			connect(ls, &QLocalSocket::disconnected, this, &EnvelopeChannel::notifyDisconnected);
 		}
 		// Do not connect readyRead until setHandler: otherwise a Hello that arrives in the
 		// race window is parsed with a null handler and dropped (bytes already consumed).
+	}
+
+	void EnvelopeChannel::notifyDisconnected()
+	{
+		if (m_disconnectedNotified)
+		{
+			return;
+		}
+		m_disconnectedNotified = true;
+		emit disconnected();
 	}
 
 	void EnvelopeChannel::setHandler(Handler handler)
@@ -89,6 +99,11 @@ namespace mps::ipc
 			if (st == FrameError::PayloadTooLarge)
 			{
 				m_decoder.reset();
+				if (m_device->isOpen())
+				{
+					m_device->close();
+				}
+				notifyDisconnected();
 				break;
 			}
 			auto env = parseEnvelope(payload);

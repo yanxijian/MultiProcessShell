@@ -12,10 +12,11 @@
 
 #include <functional>
 #include <memory>
+#include <mps/mps_client_export.hpp>
 
 namespace mps::client
 {
-	class ClientApp final : public QObject
+	class MPS_CLIENT_EXPORT ClientApp final : public QObject
 	{
 		Q_OBJECT
 	public:
@@ -23,7 +24,7 @@ namespace mps::client
 
 		ClientApp(QString endpoint, QString token, ContentViewFactory factory, bool enableHeartbeat = true, QObject* parent = nullptr);
 		~ClientApp() override;
-		[[nodiscard]] bool connectToHost();
+		void connectToHost();
 		/// Optional: apply process-wide appearance (e.g. QTE) before any view exists.
 		void setAppearanceHandler(AppearanceHandler handler)
 		{
@@ -46,6 +47,10 @@ namespace mps::client
 			m_invokeHandler = std::move(handler);
 		}
 
+	signals:
+		void connectionReady();
+		void connectionFailed(QString reason);
+
 	private:
 		void applyThemeScheme(mps::theme::Scheme scheme);
 		void requestThemeFromHost(mps::theme::Scheme scheme, qint64 tabId);
@@ -58,6 +63,7 @@ namespace mps::client
 		void createView(qint64 tabId, const QString& title);
 		void closeView(qint64 tabId);
 		void activateView(qint64 tabId);
+		void failConnection(const QString& reason);
 
 		QString m_endpoint;
 		QString m_token;
@@ -68,9 +74,12 @@ namespace mps::client
 		InvokeHandler m_invokeHandler;
 		bool m_enableHeartbeat = true;
 		bool m_heartbeatArmed = false;
+		bool m_connectionFailed = false;
 		QLocalSocket* m_socket = nullptr;
 		std::unique_ptr<mps::ipc::EnvelopeChannel> m_channel;
 		QTimer* m_heartbeatTimer = nullptr;
+		QTimer* m_handshakeTimer = nullptr;
+		bool m_connectionReady = false;
 		bool m_mainWindowAddedSent = false;
 		QHash<qint64, ContentView*> m_views;
 		ContentView* m_active = nullptr;

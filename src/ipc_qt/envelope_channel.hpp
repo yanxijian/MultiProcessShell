@@ -41,11 +41,14 @@ namespace mps::ipc
 		void onReadyRead();
 
 	private:
+		void notifyDisconnected();
+
 		QIODevice* m_device = nullptr;
 		FrameDecoder m_decoder;
 		Handler m_handler;
 		QByteArray m_readBuf;
 		bool m_readyReadHooked = false;
+		bool m_disconnectedNotified = false;
 	};
 
 	[[nodiscard]] std::string newCorrelationId();
