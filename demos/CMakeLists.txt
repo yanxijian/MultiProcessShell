@@ -67,6 +67,20 @@ if(WIN32 AND MPS_BUILD_SHARED)
         )
       endif()
     endforeach()
+    # AbseilPin often has no CMake target in this scope — copy DLL by install path.
+    if(MPS_ABSEIL_PIN_PREFIX AND NOT MPS_ABSEIL_PIN_PREFIX STREQUAL "")
+      set(_mps_pin_absl_dll "${MPS_ABSEIL_PIN_PREFIX}/bin/abseil_dll.dll")
+      if(EXISTS "${_mps_pin_absl_dll}")
+        list(APPEND _mps_demo_dll_copy_cmds
+          COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                  "${_mps_pin_absl_dll}"
+                  $<TARGET_FILE_DIR:mps_demo_host>
+          COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                  "${_mps_pin_absl_dll}"
+                  $<TARGET_FILE_DIR:mps_demo_client>
+        )
+      endif()
+    endif()
   endif()
   add_custom_command(TARGET mps_demo_host POST_BUILD
     ${_mps_demo_dll_copy_cmds}
