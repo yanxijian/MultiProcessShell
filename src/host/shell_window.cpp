@@ -21,6 +21,7 @@
 #include <QPaintEvent>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPen>
 #include <QPalette>
 #include <QPointer>
 #include <QPropertyAnimation>
@@ -126,9 +127,33 @@ namespace mps::host
 			p.setRenderHint(QPainter::Antialiasing, false);
 			p.setPen(Qt::NoPen);
 			p.setBrush(Qt::color1);
-			p.drawRoundedRect(0, 0, size.width() - 1, size.height() - 1, radius, radius);
+			p.drawRoundedRect(0, 0, size.width(), size.height(), radius, radius);
 			return bm;
 		}
+
+#ifdef Q_OS_WIN
+		/// Win10 DWM paints WS_THICKFRAME in the *system* chrome color (light
+		/// ~#B4B4B4, or a pale band when the app is dark). Win11-only
+		/// DWMWA_BORDER_COLOR is ignored. Turn off DWM NC rendering and sync
+		/// immersive dark mode; we draw the 1px stroke ourselves.
+		void applyWin32ShellFrame(HWND hwnd, bool dark)
+		{
+			if (!hwnd)
+			{
+				return;
+			}
+			const DWMNCRENDERINGPOLICY ncPolicy = DWMNCRP_DISABLED;
+			DwmSetWindowAttribute(hwnd, DWMWA_NCRENDERING_POLICY, &ncPolicy, sizeof(ncPolicy));
+			const BOOL immersive = dark ? TRUE : FALSE;
+			DwmSetWindowAttribute(hwnd, 20, &immersive, sizeof(immersive));
+			DwmSetWindowAttribute(hwnd, 19, &immersive, sizeof(immersive));
+			const DWORD borderNone = 0xFFFFFFFE;
+			DwmSetWindowAttribute(hwnd, 34, &borderNone, sizeof(borderNone));
+			const MARGINS margins{0, 0, 0, 0};
+			DwmExtendFrameIntoClientArea(hwnd, &margins);
+			SetWindowPos(hwnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+		}
+#endif
 
 		/// Central root paints the frame stroke in its own gutter. No sibling overlay:
 		/// a full-window overlay is treated as opaque by Qt and covers the native
@@ -156,60 +181,41 @@ namespace mps::host
 			void paintEvent(QPaintEvent* event) override
 			{
 				QWidget::paintEvent(event);
+				// Always paint the gutter: after activation / embed, Qt may skip
+				// auto-fill on the pad band and DWM's system chrome shows through.
+				QPainter painter(this);
+				painter.setRenderHint(QPainter::Antialiasing, m_radius > 0);
+				painter.setPen(Qt::NoPen);
+				painter.setBrush(palette().color(backgroundRole()));
+				painter.drawRect(rect());
 				if (m_borderWidth <= 0 || width() <= 0 || height() <= 0)
 				{
 					return;
 				}
-				QPainter painter(this);
-				// No AA: opaque shell cannot blend against desktop; AA fringe looks like leak.
-				painter.setRenderHint(QPainter::Antialiasing, false);
-				painter.setPen(Qt::NoPen);
-				// The border is a fill-subtract ring, not a stroked outline, and both
-				// the ring and the window region are rasterized at NATIVE pixel
-				// resolution: geometry is computed in physical pixels (the same numbers
-				// applyNativeWindowRegion rasterizes) and expressed as exact logical
-				// reals, so with the painter's DPR transform the rasterizer lands on the
-				// same physical pixels as the region - uniform 1-px corner steps instead
-				// of the logical-grid staircase a stroked or integer-logical ring would
-				// produce (and that the region clipped, leaving broken corners).
-				const qreal dpr = devicePixelRatioF() > 0.0 ? devicePixelRatioF() : 1.0;
-				const int physW = qRound(width() * dpr);
-				const int physH = qRound(height() * dpr);
-				const int physR = m_radius > 0 ? qMax(1, qRound(m_radius * dpr)) : 0;
-				const int physBW = qMax(1, qRound(m_borderWidth * dpr));
-				const QRectF outer(0.0, 0.0, (physW - 1) / dpr, (physH - 1) / dpr);
-				const QRectF inner = outer.adjusted(physBW / dpr, physBW / dpr, -physBW / dpr, -physBW / dpr);
-				const auto fillOutline = [&painter, dpr, physR](const QRectF& r)
+				// Single stroked path: even-odd fill of two rounded rects is 1px
+				// short on right/bottom and leaves gaps at the arcs. Inset by
+				// half the pen so all four sides rasterize to the same thickness
+				// and the stroke stays inside the HWND region (no clipped corners).
+				const qreal bw = qMax(1, m_borderWidth);
+				const qreal half = bw / 2.0;
+				QRectF r = QRectF(rect()).adjusted(half, half, -half, -half);
+				if (!r.isValid())
 				{
-					if (physR > 0)
-					{
-						painter.drawRoundedRect(r, physR / dpr, physR / dpr);
-					}
-					else
-					{
-						painter.drawRect(r);
-					}
-				};
-				if (!inner.isValid())
-				{
-					// Window smaller than twice the border: show a solid fill.
-					painter.setBrush(m_borderColor);
-					fillOutline(outer);
 					return;
 				}
-				painter.setBrush(m_borderColor);
-				fillOutline(outer);
-				// Knock out the interior with the window fill; children (title bar /
-				// stack) paint on top afterwards, so only the gutter shows this.
-				painter.setBrush(palette().color(backgroundRole()));
-				const int physInnerR = qMax(0, physR - physBW);
-				if (physInnerR > 0)
+				QPen pen(m_borderColor, bw);
+				pen.setJoinStyle(Qt::RoundJoin);
+				pen.setCapStyle(Qt::RoundCap);
+				painter.setPen(pen);
+				painter.setBrush(Qt::NoBrush);
+				if (m_radius > 0)
 				{
-					painter.drawRoundedRect(inner, physInnerR / dpr, physInnerR / dpr);
+					const qreal rad = qMax(0.0, static_cast<qreal>(m_radius) - half);
+					painter.drawRoundedRect(r, rad, rad);
 				}
 				else
 				{
-					painter.drawRect(inner);
+					painter.drawRect(r);
 				}
 			}
 
@@ -518,17 +524,7 @@ namespace mps::host
 		{
 			const LONG_PTR style = GetWindowLongPtrW(hwnd, GWL_STYLE);
 			SetWindowLongPtrW(hwnd, GWL_STYLE, style | WS_MAXIMIZEBOX | WS_THICKFRAME);
-			// THICKFRAME makes DWM draw its own window border. Normally the
-			// rounded SetWindowRgn from applyNativeWindowRegion masks it, but
-			// Qt clears the region on internal paths (e.g. handleDpiChanged)
-			// that do not route through our changeEvent refresh — the DWM
-			// border then shows up as an alien-colored band around the window
-			// (verified: 48px black band after insert/drag interactions).
-			// Disable DWM's border outright (Win11 22000+; older systems
-			// reject the attribute harmlessly). DWMWA_BORDER_COLOR = 34,
-			// DWMWA_COLOR_NONE = 0xFFFFFFFE.
-			const DWORD borderNone = 0xFFFFFFFE;
-			DwmSetWindowAttribute(hwnd, 34, &borderNone, sizeof(borderNone));
+			applyWin32ShellFrame(hwnd, QApplication::palette().color(QPalette::Window).lightness() < 128);
 		}
 #endif
 
@@ -593,6 +589,7 @@ namespace mps::host
 		m_embed = new EmbedContainer(m_stack);
 		m_stack->addWidget(m_homeSlot);
 		m_stack->addWidget(m_embed);
+		connect(m_embed, &EmbedContainer::embedHostChanged, this, &ShellWindow::scheduleRenderHeal);
 
 		m_rootLay->addWidget(m_titleBar);
 		m_rootLay->addWidget(titleSep);
@@ -733,11 +730,88 @@ namespace mps::host
 		return windowFrameStroke(QApplication::palette().color(QPalette::Window), hint);
 	}
 
+	void ShellWindow::refreshNativeFrame()
+	{
+#ifdef Q_OS_WIN
+		QWindow* wh = windowHandle();
+		if (!wh)
+		{
+			return;
+		}
+		const HWND hwnd = reinterpret_cast<HWND>(wh->winId());
+		if (!hwnd)
+		{
+			return;
+		}
+		SetWindowPos(hwnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+#endif
+	}
+
+	void ShellWindow::scheduleRenderHeal()
+	{
+		if (m_renderHealPending)
+		{
+			return;
+		}
+		m_renderHealPending = true;
+		QTimer::singleShot(0, this,
+						   [this]
+						   {
+							   m_renderHealPending = false;
+							   healRenderSurface();
+						   });
+	}
+
+	void ShellWindow::healRenderSurface()
+	{
+		applyNativeWindowRegion();
+		// A synchronous full repaint is essential: after a DPI/geometry
+		// transient the OS-side damage tracking can report the pad band as
+		// clean, so update()-driven repaints never regenerate those pixels.
+		// repaint() bypasses the stale damage region and flushes the whole
+		// widget rect to the window surface (see class doc for the symptom).
+		if (m_root)
+		{
+			m_root->repaint();
+		}
+		repaint();
+		refreshNativeFrame();
+	}
+
+	bool ShellWindow::event(QEvent* event)
+	{
+		if (event)
+		{
+			switch (event->type())
+			{
+				// DPR flip (spurious WM_DPICHANGED churn observed while a
+				// client is embedded): Qt re-lays out, but the window surface
+				// keeps transient-geometry leftovers in the pad band.
+				case QEvent::DevicePixelRatioChange:
+				case QEvent::WindowBlocked:
+				case QEvent::WindowUnblocked:
+				// Alt-tab / switching back from another app: Win10 DWM
+				// repaints WS_THICKFRAME in the system chrome color. Tab
+				// switches already heal (syncWorkspace); activation must too.
+				case QEvent::ActivationChange:
+				case QEvent::WindowActivate:
+				case QEvent::WindowDeactivate:
+					scheduleRenderHeal();
+					break;
+				default:
+					break;
+			}
+		}
+		return QMainWindow::event(event);
+	}
+
 	void ShellWindow::updateFrameChrome()
 	{
 		const int bw = frameBorderWidth();
 		const int radius = frameRadius();
-		// Gutter ≥ radius so the corner stroke sits outside title/content.
+		// Gutter ≥ radius: title/stack are square and would cover the rounded
+		// stroke if inset is only 1px (broken corners). The gutter is painted
+		// Window-color by ChromeRoot so it matches the title bar (not DWM gray).
 		const int pad = radius > 0 ? qMax(bw, radius) : bw;
 		if (m_rootLay)
 		{
@@ -775,6 +849,7 @@ namespace mps::host
 		{
 			return;
 		}
+		applyWin32ShellFrame(hwnd, QApplication::palette().color(QPalette::Window).lightness() < 128);
 		const int radius = frameRadius();
 		if (radius <= 0)
 		{
@@ -792,68 +867,10 @@ namespace mps::host
 		}
 		const qreal dpr = devicePixelRatioF() > 0.0 ? devicePixelRatioF() : 1.0;
 		const int physR = qMax(1, qRound(radius * dpr));
-		QBitmap bm(QSize(physW, physH));
-		bm.fill(Qt::color0);
-		{
-			QPainter p(&bm);
-			p.setRenderHint(QPainter::Antialiasing, false);
-			p.setPen(Qt::NoPen);
-			p.setBrush(Qt::color1);
-			p.drawRoundedRect(0, 0, physW - 1, physH - 1, physR, physR);
-		}
-		// Scanline spans -> a single Win32 region (ExtCreateRegion).
-		const QImage img = bm.toImage();
-		const bool lsb = img.format() == QImage::Format_MonoLSB;
-		std::vector<RECT> spans;
-		spans.reserve(static_cast<size_t>(physH));
-		for (int y = 0; y < physH; ++y)
-		{
-			const uchar* line = img.scanLine(y);
-			int x0 = -1;
-			int x1 = -1;
-			for (int bx = 0; bx < img.bytesPerLine(); ++bx)
-			{
-				if (line[bx] == 0)
-				{
-					continue;
-				}
-				for (int bit = 0; bit < 8; ++bit)
-				{
-					const int x = bx * 8 + bit;
-					if (x >= physW)
-					{
-						break;
-					}
-					const bool on = lsb ? ((line[bx] >> bit) & 1) != 0 : ((line[bx] >> (7 - bit)) & 1) != 0;
-					if (on)
-					{
-						if (x0 < 0)
-						{
-							x0 = x;
-						}
-						x1 = x;
-					}
-				}
-			}
-			if (x0 >= 0)
-			{
-				spans.push_back(RECT{static_cast<LONG>(x0), static_cast<LONG>(y), static_cast<LONG>(x1 + 1), static_cast<LONG>(y + 1)});
-			}
-		}
-		if (spans.empty())
-		{
-			SetWindowRgn(hwnd, nullptr, TRUE);
-			return;
-		}
-		std::vector<uchar> buffer(sizeof(RGNDATAHEADER) + spans.size() * sizeof(RECT), 0);
-		auto* rd = reinterpret_cast<RGNDATA*>(buffer.data());
-		rd->rdh.dwSize = sizeof(RGNDATAHEADER);
-		rd->rdh.iType = RDH_RECTANGLES;
-		rd->rdh.nCount = static_cast<DWORD>(spans.size());
-		rd->rdh.nRgnSize = static_cast<DWORD>(spans.size() * sizeof(RECT));
-		rd->rdh.rcBound = RECT{0, 0, physW, physH};
-		std::memcpy(rd->Buffer, spans.data(), spans.size() * sizeof(RECT));
-		if (HRGN rgn = ExtCreateRegion(nullptr, static_cast<DWORD>(buffer.size()), rd))
+		// GDI round-rect region (right/bottom exclusive → +1). Matches the
+		// full HWND so the 1px stroke is not clipped on the right, bottom, or
+		// at the four arcs. Qt's QPainter bitmap of (w-1,h-1) dropped those.
+		if (HRGN rgn = CreateRoundRectRgn(0, 0, physW + 1, physH + 1, physR * 2, physR * 2))
 		{
 			if (!SetWindowRgn(hwnd, rgn, TRUE))
 			{
@@ -916,9 +933,8 @@ namespace mps::host
 				m_hitInteractiveRects.push_back(windowLocalRect(btn));
 			}
 		}
-		// Same source as updateFrameChrome()'s pad: max(border, radius); both
-		// helpers already return 0 when maximized/fullscreen, so the band tracks
-		// the window state without extra bookkeeping here.
+		// Resize grip stays at radius (not the 1px layout stroke) so edges
+		// remain hittable. Helpers already return 0 when maximized/fullscreen.
 		const int bw = frameBorderWidth();
 		const int radius = frameRadius();
 		m_hitBandThickness = radius > 0 ? qMax(bw, radius) : bw;
@@ -955,6 +971,9 @@ namespace mps::host
 		{
 			updateFrameChrome();
 			scheduleEmbedResync();
+			// Maximize/restore transitions churn the DWM frame and the window
+			// region; heal the render surface once the state has settled.
+			scheduleRenderHeal();
 		}
 	}
 
@@ -987,6 +1006,7 @@ namespace mps::host
 			m_embed->show();
 			m_embed->activate(m_activeTabId);
 			scheduleEmbedResync();
+			scheduleRenderHeal();
 		}
 	}
 
@@ -2303,19 +2323,51 @@ namespace mps::host
 #ifdef Q_OS_WIN
 		// Remove the non-client frame that WS_THICKFRAME (added in the ctor for
 		// the system snap engine — see there) would otherwise draw: client area
-		// == full window rect, frameless visuals unchanged. Returning 0 keeps the
-		// suggested rect as-is; Qt's WM_GETMINMAXINFO handling still clamps the
-		// maximized size to the work area.
-		if (eventType == QByteArrayLiteral("windows_generic_MSG"))
+		// == full window rect. Handle both Qt delivery paths and both wParam
+		// values — Win10 DefWindowProc otherwise insets ~SM_CXFRAME (~8px) in
+		// the system chrome color (light #B4B4B4 / a pale band on a dark app).
+		if (eventType == QByteArrayLiteral("windows_generic_MSG") || eventType == QByteArrayLiteral("windows_dispatcher_MSG"))
 		{
 			const auto* ncMsg = static_cast<const MSG*>(message);
-			if (ncMsg && ncMsg->message == WM_NCCALCSIZE && ncMsg->wParam)
+			if (ncMsg && ncMsg->message == WM_NCCALCSIZE)
 			{
 				if (result)
 				{
 					*result = 0;
 				}
 				return true;
+			}
+			if (ncMsg && ncMsg->message == WM_NCPAINT)
+			{
+				if (result)
+				{
+					*result = 0;
+				}
+				return true;
+			}
+			// Focus change: DefWindowProc would redraw the DWM/classic NC
+			// frame (the same band that vanishes after a tab switch). lParam
+			// -1 skips that paint; we still accept the active-state change.
+			if (ncMsg && ncMsg->message == WM_NCACTIVATE)
+			{
+				applyWin32ShellFrame(ncMsg->hwnd,
+									 QApplication::palette().color(QPalette::Window).lightness() < 128);
+				if (result)
+				{
+					*result = DefWindowProcW(ncMsg->hwnd, WM_NCACTIVATE, ncMsg->wParam, static_cast<LPARAM>(-1));
+				}
+				scheduleRenderHeal();
+				return true;
+			}
+			if (ncMsg && ncMsg->message == WM_ACTIVATE)
+			{
+				applyWin32ShellFrame(ncMsg->hwnd,
+									 QApplication::palette().color(QPalette::Window).lightness() < 128);
+				scheduleRenderHeal();
+			}
+			if (ncMsg && (ncMsg->message == WM_DWMCOMPOSITIONCHANGED || ncMsg->message == WM_THEMECHANGED))
+			{
+				scheduleRenderHeal();
 			}
 			// Region self-healing: Qt clears the window region on some internal
 			// paths (QWindowsWindow::handleDpiChanged -> SetWindowRgn(null))

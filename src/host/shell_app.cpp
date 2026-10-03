@@ -384,6 +384,7 @@ namespace mps::host
 						{
 							m_dragSource->setGeometry(m_dragSourceSavedGeometry);
 							m_dragSource->setWindowOpacity(1.0);
+							m_dragSource->healRenderSurface();
 						}
 						noteTabDragDropHandled();
 						de->acceptProposedAction();
@@ -396,6 +397,7 @@ namespace mps::host
 						clearAllDropIndicators();
 						clearAllTabYieldPreviews();
 						m_dragSource->setWindowOpacity(1.0);
+						m_dragSource->healRenderSurface();
 						m_dragSource->showMaximized();
 						noteTabDragDropHandled();
 						de->acceptProposedAction();
@@ -1041,6 +1043,7 @@ namespace mps::host
 			source->setTabDragHidden(tabId, false);
 			source->setActiveTab(tabId);
 			source->setWindowOpacity(1.0);
+			source->healRenderSurface();
 			if (m_tearOutPreview)
 			{
 				m_tearOutPreview->hide();
@@ -1821,6 +1824,7 @@ namespace mps::host
 		if (source && shellStillAlive(source))
 		{
 			source->setWindowOpacity(1.0);
+			source->healRenderSurface();
 		}
 
 		if (tabId != 0 && target && shellStillAlive(target))
@@ -1861,6 +1865,7 @@ namespace mps::host
 				m_tabDragGhost->hide();
 			}
 			m_dragSource->setWindowOpacity(1.0);
+			m_dragSource->healRenderSurface();
 			const QRect start = m_dragSource->geometry();
 			const QRect end = m_dragSourceSavedGeometry.isValid() ? m_dragSourceSavedGeometry : start;
 			m_ghostSnapBackActive = true;
@@ -1930,6 +1935,7 @@ namespace mps::host
 		if (m_dragSource)
 		{
 			m_dragSource->setWindowOpacity(1.0);
+			m_dragSource->healRenderSurface();
 		}
 		// Keep source yield until endTabDrag so slot stays stable during anim; clear others.
 		for (auto& s : m_shells)
@@ -2062,6 +2068,8 @@ namespace mps::host
 		}
 
 		source->setWindowOpacity(1.0);
+
+		source->healRenderSurface();
 
 		ClientSession* session = nullptr;
 		bool stillHere = false;
@@ -2264,6 +2272,7 @@ namespace mps::host
 				if (wasDetached && m_dragSource)
 				{
 					m_dragSource->setWindowOpacity(1.0);
+					m_dragSource->healRenderSurface();
 					if (m_dragTabId != 0)
 					{
 						m_dragSource->setTabDragHidden(m_dragTabId, false);

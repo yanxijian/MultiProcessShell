@@ -41,6 +41,11 @@ namespace mps::host
 			return m_clientWid;
 		}
 
+	signals:
+		/// Native host HWND created or Client SetParent finished — shell must
+		/// re-apply Win10 frame policy (DWM NC chrome otherwise reappears).
+		void embedHostChanged();
+
 	protected:
 		void resizeEvent(QResizeEvent* event) override;
 		void showEvent(QShowEvent* event) override;

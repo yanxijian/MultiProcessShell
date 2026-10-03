@@ -153,6 +153,25 @@ namespace mps::host
 		void setSessionUnhealthy(ClientSession* session, bool unhealthy);
 		/// Re-apply title bar / Home slot / tab chrome from the app palette (QTE in demos).
 		void applyThemeChrome();
+		/// Force DWM to rebuild this window's frame. Needed after Qt removes
+		/// WS_EX_LAYERED (setWindowOpacity back to 1.0 after a drag): the layered
+		/// toggle on a THICKFRAME window with a custom region can leave DWM
+		/// composing a stale frame (verified: dark band around the window with an
+		/// intact client render). Idempotent, cheap (no move/size/activate).
+		void refreshNativeFrame();
+		/// Full render-surface self-heal for transient native-state damage.
+		/// After DPI / geometry transients (embed SetParent storms, modal
+		/// activation changes, layered toggles, WM_DPICHANGED churn) the pad
+		/// band inside the border ring can hold stale DWM-surface pixels that
+		/// Qt's damage tracking considers clean, so ordinary repaints never
+		/// overwrite them (observed: a constant ~8px foreign-color band just
+		/// inside the border ring, its color drifting with window history).
+		/// Re-applies the rounded region (re-masks the Win10 THICKFRAME DWM
+		/// border), forces a synchronous full repaint + flush of the root (a
+		/// plain update() would be dropped by the stale damage region), then
+		/// rebuilds the DWM frame. Idempotent; call after any operation that
+		/// toggles window opacity, geometry, or embedding.
+		void healRenderSurface();
 
 	signals:
 		void tabCloseRequested(qint64 tabId);
@@ -168,6 +187,7 @@ namespace mps::host
 		void changeEvent(QEvent* event) override;
 		void resizeEvent(QResizeEvent* event) override;
 		void closeEvent(QCloseEvent* event) override;
+		bool event(QEvent* event) override;
 		bool nativeEvent(const QByteArray& eventType, void* message, qintptr* result) override;
 		bool eventFilter(QObject* watched, QEvent* event) override;
 
@@ -178,6 +198,9 @@ namespace mps::host
 		void pushActivationHistory(qint64 tabId);
 		void reinstallStripDropTargets();
 		void scheduleEmbedResync();
+		/// Coalesced healRenderSurface() on the next event-loop tick (used from
+		/// event handlers where an immediate synchronous repaint is unsafe).
+		void scheduleRenderHeal();
 		void ensureStripDragLayout(qint64 hideTabId, int guestWidth = 0);
 		void animateTabGeometry(TabButton* btn, const QRect& target);
 		void stopTabSlideAnimations();
@@ -227,6 +250,7 @@ namespace mps::host
 		int m_stripDragOriginX = 0;
 		QHash<qint64, QPropertyAnimation*> m_tabSlideAnims;
 		bool m_embedResyncPending = false;
+		bool m_renderHealPending = false;
 		// NC hit-test rect cache, window-local logical coordinates (caption_hit_win.cpp).
 		QRect m_hitTitleBarRect;
 		QRect m_hitMinRect;

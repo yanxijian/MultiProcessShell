@@ -317,6 +317,7 @@ namespace mps::host
 		ensureWindowShown(child);
 		syncClientGeometry();
 		InvalidateRect(child, nullptr, FALSE);
+		emit embedHostChanged();
 #else
 		Q_UNUSED(m_clientWid);
 #endif
