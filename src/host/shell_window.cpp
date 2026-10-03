@@ -505,17 +505,17 @@ namespace mps::host
 
 #ifdef Q_OS_WIN
 		// Windows Aero snap (drag caption to the screen top → maximize, edge
-		// halves, Win+arrows) is silently disabled for windows without
-		// WS_MAXIMIZEBOX: Qt's FramelessWindowHint creates a plain WS_POPUP
-		// (qwindowswindow.cpp WindowCreationData), and the system move loop
-		// refuses to snap windows that "cannot maximize". Restore the style —
-		// NC hit-testing already routes the caption/buttons ourselves, so the
-		// flag has no visual side effects; Qt still controls maximized
-		// geometry via WM_GETMINMAXINFO (work area, not full screen).
+		// halves, Win+arrows) is silently disabled for frameless windows:
+		// Qt's FramelessWindowHint creates a plain WS_POPUP
+		// (qwindowswindow.cpp WindowCreationData), and the system snap engine
+		// requires BOTH WS_MAXIMIZEBOX and WS_THICKFRAME (verified by probe:
+		// either style alone → no snap). Restore both — WM_NCCALCSIZE below
+		// removes the resize border THICKFRAME would otherwise inset, and NC
+		// hit-testing already routes caption/buttons/edges ourselves.
 		if (HWND hwnd = reinterpret_cast<HWND>(winId()))
 		{
 			const LONG_PTR style = GetWindowLongPtrW(hwnd, GWL_STYLE);
-			SetWindowLongPtrW(hwnd, GWL_STYLE, style | WS_MAXIMIZEBOX);
+			SetWindowLongPtrW(hwnd, GWL_STYLE, style | WS_MAXIMIZEBOX | WS_THICKFRAME);
 		}
 #endif
 
@@ -2288,6 +2288,23 @@ namespace mps::host
 	bool ShellWindow::nativeEvent(const QByteArray& eventType, void* message, qintptr* result)
 	{
 #ifdef Q_OS_WIN
+		// Remove the non-client frame that WS_THICKFRAME (added in the ctor for
+		// the system snap engine — see there) would otherwise draw: client area
+		// == full window rect, frameless visuals unchanged. Returning 0 keeps the
+		// suggested rect as-is; Qt's WM_GETMINMAXINFO handling still clamps the
+		// maximized size to the work area.
+		if (eventType == QByteArrayLiteral("windows_generic_MSG"))
+		{
+			const auto* ncMsg = static_cast<const MSG*>(message);
+			if (ncMsg && ncMsg->message == WM_NCCALCSIZE && ncMsg->wParam)
+			{
+				if (result)
+				{
+					*result = 0;
+				}
+				return true;
+			}
+		}
 		// NC hit-test / caption-button adapter first (generic messages only; NC
 		// messages never arrive through windows_dispatcher_MSG).
 		if (eventType == QByteArrayLiteral("windows_generic_MSG") && nativeCaptionEvent(message, result))
