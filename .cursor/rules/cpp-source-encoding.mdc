@@ -12,4 +12,4 @@ alwaysApply: true
 - 新建/改写/format 后若变成无 BOM 或 LF，必须纠正。
 - 排除：`build*/`、`*_autogen/`、`*.pb.cc`/`*.pb.h`、第三方。
 
-全局详规：`C:/Users/Dana/.cursor/rules/cpp-source-encoding.mdc`。
+全局详规：`~/.cursor/rules/cpp-source-encoding.mdc`。
