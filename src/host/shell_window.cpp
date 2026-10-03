@@ -22,6 +22,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPalette>
+#include <QPointer>
 #include <QPropertyAnimation>
 #include <QResizeEvent>
 #include <QShowEvent>
@@ -2033,13 +2034,27 @@ namespace mps::host
 					btn, &TabButton::dragStarted, this,
 					[this](qint64 tabId, QPoint localHotSpot)
 					{
-						if (m_app)
+						ShellApp* app = m_app;
+						const QPointer<ShellWindow> self(this);
+						if (app)
 						{
-							m_app->beginTabDrag(this, tabId, localHotSpot);
+							app->beginTabDrag(this, tabId, localHotSpot);
 						}
 						auto* mime = new QMimeData;
 						mime->setData(QString::fromUtf8(kTabMimeType), QByteArray::number(tabId));
-						auto* drag = new QDrag(this);
+						// Never parent the QDrag to this ShellWindow. The OLE drag
+						// loop pumps events (QueryContinueDrag -> processEvents),
+						// and a stale endTabDrag from a finishing auto-merge
+						// animation can clear m_dragActive while this drag still
+						// runs, letting a deferred destroy tear down the source
+						// shell inside the drag loop. A shell destroyed mid-drag
+						// would delete its child QDrag, QDragManager::currentDrag()
+						// then turns null and GiveFeedback crashes dereferencing
+						// it (verified dumps: NULL this in QDrag::dragCursor,
+						// tear-out -> merge -> re-drag). Parent the drag to the
+						// long-lived ShellApp; Qt's QDragManager deleteLaters it
+						// once exec() returns.
+						auto* drag = new QDrag(app ? static_cast<QObject*>(app) : qApp);
 						drag->setMimeData(mime);
 						// Invisible drag pixmap — tab ghost / whole-shell follow drawn separately.
 						QPixmap empty(1, 1);
@@ -2061,6 +2076,18 @@ namespace mps::host
 						const CaptionHitPauseGuard captionHitPause;
 						const auto drop = drag->exec(Qt::MoveAction);
 						QApplication::restoreOverrideCursor();
+						if (!self)
+						{
+							// The source shell was destroyed while the OLE loop
+							// ran (deferred destroy raced a stale endTabDrag).
+							// The QDrag is owned by ShellApp, so unwinding here
+							// is safe — just close the drag session.
+							if (app)
+							{
+								app->endTabDrag(/*tearOrMerge=*/false);
+							}
+							return;
+						}
 						if (m_app && m_app->isDragAutoMerged())
 						{
 							// Magnetic auto-merge: OLE aborted; endTabDrag runs after settle anim.
