@@ -37,7 +37,9 @@
 #include <vector>
 
 #ifdef Q_OS_WIN
+#include <dwmapi.h>
 #include <windows.h>
+#pragma comment(lib, "dwmapi.lib")
 #endif
 
 namespace mps::host
@@ -516,6 +518,17 @@ namespace mps::host
 		{
 			const LONG_PTR style = GetWindowLongPtrW(hwnd, GWL_STYLE);
 			SetWindowLongPtrW(hwnd, GWL_STYLE, style | WS_MAXIMIZEBOX | WS_THICKFRAME);
+			// THICKFRAME makes DWM draw its own window border. Normally the
+			// rounded SetWindowRgn from applyNativeWindowRegion masks it, but
+			// Qt clears the region on internal paths (e.g. handleDpiChanged)
+			// that do not route through our changeEvent refresh — the DWM
+			// border then shows up as an alien-colored band around the window
+			// (verified: 48px black band after insert/drag interactions).
+			// Disable DWM's border outright (Win11 22000+; older systems
+			// reject the attribute harmlessly). DWMWA_BORDER_COLOR = 34,
+			// DWMWA_COLOR_NONE = 0xFFFFFFFE.
+			const DWORD borderNone = 0xFFFFFFFE;
+			DwmSetWindowAttribute(hwnd, 34, &borderNone, sizeof(borderNone));
 		}
 #endif
 
@@ -2303,6 +2316,18 @@ namespace mps::host
 					*result = 0;
 				}
 				return true;
+			}
+			// Region self-healing: Qt clears the window region on some internal
+			// paths (QWindowsWindow::handleDpiChanged -> SetWindowRgn(null))
+			// that never reach changeEvent. Re-apply the rounded region one
+			// spin later (after Qt finished its own handling).
+			if (ncMsg && ncMsg->message == WM_DPICHANGED)
+			{
+				QTimer::singleShot(0, this,
+								   [this]()
+								   {
+									   updateFrameChrome();
+								   });
 			}
 		}
 		// NC hit-test / caption-button adapter first (generic messages only; NC
