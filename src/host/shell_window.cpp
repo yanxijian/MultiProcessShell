@@ -6,8 +6,8 @@
 
 #include <QAction>
 #include <QApplication>
-#include <QCoreApplication>
 #include <QCloseEvent>
+#include <QCoreApplication>
 #include <QCursor>
 #include <QDrag>
 #include <QEasingCurve>
@@ -21,11 +21,11 @@
 #include <QPaintEvent>
 #include <QPainter>
 #include <QPainterPath>
-#include <QPen>
 #include <QPalette>
-#include <QRegion>
+#include <QPen>
 #include <QPointer>
 #include <QPropertyAnimation>
+#include <QRegion>
 #include <QResizeEvent>
 #include <QShowEvent>
 #include <QSizePolicy>
@@ -238,8 +238,8 @@ namespace mps::host
 			for (size_t i = 0; i < spans.size(); ++i)
 			{
 				const QRect& s = spans[i];
-				out[i] = RECT{static_cast<LONG>(s.left()), static_cast<LONG>(s.top()),
-							  static_cast<LONG>(s.left() + s.width()), static_cast<LONG>(s.top() + s.height())};
+				out[i] = RECT{static_cast<LONG>(s.left()), static_cast<LONG>(s.top()), static_cast<LONG>(s.left() + s.width()),
+							  static_cast<LONG>(s.top() + s.height())};
 			}
 			return ExtCreateRegion(nullptr, static_cast<DWORD>(buffer.size()), rd);
 		}
@@ -887,22 +887,22 @@ namespace mps::host
 		{
 			switch (event->type())
 			{
-				// DPR flip (spurious WM_DPICHANGED churn observed while a
-				// client is embedded): Qt re-lays out, but the window surface
-				// keeps transient-geometry leftovers in the pad band.
-				case QEvent::DevicePixelRatioChange:
-				case QEvent::WindowBlocked:
-				case QEvent::WindowUnblocked:
-				// Alt-tab / switching back from another app: Win10 DWM
-				// repaints WS_THICKFRAME in the system chrome color. Tab
-				// switches already heal (syncWorkspace); activation must too.
-				case QEvent::ActivationChange:
-				case QEvent::WindowActivate:
-				case QEvent::WindowDeactivate:
-					scheduleRenderHeal();
-					break;
-				default:
-					break;
+			// DPR flip (spurious WM_DPICHANGED churn observed while a
+			// client is embedded): Qt re-lays out, but the window surface
+			// keeps transient-geometry leftovers in the pad band.
+			case QEvent::DevicePixelRatioChange:
+			case QEvent::WindowBlocked:
+			case QEvent::WindowUnblocked:
+			// Alt-tab / switching back from another app: Win10 DWM
+			// repaints WS_THICKFRAME in the system chrome color. Tab
+			// switches already heal (syncWorkspace); activation must too.
+			case QEvent::ActivationChange:
+			case QEvent::WindowActivate:
+			case QEvent::WindowDeactivate:
+				scheduleRenderHeal();
+				break;
+			default:
+				break;
 			}
 		}
 		return QMainWindow::event(event);
@@ -2618,8 +2618,7 @@ namespace mps::host
 			// -1 skips that paint; we still accept the active-state change.
 			if (ncMsg && ncMsg->message == WM_NCACTIVATE)
 			{
-				applyWin32ShellFrame(ncMsg->hwnd,
-									 QApplication::palette().color(QPalette::Window).lightness() < 128);
+				applyWin32ShellFrame(ncMsg->hwnd, QApplication::palette().color(QPalette::Window).lightness() < 128);
 				if (result)
 				{
 					*result = DefWindowProcW(ncMsg->hwnd, WM_NCACTIVATE, ncMsg->wParam, static_cast<LPARAM>(-1));
@@ -2629,8 +2628,7 @@ namespace mps::host
 			}
 			if (ncMsg && ncMsg->message == WM_ACTIVATE)
 			{
-				applyWin32ShellFrame(ncMsg->hwnd,
-									 QApplication::palette().color(QPalette::Window).lightness() < 128);
+				applyWin32ShellFrame(ncMsg->hwnd, QApplication::palette().color(QPalette::Window).lightness() < 128);
 				scheduleRenderHeal();
 			}
 			if (ncMsg && (ncMsg->message == WM_DWMCOMPOSITIONCHANGED || ncMsg->message == WM_THEMECHANGED))

@@ -2,7 +2,7 @@
 
 > **English**：[../en/dev-plan.md](../en/dev-plan.md)  
 > **地位**：近中期投入与架构姿态的备忘；产品愿景与里程碑仍以 [multiprocess-shell-spec.md](multiprocess-shell-spec.md) 为准，Demo 合约以 [demo-ipc.md](demo-ipc.md) / `.proto` 为准。  
-> **更新**：2026-07-26（M6：心跳 / 无响应 UI）
+> **更新**：2026-10-04（对照代码核实后的择机项）
 
 ---
 
@@ -61,3 +61,17 @@
 | [demo-morphology.md](demo-morphology.md) / [demo-acceptance.md](demo-acceptance.md) | Demo 形态与验收 |
 | [demo-ipc.md](demo-ipc.md) | Demo IPC 合约 |
 | [ipc-alternatives.md](ipc-alternatives.md) | 远期 IPC 备选 |
+
+---
+
+## 6. 择机改进（已对照代码核实，以后再做）
+
+来源：2026-10 外部点评。只收录与仓库现状相符、且尚未落地的项。
+
+| 项 | 核实 | 拟做 |
+|----|------|------|
+| Client 崩溃槽 UI | M6 已有心跳 2s / Host 6s、「无响应」Tab 后缀与右键终止；`EmbedContainer` 无 Chrome 式整页黄屏/重试 | 在嵌入槽加崩溃占位页（重试 / 关闭 Tab），与 Session 死亡、`reset()` 对齐 |
+| 跨平台 embed 策略 | `wid` 已收在 `EmbedContainer` / `TabEmbedMap`；`IEmbedBackend` 规格有、代码未落地；Win Demo 直接 `SetParent` | 第二平台（X11 / Cocoa）动手时再抽 `IEmbedBackend`，避免空接口 |
+| 大数据面 | 控制面仍是 Protobuf Envelope + 管道；规格把嵌入与 IPC 分开 | 大帧（截图 / 文档块）用共享内存 + 信号量，Protobuf 只送信令；不为此预换 gRPC |
+
+**不收录**：另建「聚合仓」——工作区已有 `codes-workspace` 清单与 `restore.ps1`；跨仓 CI 若做，挂在元仓，不复制四份构建。
