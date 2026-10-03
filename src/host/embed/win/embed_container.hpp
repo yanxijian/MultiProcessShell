@@ -51,6 +51,11 @@ namespace mps::host
 		void setClientWindow(quintptr wid);
 		void syncClientGeometry();
 		void applyEmbed();
+		/// Make this container native without letting Qt force-nativize the
+		/// parent chain / siblings (WA_NativeWindow default behavior would hand
+		/// the title bar its own HWND and swallow its mouse input; see
+		/// applyEmbed). Returns the container HWND. Windows only.
+		[[nodiscard]] void* ensureNativeHostWindow();
 		[[nodiscard]] bool clientWindowAlive() const;
 
 		mps::tab_strip::TabEmbedMap m_bindings;

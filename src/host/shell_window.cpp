@@ -1,5 +1,6 @@
 ﻿#include "shell_window.hpp"
 
+#include "caption_hit_win.hpp"
 #include "shell_app.hpp"
 #include "tab_strip.hpp"
 
@@ -31,6 +32,7 @@
 #include <QWindow>
 
 #include <cmath>
+#include <cstring>
 #include <vector>
 
 #ifdef Q_OS_WIN
@@ -158,19 +160,53 @@ namespace mps::host
 				QPainter painter(this);
 				// No AA: opaque shell cannot blend against desktop; AA fringe looks like leak.
 				painter.setRenderHint(QPainter::Antialiasing, false);
-				const int inset = qMax(0, m_borderWidth - 1);
-				const QRect r = rect().adjusted(inset, inset, -inset - 1, -inset - 1);
-				QPen pen(m_borderColor, 1);
-				pen.setJoinStyle(Qt::MiterJoin);
-				painter.setPen(pen);
-				painter.setBrush(Qt::NoBrush);
-				if (m_radius > 0)
+			painter.setPen(Qt::NoPen);
+				// The border is a fill-subtract ring, not a stroked outline, and both
+				// the ring and the window region are rasterized at NATIVE pixel
+				// resolution: geometry is computed in physical pixels (the same numbers
+				// applyNativeWindowRegion rasterizes) and expressed as exact logical
+				// reals, so with the painter's DPR transform the rasterizer lands on the
+				// same physical pixels as the region - uniform 1-px corner steps instead
+				// of the logical-grid staircase a stroked or integer-logical ring would
+				// produce (and that the region clipped, leaving broken corners).
+				const qreal dpr = devicePixelRatioF() > 0.0 ? devicePixelRatioF() : 1.0;
+				const int physW = qRound(width() * dpr);
+				const int physH = qRound(height() * dpr);
+				const int physR = m_radius > 0 ? qMax(1, qRound(m_radius * dpr)) : 0;
+				const int physBW = qMax(1, qRound(m_borderWidth * dpr));
+				const QRectF outer(0.0, 0.0, (physW - 1) / dpr, (physH - 1) / dpr);
+				const QRectF inner = outer.adjusted(physBW / dpr, physBW / dpr, -physBW / dpr, -physBW / dpr);
+				const auto fillOutline = [&painter, dpr, physR](const QRectF& r)
 				{
-					painter.drawRoundedRect(r, m_radius, m_radius);
+					if (physR > 0)
+					{
+						painter.drawRoundedRect(r, physR / dpr, physR / dpr);
+					}
+					else
+					{
+						painter.drawRect(r);
+					}
+				};
+				if (!inner.isValid())
+				{
+					// Window smaller than twice the border: show a solid fill.
+					painter.setBrush(m_borderColor);
+					fillOutline(outer);
+					return;
+				}
+				painter.setBrush(m_borderColor);
+				fillOutline(outer);
+				// Knock out the interior with the window fill; children (title bar /
+				// stack) paint on top afterwards, so only the gutter shows this.
+				painter.setBrush(palette().color(backgroundRole()));
+				const int physInnerR = qMax(0, physR - physBW);
+				if (physInnerR > 0)
+				{
+					painter.drawRoundedRect(inner, physInnerR / dpr, physInnerR / dpr);
 				}
 				else
 				{
-					painter.drawRect(r);
+					painter.drawRect(inner);
 				}
 			}
 
@@ -485,13 +521,14 @@ namespace mps::host
 		m_tabRow->setContentsMargins(0, 0, 0, 0);
 		titleLay->addLayout(m_tabRow, 0);
 
-		// Blank trail after tabs: drop-to-append + system-move (not window buttons).
+		// Blank trail after tabs: drop-to-append zone (not window buttons).
+		// Window dragging now comes from the NC hit test (caption_hit_win.cpp),
+		// not from a mouse filter on this widget.
 		m_tabDropTrail = new QWidget(m_titleBar);
 		m_tabDropTrail->setObjectName(QStringLiteral("TabDropTrail"));
 		m_tabDropTrail->setMinimumWidth(48);
 		m_tabDropTrail->setCursor(Qt::ArrowCursor);
 		titleLay->addWidget(m_tabDropTrail, 1);
-		m_tabDropTrail->installEventFilter(this);
 
 		auto* minBtn = new QPushButton(QStringLiteral("—"), m_titleBar);
 		auto* maxBtn = new QPushButton(QStringLiteral("□"), m_titleBar);
@@ -506,13 +543,11 @@ namespace mps::host
 			b->setFocusPolicy(Qt::NoFocus);
 			titleLay->addWidget(b);
 		}
-		connect(minBtn, &QPushButton::clicked, this, &QWidget::showMinimized);
-		connect(maxBtn, &QPushButton::clicked, this,
-				[this]
-				{
-					isMaximized() ? showNormal() : showMaximized();
-				});
-		connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
+		// Window buttons act through WM_NCLBUTTONUP (caption_hit_win.cpp):
+		// they report HTMINBUTTON/HTMAXBUTTON/HTCLOSE, so client-side clicked()
+		// never fires — no connections are made here.
+		// Fallback refresh trigger for the NC caption rect cache.
+		m_titleBar->installEventFilter(this);
 
 		auto* titleSep = new QFrame(m_root);
 		titleSep->setObjectName(QStringLiteral("TitleBarSep"));
@@ -540,6 +575,7 @@ namespace mps::host
 		syncWorkspace();
 		applyThemeChrome();
 		setAcceptDrops(true);
+		scheduleCaptionHitCacheRefresh(); // initial NC hit-test rect cache
 	}
 
 	void ShellWindow::setHomeContent(QWidget* content)
@@ -677,6 +713,128 @@ namespace mps::host
 		{
 			m_rootLay->setContentsMargins(pad, pad, pad, pad);
 		}
+		applyNativeWindowRegion();
+		if (auto* root = static_cast<ChromeRoot*>(m_root))
+		{
+			root->syncChrome(radius, bw, frameBorderColor());
+		}
+		scheduleCaptionHitCacheRefresh(); // band thickness / title bar frame may change
+		update();
+	}
+
+	/// Rounded window region at native pixel resolution.
+	/// Qt's setMask() quantizes the region to the logical grid
+	/// (QHighDpi::toNativeLocalRegion scales per rect with rounding), so at
+	/// 150% DPI corner steps land on a ~1.5-px grid. Rasterizing the same
+	/// rounded rect the border paints at physical resolution and handing
+	/// scanlines to SetWindowRgn gives the finest staircase a 1-bit region
+	/// allows (uniform 1 physical px). Qt only resets the region on window
+	/// creation / DPI change (QWindowsWindow::handleDpiChanged ->
+	/// SetWindowRgn(null)); a DPI change triggers a resize that routes back
+	/// here, so the region self-heals.
+	void ShellWindow::applyNativeWindowRegion()
+	{
+#ifdef Q_OS_WIN
+		QWindow* wh = windowHandle();
+		if (!wh)
+		{
+			return;
+		}
+		const HWND hwnd = reinterpret_cast<HWND>(wh->winId());
+		if (!hwnd)
+		{
+			return;
+		}
+		const int radius = frameRadius();
+		if (radius <= 0)
+		{
+			// Maximized / fullscreen: full rectangle, no region.
+			SetWindowRgn(hwnd, nullptr, TRUE);
+			return;
+		}
+		RECT wr{};
+		GetWindowRect(hwnd, &wr);
+		const int physW = static_cast<int>(wr.right - wr.left);
+		const int physH = static_cast<int>(wr.bottom - wr.top);
+		if (physW <= 0 || physH <= 0)
+		{
+			return;
+		}
+		const qreal dpr = devicePixelRatioF() > 0.0 ? devicePixelRatioF() : 1.0;
+		const int physR = qMax(1, qRound(radius * dpr));
+		QBitmap bm(QSize(physW, physH));
+		bm.fill(Qt::color0);
+		{
+			QPainter p(&bm);
+			p.setRenderHint(QPainter::Antialiasing, false);
+			p.setPen(Qt::NoPen);
+			p.setBrush(Qt::color1);
+			p.drawRoundedRect(0, 0, physW - 1, physH - 1, physR, physR);
+		}
+		// Scanline spans -> a single Win32 region (ExtCreateRegion).
+		const QImage img = bm.toImage();
+		const bool lsb = img.format() == QImage::Format_MonoLSB;
+		std::vector<RECT> spans;
+		spans.reserve(static_cast<size_t>(physH));
+		for (int y = 0; y < physH; ++y)
+		{
+			const uchar* line = img.scanLine(y);
+			int x0 = -1;
+			int x1 = -1;
+			for (int bx = 0; bx < img.bytesPerLine(); ++bx)
+			{
+				if (line[bx] == 0)
+				{
+					continue;
+				}
+				for (int bit = 0; bit < 8; ++bit)
+				{
+					const int x = bx * 8 + bit;
+					if (x >= physW)
+					{
+						break;
+					}
+					const bool on = lsb ? ((line[bx] >> bit) & 1) != 0
+										: ((line[bx] >> (7 - bit)) & 1) != 0;
+					if (on)
+					{
+						if (x0 < 0)
+						{
+							x0 = x;
+						}
+						x1 = x;
+					}
+				}
+			}
+			if (x0 >= 0)
+			{
+				spans.push_back(RECT{static_cast<LONG>(x0), static_cast<LONG>(y),
+					static_cast<LONG>(x1 + 1), static_cast<LONG>(y + 1)});
+			}
+		}
+		if (spans.empty())
+		{
+			SetWindowRgn(hwnd, nullptr, TRUE);
+			return;
+		}
+		std::vector<uchar> buffer(sizeof(RGNDATAHEADER) + spans.size() * sizeof(RECT), 0);
+		auto* rd = reinterpret_cast<RGNDATA*>(buffer.data());
+		rd->rdh.dwSize = sizeof(RGNDATAHEADER);
+		rd->rdh.iType = RDH_RECTANGLES;
+		rd->rdh.nCount = static_cast<DWORD>(spans.size());
+		rd->rdh.nRgnSize = static_cast<DWORD>(spans.size() * sizeof(RECT));
+		rd->rdh.rcBound = RECT{0, 0, physW, physH};
+		std::memcpy(rd->Buffer, spans.data(), spans.size() * sizeof(RECT));
+		if (HRGN rgn = ExtCreateRegion(nullptr, static_cast<DWORD>(buffer.size()), rd))
+		{
+			if (!SetWindowRgn(hwnd, rgn, TRUE))
+			{
+				DeleteObject(rgn);
+			}
+		}
+#else
+		// Non-Windows: Qt logical-resolution mask fallback.
+		const int radius = frameRadius();
 		if (radius > 0)
 		{
 			setMask(roundedWindowMask(size(), radius));
@@ -685,16 +843,56 @@ namespace mps::host
 		{
 			clearMask();
 		}
-		if (auto* root = static_cast<ChromeRoot*>(m_root))
+#endif
+	}
+
+
+	void ShellWindow::scheduleCaptionHitCacheRefresh()
+	{
+		if (m_hitCacheRefreshScheduled)
 		{
-			root->syncChrome(radius, bw, frameBorderColor());
+			return;
 		}
-		if (m_tabDropTrail && QWidget::mouseGrabber() == m_tabDropTrail)
+		m_hitCacheRefreshScheduled = true;
+		// Next tick: layout must be activated before child geometry is final.
+		QTimer::singleShot(0, this, [this]()
 		{
-			m_tabDropTrail->releaseMouse();
+			m_hitCacheRefreshScheduled = false;
+			refreshCaptionHitCache();
+		});
+	}
+
+	void ShellWindow::refreshCaptionHitCache()
+	{
+		if (!m_titleBar)
+		{
+			return;
 		}
-		m_captionMoveActive = false;
-		update();
+		// Window-local logical rects — the same space caption_hit_win.cpp
+		// converts physical screen coordinates into.
+		m_hitTitleBarRect = QRect(m_titleBar->mapTo(this, QPoint(0, 0)), m_titleBar->size());
+		const auto windowLocalRect = [this](const QWidget* w) -> QRect {
+			return w ? QRect(w->mapTo(this, QPoint(0, 0)), w->size()) : QRect();
+		};
+		m_hitMinRect = windowLocalRect(m_minBtn);
+		m_hitMaxRect = windowLocalRect(m_maxBtn);
+		m_hitCloseRect = windowLocalRect(m_closeBtn);
+		// Tab buttons cover their close buttons (children). Hidden tabs (yield
+		// drag) must not keep blocking the caption.
+		m_hitInteractiveRects.clear();
+		for (TabButton* btn : m_tabButtons)
+		{
+			if (btn && btn->isVisible())
+			{
+				m_hitInteractiveRects.push_back(windowLocalRect(btn));
+			}
+		}
+		// Same source as updateFrameChrome()'s pad: max(border, radius); both
+		// helpers already return 0 when maximized/fullscreen, so the band tracks
+		// the window state without extra bookkeeping here.
+		const int bw = frameBorderWidth();
+		const int radius = frameRadius();
+		m_hitBandThickness = radius > 0 ? qMax(bw, radius) : bw;
 	}
 
 	void ShellWindow::scheduleEmbedResync()
@@ -1195,6 +1393,7 @@ namespace mps::host
 		{
 			m_titleBar->installEventFilter(m_stripDropFilter);
 		}
+		scheduleCaptionHitCacheRefresh(); // strip relayout shifts tab rects / buttons
 	}
 
 	void ShellWindow::animateTabGeometry(TabButton* btn, const QRect& target)
@@ -1213,6 +1412,11 @@ namespace mps::host
 			anim = new QPropertyAnimation(btn, "geometry", this);
 			anim->setDuration(kTabSlideMs);
 			anim->setEasingCurve(QEasingCurve::OutCubic);
+			// Settled geometry feeds the NC hit-test rect cache.
+			connect(anim, &QPropertyAnimation::finished, this, [this]()
+			{
+				scheduleCaptionHitCacheRefresh();
+			});
 		}
 		anim->stop();
 		anim->setStartValue(btn->geometry());
@@ -1266,6 +1470,7 @@ namespace mps::host
 				m_tabRow->addWidget(b);
 			}
 		}
+		scheduleCaptionHitCacheRefresh(); // restored strip relayout shifts tab rects
 	}
 
 	void ShellWindow::collapseTornOutTabSlot(qint64 dragTabId)
@@ -1851,6 +2056,9 @@ namespace mps::host
 						// IgnoreAction custom cursors are unsupported on Windows — never rely on ignore.
 						drag->setDragCursor(arrowPm, Qt::IgnoreAction);
 						QApplication::setOverrideCursor(Qt::ArrowCursor);
+						// Pause NC hit testing process-wide while the OLE drag loop runs:
+						// target shell title bars must stay client area for Qt drag events.
+						const CaptionHitPauseGuard captionHitPause;
 						const auto drop = drag->exec(Qt::MoveAction);
 						QApplication::restoreOverrideCursor();
 						if (m_app && m_app->isDragAutoMerged())
@@ -1935,6 +2143,7 @@ namespace mps::host
 			}
 		}
 		reinstallStripDropTargets();
+		scheduleCaptionHitCacheRefresh(); // tab set changed: refresh tab + button rects
 	}
 
 	void ShellWindow::takeTabsFrom(ShellWindow* other, const QList<qint64>& tabIds)
@@ -2028,6 +2237,12 @@ namespace mps::host
 	bool ShellWindow::nativeEvent(const QByteArray& eventType, void* message, qintptr* result)
 	{
 #ifdef Q_OS_WIN
+		// NC hit-test / caption-button adapter first (generic messages only; NC
+		// messages never arrive through windows_dispatcher_MSG).
+		if (eventType == QByteArrayLiteral("windows_generic_MSG") && nativeCaptionEvent(message, result))
+		{
+			return true;
+		}
 		if (eventType == QByteArrayLiteral("windows_generic_MSG") || eventType == QByteArrayLiteral("windows_dispatcher_MSG"))
 		{
 			const auto* msg = static_cast<const MSG*>(message);
@@ -2057,42 +2272,11 @@ namespace mps::host
 
 	bool ShellWindow::eventFilter(QObject* watched, QEvent* event)
 	{
-		// Drag the frameless window from the trailing tab strip (not tabs / window buttons).
-		// Do not grabMouse() — a stuck grab disables Create Client / theme buttons.
-		if (watched == m_tabDropTrail)
+		// Fallback refresh for the NC caption rect cache: any title bar relayout
+		// (tabs added / removed / width change) shifts buttons and tab rects.
+		if (watched == m_titleBar && event->type() == QEvent::LayoutRequest)
 		{
-			if (event->type() == QEvent::MouseButtonPress)
-			{
-				auto* me = static_cast<QMouseEvent*>(event);
-				if (me->button() == Qt::LeftButton && !isMaximized() && !isFullScreen())
-				{
-					winId();
-					if (QWindow* wh = windowHandle())
-					{
-						wh->startSystemMove();
-					}
-					else
-					{
-						m_captionMoveActive = true;
-						m_captionMoveOffset = me->globalPosition().toPoint() - frameGeometry().topLeft();
-					}
-					return true;
-				}
-			}
-			else if (event->type() == QEvent::MouseMove && m_captionMoveActive)
-			{
-				auto* me = static_cast<QMouseEvent*>(event);
-				if (me->buttons() & Qt::LeftButton)
-				{
-					move(me->globalPosition().toPoint() - m_captionMoveOffset);
-					return true;
-				}
-			}
-			else if (event->type() == QEvent::MouseButtonRelease && m_captionMoveActive)
-			{
-				m_captionMoveActive = false;
-				return true;
-			}
+			scheduleCaptionHitCacheRefresh();
 		}
 		return QMainWindow::eventFilter(watched, event);
 	}

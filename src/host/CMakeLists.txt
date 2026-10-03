@@ -1,5 +1,8 @@
 if(MPS_BUILD_SHARED)
   add_library(mps_host SHARED
+    caption_hit.hpp
+    caption_hit_win.cpp
+    caption_hit_win.hpp
     client_session.cpp
     client_session.hpp
     shell_app.cpp
@@ -17,6 +20,9 @@ if(MPS_BUILD_SHARED)
   )
 else()
   add_library(mps_host STATIC
+    caption_hit.hpp
+    caption_hit_win.cpp
+    caption_hit_win.hpp
     client_session.cpp
     client_session.hpp
     shell_app.cpp

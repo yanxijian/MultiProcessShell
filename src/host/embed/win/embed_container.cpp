@@ -4,6 +4,7 @@
 
 #include <QResizeEvent>
 #include <QShowEvent>
+#include <QWindow>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -119,7 +120,7 @@ namespace mps::host
 		{
 			m_attachedClientThreadId = clientThreadId;
 		}
-		const HWND host = GetAncestor(reinterpret_cast<HWND>(winId()), GA_ROOT);
+		const HWND host = GetAncestor(static_cast<HWND>(ensureNativeHostWindow()), GA_ROOT);
 		if (host && IsWindowVisible(host))
 		{
 			SetForegroundWindow(host);
@@ -162,7 +163,7 @@ namespace mps::host
 			return;
 		}
 #ifdef Q_OS_WIN
-		const HWND host = reinterpret_cast<HWND>(winId());
+		const HWND host = static_cast<HWND>(ensureNativeHostWindow());
 		const HWND child = reinterpret_cast<HWND>(m_clientWid);
 		if (!host || GetParent(child) != host)
 		{
@@ -293,9 +294,14 @@ namespace mps::host
 			m_clientWid = 0;
 			return;
 		}
-		setAttribute(Qt::WA_NativeWindow, true);
-		winId();
-		const HWND host = reinterpret_cast<HWND>(winId());
+		// Qt force-nativizes the whole parent chain and all siblings when one
+		// widget gets WA_NativeWindow (QWidget::setAttribute → enforceNativeChildren
+		// + QWidgetPrivate::createWinId). That would hand the title bar its own
+		// native HWND, which then swallows every physical mouse message over it —
+		// the shell's NC hit test (caption drag / min / max / close) lives on the
+		// top-level window and would go dead after the first embed. Keep native
+		//-ization scoped to this container only; see ensureNativeHostWindow().
+		const HWND host = static_cast<HWND>(ensureNativeHostWindow());
 		const HWND child = reinterpret_cast<HWND>(m_clientWid);
 		LONG_PTR style = GetWindowLongPtrW(child, GWL_STYLE);
 		style |= WS_CHILD | WS_TABSTOP;
@@ -316,6 +322,39 @@ namespace mps::host
 #endif
 	}
 
+	void* EmbedContainer::ensureNativeHostWindow()
+	{
+#ifdef Q_OS_WIN
+		// Scope guards: WA_DontCreateNativeAncestors blocks the forced native
+		// parent chain (QWidgetPrivate::createWinId), AA_DontCreateNativeWidgetSiblings
+		// blocks enforceNativeChildren() on our parent (which would nativize the
+		// title bar and every other sibling). Both only need to be in effect
+		// while the WA_NativeWindow attribute change is processed.
+		setAttribute(Qt::WA_DontCreateNativeAncestors, true);
+		QCoreApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings, true);
+		setAttribute(Qt::WA_NativeWindow, true);
+		winId();
+		QCoreApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings, false);
+		// QWidgetPrivate::create() seeds the QWindow with the parent-relative
+		// rect ("win->setGeometry(q->geometry())", qwidget.cpp); with alien
+		// ancestors the QWindow is re-parented onto the top-level, so that seed
+		// position is wrong (verified: the container HWND landed at window-local
+		// (0,0), covering the title bar). Later moves go through
+		// setGeometry_sys(), which maps via nativeParentWidget() correctly —
+		// re-apply the same mapping once here to fix the seed.
+		if (QWindow* wh = windowHandle())
+		{
+			if (QWidget* np = nativeParentWidget())
+			{
+				wh->setGeometry(QRect(mapTo(np, QPoint(0, 0)), size()));
+			}
+		}
+		return reinterpret_cast<void*>(winId());
+#else
+		return nullptr;
+#endif
+	}
+
 	void EmbedContainer::syncClientGeometry()
 	{
 #ifdef Q_OS_WIN
@@ -328,8 +367,8 @@ namespace mps::host
 		{
 			return;
 		}
-		winId();
-		const HWND host = reinterpret_cast<HWND>(winId());
+		// Idempotent when already native; keeps a single acquisition pattern.
+		const HWND host = static_cast<HWND>(ensureNativeHostWindow());
 		const HWND child = reinterpret_cast<HWND>(m_clientWid);
 		RECT rc{};
 		GetClientRect(host, &rc);

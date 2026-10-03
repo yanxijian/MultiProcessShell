@@ -2,6 +2,7 @@
 #define __MPS_HOST_SHELL_WINDOW_H__
 
 #include "embed_container.hpp"
+#include "caption_hit.hpp"
 #include "tab_info.hpp"
 
 #include <QFrame>
@@ -178,6 +179,17 @@ namespace mps::host
 		void animateTabGeometry(TabButton* btn, const QRect& target);
 		void stopTabSlideAnimations();
 		void updateFrameChrome();
+		/// NC hit-test rect cache (consumed by caption_hit_win.cpp). Coalesced to
+		/// the next event-loop tick so child geometry is final when read.
+		void scheduleCaptionHitCacheRefresh();
+		void refreshCaptionHitCache();
+		/// Win32 non-client hit-test / caption-button adapter, defined in
+		/// caption_hit_win.cpp; no-op returning false on non-Windows builds.
+		bool nativeCaptionEvent(void* message, qintptr* result);
+		/// Rounded window region at native pixel resolution (Windows:
+		/// SetWindowRgn from scanlines; other platforms: Qt setMask fallback).
+		/// Called from updateFrameChrome.
+		void applyNativeWindowRegion();
 		[[nodiscard]] int frameRadius() const;
 		[[nodiscard]] int frameBorderWidth() const;
 		[[nodiscard]] QColor frameBorderColor() const;
@@ -211,9 +223,24 @@ namespace mps::host
 		int m_dragTabWidth = 0;
 		int m_stripDragOriginX = 0;
 		QHash<qint64, QPropertyAnimation*> m_tabSlideAnims;
-		bool m_captionMoveActive = false;
-		QPoint m_captionMoveOffset;
 		bool m_embedResyncPending = false;
+		// NC hit-test rect cache, window-local logical coordinates (caption_hit_win.cpp).
+		QRect m_hitTitleBarRect;
+		QRect m_hitMinRect;
+		QRect m_hitMaxRect;
+		QRect m_hitCloseRect;
+		QVector<QRect> m_hitInteractiveRects;
+		int m_hitBandThickness = 0;
+		bool m_hitCacheRefreshScheduled = false;
+		// NC button visual state: -1 none, 0 min, 1 max, 2 close (caption_hit_win.cpp).
+		int m_ncHoverButton = -1;
+		int m_ncPressedButton = -1;
+		bool m_ncTrackActive = false; // TrackMouseEvent(TME_NONCLIENT) armed
+		// Hit part of the last WM_NCLBUTTONDOWN (caption_hit_win.cpp). The
+		// double-click handler must classify by the press position, not a
+		// fresh hit test: the first release may have maximized the window and
+		// moved the buttons away from under the cursor.
+		CaptionHitPart m_ncPressPart = CaptionHitPart::None;
 	};
 } // namespace mps::host
 
