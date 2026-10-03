@@ -1437,7 +1437,7 @@ namespace mps::host
 		m_tabSlideAnims.clear();
 	}
 
-	void ShellWindow::clearTabYieldPreview()
+	void ShellWindow::clearTabYieldPreview(bool keepDragTabHidden)
 	{
 		stopTabSlideAnimations();
 		const qint64 wasDragTab = m_yieldDragTabId;
@@ -1451,7 +1451,7 @@ namespace mps::host
 		{
 			m_titleBar->setAcceptDrops(false);
 		}
-		if (wasDragTab != 0)
+		if (wasDragTab != 0 && !keepDragTabHidden)
 		{
 			setTabDragHidden(wasDragTab, false);
 		}

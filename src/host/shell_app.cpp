@@ -174,13 +174,13 @@ namespace mps::host
 		}
 	}
 
-	void ShellApp::clearAllTabYieldPreviews()
+	void ShellApp::clearAllTabYieldPreviews(bool keepDragTabHidden)
 	{
 		for (auto& shell : m_shells)
 		{
 			if (shell)
 			{
-				shell->clearTabYieldPreview();
+				shell->clearTabYieldPreview(keepDragTabHidden);
 			}
 		}
 	}
@@ -1984,7 +1984,10 @@ namespace mps::host
 			// Tear-out uses the window preview; hide the tab ghost.
 			m_tabDragGhost->hide();
 		}
-		clearAllTabYieldPreviews();
+		// Tear-out: the dragged tab is about to be removed from the source —
+		// keep its button hidden so it does not flash in the strip between this
+		// cleanup and removeTab() (whole-shell tear-out re-shows it explicitly).
+		clearAllTabYieldPreviews(/*keepDragTabHidden=*/tearOrMerge);
 
 		ShellWindow* source = m_dragSource;
 		const qint64 tabId = m_dragTabId;

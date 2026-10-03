@@ -121,7 +121,10 @@ namespace mps::host
 		void previewTabYieldAtCursor(qint64 dragTabId, QPoint globalPos, int guestWidth = 0, int hotSpotX = -1);
 		/// Apply yieldOrder_ to the tab model (same-shell drop). Returns true if applied.
 		bool commitTabYieldPreview();
-		void clearTabYieldPreview();
+		/// Stop the yield preview. keepDragTabHidden: leave the dragged tab's
+		/// button invisible (tear-out path — the tab is about to be removed;
+		/// unhiding it first makes it flash in the strip for one repaint).
+		void clearTabYieldPreview(bool keepDragTabHidden = false);
 		/// Tear-out: siblings immediately claim the vacated strip slot (no gap).
 		void collapseTornOutTabSlot(qint64 dragTabId);
 		[[nodiscard]] bool hasTabYieldPreview() const

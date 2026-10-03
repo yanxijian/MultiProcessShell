@@ -120,7 +120,11 @@ namespace mps::host
 		void pushThemeToSession(ClientSession* session);
 		void broadcastTheme(mps::theme::Scheme scheme);
 		void updateTabDragVisuals();
-		void clearAllTabYieldPreviews();
+		/// Clear yield previews on every shell. keepDragTabHidden: on the drag
+		/// source the dragged tab stays hidden (it is about to be removed —
+		/// tear-out; other shells have no button for that tab, so the flag is
+		/// a no-op for them).
+		void clearAllTabYieldPreviews(bool keepDragTabHidden = false);
 		void pollEscapeCancel();
 		void startGhostSnapBack();
 		void finishGhostSnapBack();
