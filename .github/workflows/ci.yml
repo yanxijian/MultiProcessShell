@@ -115,7 +115,14 @@ jobs:
       - uses: seanmiddleditch/gha-setup-ninja@v6
       - name: Install Python protobuf
         working-directory: MultiProcessShell
-        run: python -m pip install -r clients/python/requirements.txt
+        shell: pwsh
+        run: |
+          python -m pip install -r clients/python/requirements.txt
+          # Capture THIS interpreter: jurplel/install-qt-action runs later and
+          # swaps pythonLocation/PATH to its own Python (observed 3.12.10 ->
+          # 3.14.7), so pinning via env.pythonLocation later resolves to an
+          # interpreter without the protobuf module.
+          Add-Content $env:GITHUB_ENV "PYTHON_EXE=$(python -c 'import sys; print(sys.executable)')"
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -144,10 +151,10 @@ jobs:
         shell: cmd
         env:
           QTDIR: ${{ env.QT_ROOT_DIR }}
-          # Pin the interpreter that ran "Install Python protobuf" (tool-cache
-          # 3.12); PATH lookup in this cmd step can resolve a different python
-          # that lacks the protobuf module, failing both m4b Python tests.
-          PYTHON: ${{ env.pythonLocation }}\python.exe
+          # Pin the interpreter that received the pip install (captured above);
+          # PATH lookup in this cmd step resolves install-qt-action's Python,
+          # which lacks the protobuf module.
+          PYTHON: ${{ env.PYTHON_EXE }}
         run: |
           where cl
           where ninja
