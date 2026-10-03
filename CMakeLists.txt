@@ -17,6 +17,12 @@ if(MSVC)
   # Match Qt / shared CRT; protobuf must not force /MT.
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
   add_compile_options(/MP)
+  # Emit PDBs in Release too: WER crash dumps symbolicate against our
+  # binaries when PDBs sit beside them (see e.g. Volition's
+  # scripts/analyze_crash.py). /Zi keeps Release optimization unchanged;
+  # /DEBUG:FULL only adds symbols.
+  add_compile_options("$<$<CONFIG:Release>:/Zi>")
+  add_link_options("$<$<CONFIG:Release>:/DEBUG:FULL>")
 endif()
 
 option(MPS_BUILD_SHARED "Build mps_* libraries as shared" ON)
