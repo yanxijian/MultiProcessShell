@@ -40,7 +40,6 @@
 #ifdef Q_OS_WIN
 #include <dwmapi.h>
 #include <windows.h>
-#pragma comment(lib, "dwmapi.lib")
 #elif !defined(Q_OS_MACOS)
 #include <qpa/qplatformwindow.h>
 #endif

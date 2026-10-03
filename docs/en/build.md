@@ -32,6 +32,10 @@ Local convention uses out-of-source dir **`build-shared`** (`install_stack.py` a
 - For demos: installed QThemeEngine + QFluentRibbon (`CMAKE_PREFIX_PATH`)
 - Protobuf via FetchContent (`MPS_BUILD_SHARED` default ON → shared `libprotobuf.dll` + `abseil_dll.dll` + `utf8_validity.dll`). Generated `Envelope` lives only in `mps_ipc.dll`; receivers use `EnvelopePtr` so destruction stays in-module.
 
+## Convention: Windows system libraries
+
+Link system libs (`dwmapi`, `user32`, `gdi32`, …) with `target_link_libraries` in `CMakeLists.txt`. Do not use `#pragma comment(lib, …)` — it is MSVC-only and invisible to CMake. Cursor rule: `.cursor/rules/cmake-windows-libs.mdc`.
+
 ## Demo-only sibling embed
 
 ```bat

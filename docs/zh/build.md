@@ -39,6 +39,10 @@ python scripts\build_repo.py
 - 编 Demo 时：已安装的 QThemeEngine + QFluentRibbon（`CMAKE_PREFIX_PATH`）
 - Protobuf：FetchContent（`MPS_BUILD_SHARED` 默认 ON → 共享 `libprotobuf.dll` + `abseil_dll.dll` + `utf8_validity.dll`）。生成的 `Envelope` 仍只编进 `mps_ipc.dll`，收包用 `EnvelopePtr` 在同模块内析构。
 
+## 工程约定：Windows 系统库
+
+系统库（`dwmapi`、`user32`、`gdi32` 等）只在 `CMakeLists.txt` 里 `target_link_libraries`。不要用 `#pragma comment(lib, …)`：那只对 MSVC 生效，CMake 生成器看不到依赖。Cursor 规则：`.cursor/rules/cmake-windows-libs.mdc`。
+
 ## 旁路源码（仅 Demo / CI）
 
 默认推荐 **prefix + find_package**。旁路 embed 为可选：

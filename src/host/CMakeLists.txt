@@ -77,7 +77,7 @@ generate_export_header(mps_host
 )
 
 if(WIN32)
-  target_link_libraries(mps_host PUBLIC user32 gdi32)
+  target_link_libraries(mps_host PUBLIC user32 gdi32 PRIVATE dwmapi)
 endif()
 if(APPLE)
   enable_language(OBJCXX)
