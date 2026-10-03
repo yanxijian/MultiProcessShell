@@ -6,7 +6,6 @@
 
 #include <QAction>
 #include <QApplication>
-#include <QBitmap>
 #include <QCloseEvent>
 #include <QCursor>
 #include <QDrag>
@@ -15,6 +14,7 @@
 #include <QFontMetrics>
 #include <QGraphicsOpacityEffect>
 #include <QHash>
+#include <QImage>
 #include <QMenu>
 #include <QMimeData>
 #include <QMouseEvent>
@@ -23,6 +23,7 @@
 #include <QPainterPath>
 #include <QPen>
 #include <QPalette>
+#include <QRegion>
 #include <QPointer>
 #include <QPropertyAnimation>
 #include <QResizeEvent>
@@ -34,13 +35,14 @@
 #include <QWindow>
 
 #include <cmath>
-#include <cstring>
 #include <vector>
 
 #ifdef Q_OS_WIN
 #include <dwmapi.h>
 #include <windows.h>
 #pragma comment(lib, "dwmapi.lib")
+#elif !defined(Q_OS_MACOS)
+#include <qpa/qplatformwindow.h>
 #endif
 
 namespace mps::host
@@ -113,22 +115,87 @@ namespace mps::host
 			return QColor(v, v, v);
 		}
 
-		/// 1-bit round silhouette for an opaque (non-layered) top-level HWND.
-		/// Cuts the square-corner fill that otherwise shows past the rounded stroke.
-		[[nodiscard]] QBitmap roundedWindowMask(const QSize& size, int radius)
+		constexpr int kRoundRgnScale = 4;
+
+		/// 4× AA rounded rect, majority-downsampled to 1-bit scanline spans.
+		/// Same silhouette math on every platform; only the apply API differs.
+		[[nodiscard]] std::vector<QRect> makeSupersampledRoundRectSpans(int w, int h, int r)
 		{
-			QBitmap bm(size);
-			bm.fill(Qt::color0);
-			if (size.width() <= 0 || size.height() <= 0)
+			std::vector<QRect> spans;
+			if (w <= 0 || h <= 0)
 			{
-				return bm;
+				return spans;
 			}
-			QPainter p(&bm);
-			p.setRenderHint(QPainter::Antialiasing, false);
-			p.setPen(Qt::NoPen);
-			p.setBrush(Qt::color1);
-			p.drawRoundedRect(0, 0, size.width(), size.height(), radius, radius);
-			return bm;
+			if (r <= 0)
+			{
+				spans.push_back(QRect(0, 0, w, h));
+				return spans;
+			}
+			QImage hi(w * kRoundRgnScale, h * kRoundRgnScale, QImage::Format_ARGB32_Premultiplied);
+			if (hi.isNull())
+			{
+				spans.push_back(QRect(0, 0, w, h));
+				return spans;
+			}
+			hi.fill(0);
+			{
+				QPainter p(&hi);
+				p.setRenderHint(QPainter::Antialiasing, true);
+				p.setPen(Qt::NoPen);
+				p.setBrush(Qt::white);
+				const qreal rr = static_cast<qreal>(r * kRoundRgnScale);
+				p.drawRoundedRect(QRectF(0.5, 0.5, hi.width() - 1.0, hi.height() - 1.0), rr, rr);
+			}
+			spans.reserve(static_cast<size_t>(h));
+			const int majority = (kRoundRgnScale * kRoundRgnScale * 255) / 2;
+			for (int y = 0; y < h; ++y)
+			{
+				int x0 = -1;
+				for (int x = 0; x <= w; ++x)
+				{
+					bool on = false;
+					if (x < w)
+					{
+						int sum = 0;
+						for (int dy = 0; dy < kRoundRgnScale; ++dy)
+						{
+							const QRgb* line = reinterpret_cast<const QRgb*>(hi.constScanLine(y * kRoundRgnScale + dy));
+							for (int dx = 0; dx < kRoundRgnScale; ++dx)
+							{
+								sum += qAlpha(line[x * kRoundRgnScale + dx]);
+							}
+						}
+						on = sum > majority;
+					}
+					if (on)
+					{
+						if (x0 < 0)
+						{
+							x0 = x;
+						}
+					}
+					else if (x0 >= 0)
+					{
+						spans.push_back(QRect(x0, y, x - x0, 1));
+						x0 = -1;
+					}
+				}
+			}
+			if (spans.empty())
+			{
+				spans.push_back(QRect(0, 0, w, h));
+			}
+			return spans;
+		}
+
+		[[nodiscard]] QRegion makeSupersampledRoundRectRegion(int w, int h, int r)
+		{
+			QRegion rg;
+			for (const QRect& s : makeSupersampledRoundRectSpans(w, h, r))
+			{
+				rg += s;
+			}
+			return rg;
 		}
 
 #ifdef Q_OS_WIN
@@ -152,6 +219,30 @@ namespace mps::host
 			const MARGINS margins{0, 0, 0, 0};
 			DwmExtendFrameIntoClientArea(hwnd, &margins);
 			SetWindowPos(hwnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+		}
+
+		[[nodiscard]] HRGN makeSupersampledRoundRectRgn(int physW, int physH, int physR)
+		{
+			const std::vector<QRect> spans = makeSupersampledRoundRectSpans(physW, physH, physR);
+			if (spans.empty())
+			{
+				return nullptr;
+			}
+			std::vector<uchar> buffer(sizeof(RGNDATAHEADER) + spans.size() * sizeof(RECT), 0);
+			auto* rd = reinterpret_cast<RGNDATA*>(buffer.data());
+			rd->rdh.dwSize = sizeof(RGNDATAHEADER);
+			rd->rdh.iType = RDH_RECTANGLES;
+			rd->rdh.nCount = static_cast<DWORD>(spans.size());
+			rd->rdh.nRgnSize = static_cast<DWORD>(spans.size() * sizeof(RECT));
+			rd->rdh.rcBound = RECT{0, 0, physW, physH};
+			auto* out = reinterpret_cast<RECT*>(rd->Buffer);
+			for (size_t i = 0; i < spans.size(); ++i)
+			{
+				const QRect& s = spans[i];
+				out[i] = RECT{static_cast<LONG>(s.left()), static_cast<LONG>(s.top()),
+							  static_cast<LONG>(s.left() + s.width()), static_cast<LONG>(s.top() + s.height())};
+			}
+			return ExtCreateRegion(nullptr, static_cast<DWORD>(buffer.size()), rd);
 		}
 #endif
 
@@ -184,18 +275,22 @@ namespace mps::host
 				// Always paint the gutter: after activation / embed, Qt may skip
 				// auto-fill on the pad band and DWM's system chrome shows through.
 				QPainter painter(this);
-				painter.setRenderHint(QPainter::Antialiasing, m_radius > 0);
+				const bool round = m_radius > 0;
+				painter.setRenderHint(QPainter::Antialiasing, round);
 				painter.setPen(Qt::NoPen);
 				painter.setBrush(palette().color(backgroundRole()));
-				painter.drawRect(rect());
+				if (round)
+				{
+					painter.drawRoundedRect(QRectF(rect()), m_radius, m_radius);
+				}
+				else
+				{
+					painter.drawRect(rect());
+				}
 				if (m_borderWidth <= 0 || width() <= 0 || height() <= 0)
 				{
 					return;
 				}
-				// Single stroked path: even-odd fill of two rounded rects is 1px
-				// short on right/bottom and leaves gaps at the arcs. Inset by
-				// half the pen so all four sides rasterize to the same thickness
-				// and the stroke stays inside the HWND region (no clipped corners).
 				const qreal bw = qMax(1, m_borderWidth);
 				const qreal half = bw / 2.0;
 				QRectF r = QRectF(rect()).adjusted(half, half, -half, -half);
@@ -208,7 +303,7 @@ namespace mps::host
 				pen.setCapStyle(Qt::RoundCap);
 				painter.setPen(pen);
 				painter.setBrush(Qt::NoBrush);
-				if (m_radius > 0)
+				if (round)
 				{
 					const qreal rad = qMax(0.0, static_cast<qreal>(m_radius) - half);
 					painter.drawRoundedRect(r, rad, rad);
@@ -245,6 +340,10 @@ namespace mps::host
 			widget->setAutoFillBackground(true);
 		}
 	} // namespace
+
+#if defined(Q_OS_MACOS)
+	void applyCocoaWindowRoundClip(WId viewId, qreal radiusPoints, bool enable);
+#endif
 
 	TabButton::TabButton(const TabInfo& info, QWidget* parent)
 		: QFrame(parent)
@@ -501,9 +600,14 @@ namespace mps::host
 		, m_shellId(g_nextShellId++)
 	{
 		setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
-		// Opaque top-level only. Layered/translucent + SetParent embed = blank/hang.
-		// Round outer corners use 1-bit setMask (no alpha); stroke is painted by ChromeRoot.
+		// Windows: opaque top-level only. Layered/translucent + SetParent embed = blank/hang.
+		// macOS: content-view cornerRadius needs a non-opaque NSWindow so the
+		// compositor can AA the arc against the desktop.
+#ifdef Q_OS_MACOS
+		setAttribute(Qt::WA_TranslucentBackground, true);
+#else
 		setAttribute(Qt::WA_TranslucentBackground, false);
+#endif
 		setAutoFillBackground(true);
 		setBackgroundRole(QPalette::Window);
 		clearMask();
@@ -826,16 +930,10 @@ namespace mps::host
 		update();
 	}
 
-	/// Rounded window region at native pixel resolution.
-	/// Qt's setMask() quantizes the region to the logical grid
-	/// (QHighDpi::toNativeLocalRegion scales per rect with rounding), so at
-	/// 150% DPI corner steps land on a ~1.5-px grid. Rasterizing the same
-	/// rounded rect the border paints at physical resolution and handing
-	/// scanlines to SetWindowRgn gives the finest staircase a 1-bit region
-	/// allows (uniform 1 physical px). Qt only resets the region on window
-	/// creation / DPI change (QWindowsWindow::handleDpiChanged ->
-	/// SetWindowRgn(null)); a DPI change triggers a resize that routes back
-	/// here, so the region self-heals.
+	/// Rounded window clip at native pixels. 4× majority downsample is the
+	/// finest staircase a 1-bit region allows (Win32 / X11). macOS uses the
+	/// compositor's AA cornerRadius instead. QWidget::setMask is avoided on
+	/// HiDPI: QHighDpi::toNativeLocalRegion scales each rect with rounding.
 	void ShellWindow::applyNativeWindowRegion()
 	{
 #ifdef Q_OS_WIN
@@ -867,26 +965,47 @@ namespace mps::host
 		}
 		const qreal dpr = devicePixelRatioF() > 0.0 ? devicePixelRatioF() : 1.0;
 		const int physR = qMax(1, qRound(radius * dpr));
-		// GDI round-rect region (right/bottom exclusive → +1). Matches the
-		// full HWND so the 1px stroke is not clipped on the right, bottom, or
-		// at the four arcs. Qt's QPainter bitmap of (w-1,h-1) dropped those.
-		if (HRGN rgn = CreateRoundRectRgn(0, 0, physW + 1, physH + 1, physR * 2, physR * 2))
+		if (HRGN rgn = makeSupersampledRoundRectRgn(physW, physH, physR))
 		{
 			if (!SetWindowRgn(hwnd, rgn, TRUE))
 			{
 				DeleteObject(rgn);
 			}
 		}
-#else
-		// Non-Windows: Qt logical-resolution mask fallback.
-		const int radius = frameRadius();
-		if (radius > 0)
+#elif defined(Q_OS_MACOS)
+		QWindow* wh = windowHandle();
+		if (!wh)
 		{
-			setMask(roundedWindowMask(size(), radius));
+			return;
 		}
-		else
+		clearMask();
+		const int radius = frameRadius();
+		applyCocoaWindowRoundClip(wh->winId(), static_cast<qreal>(radius), radius > 0);
+#else
+		QWindow* wh = windowHandle();
+		if (!wh)
+		{
+			return;
+		}
+		const int radius = frameRadius();
+		if (radius <= 0)
 		{
 			clearMask();
+			if (QPlatformWindow* pw = wh->handle())
+			{
+				pw->setMask(QRegion());
+			}
+			return;
+		}
+		const qreal dpr = wh->devicePixelRatio() > 0.0 ? wh->devicePixelRatio() : 1.0;
+		const int physW = qMax(1, qRound(static_cast<qreal>(wh->width()) * dpr));
+		const int physH = qMax(1, qRound(static_cast<qreal>(wh->height()) * dpr));
+		const int physR = qMax(1, qRound(static_cast<qreal>(radius) * dpr));
+		const QRegion native = makeSupersampledRoundRectRegion(physW, physH, physR);
+		setMask(makeSupersampledRoundRectRegion(width(), height(), radius));
+		if (QPlatformWindow* pw = wh->handle())
+		{
+			pw->setMask(native);
 		}
 #endif
 	}

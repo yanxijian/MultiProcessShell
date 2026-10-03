@@ -79,3 +79,12 @@ generate_export_header(mps_host
 if(WIN32)
   target_link_libraries(mps_host PUBLIC user32 gdi32)
 endif()
+if(APPLE)
+  enable_language(OBJCXX)
+  target_sources(mps_host PRIVATE shell_window_cocoa.mm)
+  target_link_libraries(mps_host PUBLIC "-framework AppKit" "-framework QuartzCore")
+elseif(UNIX)
+  # qpa/qplatformwindow.h: apply the rounded clip in native pixels (skip QHighDpi
+  # per-rect scaling that coarsens setMask on fractional DPI).
+  target_link_libraries(mps_host PRIVATE Qt6::GuiPrivate)
+endif()

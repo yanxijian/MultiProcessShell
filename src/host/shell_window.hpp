@@ -212,8 +212,9 @@ namespace mps::host
 		/// Win32 non-client hit-test / caption-button adapter, defined in
 		/// caption_hit_win.cpp; no-op returning false on non-Windows builds.
 		bool nativeCaptionEvent(void* message, qintptr* result);
-		/// Rounded window region at native pixel resolution (Windows:
-		/// SetWindowRgn from scanlines; other platforms: Qt setMask fallback).
+		/// Rounded window clip at native pixel resolution.
+		/// Windows: SetWindowRgn. macOS: CALayer cornerRadius. Other: QPA mask
+		/// in native pixels (not QWidget::setMask, which HiDPI-quantizes per rect).
 		/// Called from updateFrameChrome.
 		void applyNativeWindowRegion();
 		[[nodiscard]] int frameRadius() const;
