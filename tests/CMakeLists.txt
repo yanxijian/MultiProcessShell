@@ -77,7 +77,15 @@ if(TARGET Qt6::Core)
 endif()
 
 # Offline Python frame/Envelope tests (no Qt). Skip if protobuf module missing.
-find_program(MPS_PYTHON NAMES python python3)
+# Prefer an explicit PYTHON override (same env var test_m4b_python_hello.cpp
+# honors for its QProcess): on GitHub Windows runners PATH resolution can land
+# on a python without the protobuf module (e.g. the WindowsApps stub shadowing
+# the setup-python tool-cache install), so CI pins the interpreter explicitly.
+if(EXISTS "$ENV{PYTHON}")
+  set(MPS_PYTHON "$ENV{PYTHON}" CACHE FILEPATH "Python for offline frame/Envelope tests")
+else()
+  find_program(MPS_PYTHON NAMES python python3)
+endif()
 if(MPS_PYTHON)
   add_test(
     NAME m4b_python_frame_envelope

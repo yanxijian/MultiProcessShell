@@ -144,6 +144,10 @@ jobs:
         shell: cmd
         env:
           QTDIR: ${{ env.QT_ROOT_DIR }}
+          # Pin the interpreter that ran "Install Python protobuf" (tool-cache
+          # 3.12); PATH lookup in this cmd step can resolve a different python
+          # that lacks the protobuf module, failing both m4b Python tests.
+          PYTHON: ${{ env.pythonLocation }}\python.exe
         run: |
           where cl
           where ninja
