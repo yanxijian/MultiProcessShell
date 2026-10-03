@@ -1181,16 +1181,9 @@ namespace mps::host
 		}
 		target->raise();
 		target->activateWindow();
-		// Never destroy the drag-source shell while QDrag / merge anim may still
-		// reference it — defer until endTabDrag.
-		if (m_dragActive || m_autoMergeAnimActive)
-		{
-			m_shellPendingDestroy = source;
-		}
-		else
-		{
-			destroyShellIfEmpty(source);
-		}
+		// destroyShellIfEmpty defers destruction while a drag/merge animation
+		// is active (see m_shellsPendingDestroy); endTabDrag flushes it.
+		destroyShellIfEmpty(source);
 	}
 
 	ShellWindow* ShellApp::shellForTab(qint64 tabId) const
@@ -2068,14 +2061,24 @@ namespace mps::host
 		// Spec S5: emit deferred CreateSubWindow after drag ends (and suppress is cleared).
 		flushCreatesDeferredDuringDrag();
 
-		if (m_shellPendingDestroy)
+		// Flush shells that became empty mid-drag. One extra event-loop spin:
+		// exec() has returned, but the platform drag teardown (cursor cleanup,
+		// OLE releases) can still run posted events touching the drag source.
+		if (!m_shellsPendingDestroy.isEmpty())
 		{
-			ShellWindow* doomed = m_shellPendingDestroy.data();
-			m_shellPendingDestroy.clear();
-			if (doomed && shellStillAlive(doomed))
-			{
-				destroyShellIfEmpty(doomed);
-			}
+			const auto pending = m_shellsPendingDestroy;
+			m_shellsPendingDestroy.clear();
+			QTimer::singleShot(0, this,
+							   [this, pending]()
+							   {
+								   for (const auto& weak : pending)
+								   {
+									   if (ShellWindow* doomed = weak.data(); doomed && shellStillAlive(doomed))
+									   {
+										   destroyShellIfEmpty(doomed);
+									   }
+								   }
+							   });
 		}
 	}
 
@@ -2377,6 +2380,19 @@ namespace mps::host
 			if (shell->clientTabCount() == 0)
 			{
 				shell->setActiveTab(kHomeTabId);
+			}
+			return;
+		}
+		// A tab drag may still be running (OLE DoDragDrop pumps events through
+		// processEvents, so callers can arrive here mid-drag even when they
+		// look synchronous). Destroying a ShellWindow deletes its QDrag child
+		// (drag parent = source window), which crashes the drag loop — see
+		// m_shellsPendingDestroy. Defer and let endTabDrag flush.
+		if (m_dragActive || m_autoMergeAnimActive)
+		{
+			if (!m_shellsPendingDestroy.contains(shell))
+			{
+				m_shellsPendingDestroy.append(shell);
 			}
 			return;
 		}
