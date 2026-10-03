@@ -332,10 +332,11 @@ namespace mps::host
 		// title bar and every other sibling). Both only need to be in effect
 		// while the WA_NativeWindow attribute change is processed.
 		setAttribute(Qt::WA_DontCreateNativeAncestors, true);
+		const bool prevSiblings = QCoreApplication::testAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
 		QCoreApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings, true);
 		setAttribute(Qt::WA_NativeWindow, true);
 		winId();
-		QCoreApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings, false);
+		QCoreApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings, prevSiblings);
 		// QWidgetPrivate::create() seeds the QWindow with the parent-relative
 		// rect ("win->setGeometry(q->geometry())", qwidget.cpp); with alien
 		// ancestors the QWindow is re-parented onto the top-level, so that seed

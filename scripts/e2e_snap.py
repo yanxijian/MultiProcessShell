@@ -38,6 +38,11 @@ MOUSEEVENTF_MOVE = 0x0001
 MOUSEEVENTF_LEFTDOWN = 0x0002
 MOUSEEVENTF_LEFTUP = 0x0004
 MOUSEEVENTF_ABSOLUTE = 0x8000
+MOUSEEVENTF_VIRTUALDESK = 0x4000
+SM_XVIRTUALSCREEN = 76
+SM_YVIRTUALSCREEN = 77
+SM_CXVIRTUALSCREEN = 78
+SM_CYVIRTUALSCREEN = 79
 
 
 class MOUSEINPUT(ctypes.Structure):
@@ -121,10 +126,14 @@ def send_mouse(flags, dx=0, dy=0):
 
 
 def move_to(x, y):
-    """Absolute move. One SendInput per point generates WM_MOUSEMOVE."""
-    nx = int(x * 65535 / max(1, user32.GetSystemMetrics(0)))
-    ny = int(y * 65535 / max(1, user32.GetSystemMetrics(1)))
-    send_mouse(MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE, nx, ny)
+    """Absolute move in virtual-screen pixels. One SendInput per point generates WM_MOUSEMOVE."""
+    vx = user32.GetSystemMetrics(SM_XVIRTUALSCREEN)
+    vy = user32.GetSystemMetrics(SM_YVIRTUALSCREEN)
+    vw = max(1, user32.GetSystemMetrics(SM_CXVIRTUALSCREEN))
+    vh = max(1, user32.GetSystemMetrics(SM_CYVIRTUALSCREEN))
+    nx = int((x - vx) * 65535 / vw)
+    ny = int((y - vy) * 65535 / vh)
+    send_mouse(MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK, nx, ny)
 
 
 def nc_hit_test(hwnd, x, y):

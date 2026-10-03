@@ -2463,9 +2463,9 @@ namespace mps::host
 		}
 		// A tab drag may still be running (OLE DoDragDrop pumps events through
 		// processEvents, so callers can arrive here mid-drag even when they
-		// look synchronous). Destroying a ShellWindow deletes its QDrag child
-		// (drag parent = source window), which crashes the drag loop — see
-		// m_shellsPendingDestroy. Defer and let endTabDrag flush.
+		// look synchronous). The QDrag is parented to ShellApp, but the source
+		// ShellWindow is still the drag source; destroying it mid-OLE still
+		// crashes the drag loop — see m_shellsPendingDestroy. Defer and let endTabDrag flush.
 		if (m_dragActive || m_autoMergeAnimActive)
 		{
 			if (!m_shellsPendingDestroy.contains(shell))

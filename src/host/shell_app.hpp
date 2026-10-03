@@ -200,11 +200,11 @@ namespace mps::host
 		/// Shells that became empty while a tab drag (or its OLE loop) was still
 		/// running. Windows' DoDragDrop pumps events internally (QueryContinueDrag
 		/// -> processEvents), so a deleteLater queued mid-drag executes inside the
-		/// OLE loop; destroying the drag's source ShellWindow then takes the QDrag
-		/// (parent = source window) with it and QDragManager::currentDrag() turns
-		/// null while GiveFeedback still calls dragCursor() — verified crash on
-		/// tear-out -> merge -> drag again. Destroying any ShellWindow mid-drag is
-		/// deferred here and flushed by endTabDrag (one extra event-loop spin).
+		/// OLE loop; destroying the source ShellWindow mid-drag is still unsafe
+		/// (the window is the drag source, and Qt's drag loop still touches it).
+		/// QDrag itself is parented to ShellApp so destroying the window no longer
+		/// deletes the QDrag object — deferral is for the source window, not the
+		/// QDrag parent. Flushed by endTabDrag (one extra event-loop spin).
 		QList<QPointer<ShellWindow>> m_shellsPendingDestroy;
 		qint64 m_dragTabId = 0;
 		qint64 m_dragResumeTabId = 0;

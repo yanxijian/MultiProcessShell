@@ -1001,10 +1001,13 @@ namespace mps::host
 		const int physH = qMax(1, qRound(static_cast<qreal>(wh->height()) * dpr));
 		const int physR = qMax(1, qRound(static_cast<qreal>(radius) * dpr));
 		const QRegion native = makeSupersampledRoundRectRegion(physW, physH, physR);
-		setMask(makeSupersampledRoundRectRegion(width(), height(), radius));
 		if (QPlatformWindow* pw = wh->handle())
 		{
 			pw->setMask(native);
+		}
+		else
+		{
+			setMask(makeSupersampledRoundRectRegion(width(), height(), radius));
 		}
 #endif
 	}
