@@ -141,6 +141,10 @@ namespace mps::host
 		void setTabDragHidden(qint64 tabId, bool hidden);
 		[[nodiscard]] qint64 previousActivationTarget(qint64 closingTabId) const;
 		[[nodiscard]] QPixmap grabTabButton(qint64 tabId) const;
+		/// Snapshot used to paint a child-widget tab face in the yield gap (OLE
+		/// Tool-window ghosts are often suppressed for the whole DoDragDrop).
+		void setYieldFacePixmap(const QPixmap& pm);
+		void syncYieldFace();
 		/// Logical size of a tab button (for drag ghost hotspot on high-DPI).
 		[[nodiscard]] QSize tabButtonSize(qint64 tabId) const;
 		void installStripDropFilter(QObject* filter);
@@ -193,6 +197,9 @@ namespace mps::host
 
 	private:
 		void rebuildTabs();
+		[[nodiscard]] TabButton* makeTabButton(const TabInfo& info);
+		void removeTabButton(qint64 tabId);
+		void runTabDrag(qint64 tabId, QPoint localHotSpot);
 		void syncEmbedToActive();
 		void syncWorkspace();
 		void pushActivationHistory(qint64 tabId);
@@ -249,6 +256,8 @@ namespace mps::host
 		bool m_stripDragLayoutActive = false;
 		int m_dragTabWidth = 0;
 		int m_stripDragOriginX = 0;
+		QLabel* m_yieldFace = nullptr;
+		QPixmap m_yieldFacePm;
 		QHash<qint64, QPropertyAnimation*> m_tabSlideAnims;
 		bool m_embedResyncPending = false;
 		bool m_renderHealPending = false;

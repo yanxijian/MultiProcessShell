@@ -9,6 +9,7 @@
 #include <QDragMoveEvent>
 #include <QDropEvent>
 #include <QEasingCurve>
+#include <QEvent>
 #include <QEventLoop>
 #include <QGuiApplication>
 #include <QKeyEvent>
@@ -304,6 +305,11 @@ namespace mps::host
 				}
 				zone->clearDropInsertIndicator();
 				zone->previewTabYieldAtCursor(tabId, dropGlobal, guestW, hotX);
+				showDragDropSink(false);
+				if (m_tabDragGhost)
+				{
+					m_tabDragGhost->hide();
+				}
 				de->setDropAction(Qt::MoveAction);
 				de->accept();
 				if (m_dragMoveWholeShell)
@@ -326,7 +332,19 @@ namespace mps::host
 
 			if (m_dragSource && shell == m_dragSource && tabId == m_dragTabId)
 			{
+				if (m_tearOutDetached)
+				{
+					m_dragSource->clearTabYieldPreview(/*keepDragTabHidden=*/true);
+					de->setDropAction(Qt::MoveAction);
+					de->accept();
+					return true;
+				}
 				shell->previewTabYieldAtCursor(tabId, QCursor::pos(), 0, hotX);
+				showDragDropSink(false);
+				if (m_tabDragGhost)
+				{
+					m_tabDragGhost->hide();
+				}
 			}
 			else
 			{
@@ -337,6 +355,15 @@ namespace mps::host
 				// Merge target: live tab yield, not only a blue bar.
 				shell->clearDropInsertIndicator();
 				shell->previewTabYieldAtCursor(tabId, dropGlobal, guestW, hotX);
+				showDragDropSink(false);
+				if (m_tabDragGhost)
+				{
+					m_tabDragGhost->hide();
+				}
+				if (m_tearOutPreview)
+				{
+					m_tearOutPreview->hide();
+				}
 				if (m_dragMoveWholeShell)
 				{
 					tryCommitMagneticAutoMerge();
@@ -396,14 +423,31 @@ namespace mps::host
 					{
 						clearAllDropIndicators();
 						clearAllTabYieldPreviews();
-						m_dragSource->setWindowOpacity(1.0);
-						m_dragSource->healRenderSurface();
-						m_dragSource->showMaximized();
+						if (m_dragMoveWholeShell)
+						{
+							m_dragSource->setWindowOpacity(1.0);
+							m_dragSource->healRenderSurface();
+							m_dragSource->showMaximized();
+						}
+						else
+						{
+							noteTearOutMaximizeNext();
+							tearOutTab(m_dragSource, m_dragTabId, {});
+						}
 						noteTabDragDropHandled();
 						de->acceptProposedAction();
 						return true;
 					}
-					// No other shell strip under cursor — keep the moved shell as-is.
+					if (!m_dragMoveWholeShell && m_dragSource && m_dragTabId != 0)
+					{
+						clearAllDropIndicators();
+						const QRect geom = tearOutPreviewGeometry();
+						noteTabDragDropHandled();
+						tearOutTab(m_dragSource, m_dragTabId, geom);
+						de->acceptProposedAction();
+						return true;
+					}
+					// Whole-shell: no other strip — keep the moved shell as-is.
 					clearAllDropIndicators();
 					clearAllTabYieldPreviews();
 					noteTabDragDropHandled();
@@ -444,7 +488,6 @@ namespace mps::host
 				return true;
 			}
 			clearAllDropIndicators();
-			clearAllTabYieldPreviews();
 			mergeTab(tabId, dropShell, mergeIndex);
 			noteTabDragDropHandled();
 			de->acceptProposedAction();
@@ -1039,7 +1082,7 @@ namespace mps::host
 		if (tab_strip::shouldMoveWholeShellOnTearOut(source->clientTabCount()))
 		{
 			clearAllDropIndicators();
-			clearAllTabYieldPreviews();
+			clearAllTabYieldPreviews(/*keepDragTabHidden=*/true);
 			source->setTabDragHidden(tabId, false);
 			source->setActiveTab(tabId);
 			source->setWindowOpacity(1.0);
@@ -1074,13 +1117,22 @@ namespace mps::host
 			return;
 		}
 		clearAllDropIndicators();
-		clearAllTabYieldPreviews();
 		// Released in a snap zone (drag-to-top): create the shell maximized.
 		const bool maximizeNext = m_tearOutMaximizePending;
 		m_tearOutMaximizePending = false;
 		// Keep HWND visible for reparent; preview still covers the transition.
 		const quintptr wid = EmbedContainer::transferBinding(source->embedContainer(), nullptr, tabId);
+		// Remove while the strip is still collapsed so restoring layout cannot
+		// flash the dragged tab back into the source row.
 		source->removeTab(tabId);
+		source->clearTabYieldPreview(/*keepDragTabHidden=*/true);
+		for (auto& s : m_shells)
+		{
+			if (s && s.get() != source)
+			{
+				s->clearTabYieldPreview();
+			}
+		}
 		m_tabToShell.remove(tabId);
 
 		QPoint pos = suggestedGeometry.topLeft();
@@ -1120,10 +1172,6 @@ namespace mps::host
 			}
 			m_tearOutPreview->raise();
 		}
-		if (m_tabDragGhost)
-		{
-			m_tabDragGhost->hide();
-		}
 		if (maximizeNext)
 		{
 			neu->showMaximized();
@@ -1137,27 +1185,17 @@ namespace mps::host
 		if (neu->embedContainer())
 		{
 			neu->embedContainer()->resyncActive();
-			QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 		}
-		// Keep the preview covering the new shell briefly so the first embed paint
-		// happens underneath (reduces black/empty flash).
-		QTimer::singleShot(48, this,
-						   [this]()
-						   {
-							   if (m_dragActive)
-							   {
-								   return;
-							   }
-							   if (m_tearOutPreview)
-							   {
-								   m_tearOutPreview->hide();
-								   m_tearOutPreview->setContentPixmap({});
-							   }
-							   if (m_tabDragGhost)
-							   {
-								   m_tabDragGhost->setPixmap({});
-							   }
-						   });
+		if (m_tearOutPreview)
+		{
+			m_tearOutPreview->hide();
+			m_tearOutPreview->setContentPixmap({});
+		}
+		if (m_tabDragGhost)
+		{
+			m_tabDragGhost->hide();
+			m_tabDragGhost->setPixmap({});
+		}
 		destroyShellIfEmpty(source);
 	}
 
@@ -1186,9 +1224,11 @@ namespace mps::host
 			return;
 		}
 		clearAllDropIndicators();
-		// Detach from source embed without Hide — target will reparent immediately.
+		// Keep the target yield gap open until the tab button is inserted into it,
+		// otherwise the strip packs then the tab pops in (hide/show on mouse up).
 		const quintptr wid = EmbedContainer::transferBinding(source->embedContainer(), target->embedContainer(), tabId);
 		source->removeTab(tabId);
+		source->clearTabYieldPreview();
 		m_tabToShell.insert(tabId, target);
 		if (insertIndex < 0)
 		{
@@ -1197,6 +1237,13 @@ namespace mps::host
 		else
 		{
 			target->insertTab(moved, insertIndex);
+		}
+		target->setTabDragHidden(tabId, false);
+		target->clearTabYieldPreview();
+		if (m_tabDragGhost)
+		{
+			m_tabDragGhost->hide();
+			m_tabDragGhost->setPixmap({});
 		}
 		if (moved.session)
 		{
@@ -1235,7 +1282,7 @@ namespace mps::host
 	{
 		// Sole-Client whole-shell tear-out: the moving source sits under the cursor and
 		// would always win hit-tests. Prefer other shells' strips so merge remains possible.
-		const bool preferOtherShell = m_dragActive && m_dragMoveWholeShell && m_tearOutDetached;
+		const bool preferOtherShell = m_dragActive && m_tearOutDetached;
 		if (preferOtherShell)
 		{
 			// Exact strip hit first, then a wider magnetic band (Chrome-like merge aim).
@@ -1379,8 +1426,8 @@ namespace mps::host
 					s->setAcceptDrops(true);
 				}
 			}
-			showDragDropSink(true);
 		}
+		showDragDropSink(true);
 #ifdef Q_OS_WIN
 		// Clear Esc transition bit so a prior Esc press is not mistaken for cancel.
 		GetAsyncKeyState(VK_ESCAPE);
@@ -1402,6 +1449,8 @@ namespace mps::host
 		const QSize tabLogicalSize = source->tabButtonSize(tabId);
 		m_dragTabWidth = tabLogicalSize.width() > 0 ? tabLogicalSize.width() : 80;
 		const QPixmap tabGhostPm = source->grabTabButton(tabId);
+		m_tabDragFace = tabGhostPm;
+		source->setYieldFacePixmap(tabGhostPm);
 		QPixmap contentSnap;
 		if (source->embedContainer())
 		{
@@ -1819,7 +1868,6 @@ namespace mps::host
 			m_tearOutPreview->setContentPixmap({});
 		}
 		clearAllDropIndicators();
-		clearAllTabYieldPreviews();
 
 		if (source && shellStillAlive(source))
 		{
@@ -1977,6 +2025,10 @@ namespace mps::host
 	{
 		if (!m_dragActive)
 		{
+			if (!oleTabDragActive() && !m_autoMergeAnimActive)
+			{
+				flushPendingDestroyList();
+			}
 			return;
 		}
 		qApp->removeEventFilter(this);
@@ -2005,7 +2057,9 @@ namespace mps::host
 		m_tearOutDetached = false;
 		const bool moveWholeShell = m_dragMoveWholeShell;
 		const QRect savedGeo = m_dragSourceSavedGeometry;
-		// Keep preview visible across tear-out until the new shell is shown.
+		// Keep preview + tab ghost visible across tear-out until the new shell
+		// has painted its tab. Restoring the source strip here would flash the
+		// dragged tab back into the old window.
 		if (!tearOrMerge)
 		{
 			if (m_snapPreview)
@@ -2022,16 +2076,8 @@ namespace mps::host
 				m_tabDragGhost->hide();
 				m_tabDragGhost->setPixmap({});
 			}
+			clearAllTabYieldPreviews(/*keepDragTabHidden=*/false);
 		}
-		else if (m_tabDragGhost)
-		{
-			// Tear-out uses the window preview; hide the tab ghost.
-			m_tabDragGhost->hide();
-		}
-		// Tear-out: the dragged tab is about to be removed from the source —
-		// keep its button hidden so it does not flash in the strip between this
-		// cleanup and removeTab() (whole-shell tear-out re-shows it explicitly).
-		clearAllTabYieldPreviews(/*keepDragTabHidden=*/tearOrMerge);
 
 		ShellWindow* source = m_dragSource;
 		const qint64 tabId = m_dragTabId;
@@ -2044,6 +2090,7 @@ namespace mps::host
 		m_dragResumeTabId = 0;
 		m_dragDropHandled = false;
 		m_dragTabWidth = 0;
+		m_tabDragFace = {};
 		m_dragMoveWholeShell = false;
 		m_dragSourceSavedGeometry = {};
 		m_dragWindowHotSpot = {};
@@ -2117,20 +2164,12 @@ namespace mps::host
 		// Flush shells that became empty mid-drag. One extra event-loop spin:
 		// exec() has returned, but the platform drag teardown (cursor cleanup,
 		// OLE releases) can still run posted events touching the drag source.
-		if (!m_shellsPendingDestroy.isEmpty())
+		if (!m_shellsPendingDestroy.isEmpty() && !oleTabDragActive())
 		{
-			const auto pending = m_shellsPendingDestroy;
-			m_shellsPendingDestroy.clear();
 			QTimer::singleShot(0, this,
-							   [this, pending]()
+							   [this]()
 							   {
-								   for (const auto& weak : pending)
-								   {
-									   if (ShellWindow* doomed = weak.data(); doomed && shellStillAlive(doomed))
-									   {
-										   destroyShellIfEmpty(doomed);
-									   }
-								   }
+								   flushPendingDestroyList();
 							   });
 		}
 	}
@@ -2160,8 +2199,14 @@ namespace mps::host
 			return;
 		}
 		const QPoint g = QCursor::pos();
-		if (m_dragMoveWholeShell)
+		const bool overStripEarly = tabDropZoneShellAtGlobal(g) != nullptr;
+		if (overStripEarly)
 		{
+			showDragDropSink(false);
+		}
+		else
+		{
+			showDragDropSink(true);
 			if (auto* sink = static_cast<TabDragDropSink*>(m_dragDropSink))
 			{
 				sink->follow(g);
@@ -2196,6 +2241,10 @@ namespace mps::host
 		else
 		{
 			m_tearOutDetached = tab_strip::nextTearOutDetached(wasDetached, overStrip, nearLeave, nearReturn);
+		}
+		if (m_tearOutDetached && !m_dragMoveWholeShell && m_dragSource && m_dragTabId != 0)
+		{
+			m_dragSource->clearTabYieldPreview(/*keepDragTabHidden=*/true);
 		}
 
 		// Drag-to-top snap preview (Aero-style maximize). Strip merge feedback
@@ -2321,10 +2370,8 @@ namespace mps::host
 				m_dragWindowHotSpot = g - m_dragSource->frameGeometry().topLeft();
 				m_dragSource->setWindowOpacity(0.92);
 			}
-			if (m_tabDragGhost)
-			{
-				m_tabDragGhost->hide();
-			}
+			ShellWindow* otherShell = tabDropZoneShellAtGlobal(g);
+			const int guestW = m_dragTabWidth > 0 ? m_dragTabWidth : 80;
 			if (m_dragSource)
 			{
 				if (m_dragTabId != 0)
@@ -2336,10 +2383,12 @@ namespace mps::host
 				{
 					m_dragSource->move(topLeft);
 				}
-				m_dragSource->raise();
+				// Stay behind the merge target so the dest yield gap is visible.
+				if (!otherShell || otherShell == m_dragSource)
+				{
+					m_dragSource->raise();
+				}
 			}
-			ShellWindow* otherShell = tabDropZoneShellAtGlobal(g);
-			const int guestW = m_dragTabWidth > 0 ? m_dragTabWidth : 80;
 			if (otherShell && otherShell != m_dragSource && m_dragTabId != 0)
 			{
 				for (auto& s : m_shells)
@@ -2352,10 +2401,18 @@ namespace mps::host
 				}
 				otherShell->clearDropInsertIndicator();
 				otherShell->previewTabYieldAtCursor(m_dragTabId, g, guestW, contentHotX);
+				if (m_tabDragGhost)
+				{
+					m_tabDragGhost->hide();
+				}
 				tryCommitMagneticAutoMerge();
 			}
 			else
 			{
+				if (m_tabDragGhost)
+				{
+					m_tabDragGhost->hide();
+				}
 				for (auto& s : m_shells)
 				{
 					if (s && s.get() != m_dragSource)
@@ -2374,16 +2431,15 @@ namespace mps::host
 			{
 				m_tearOutPreview->hide();
 			}
+			if (m_tabDragGhost)
+			{
+				m_tabDragGhost->hide();
+			}
 			ShellWindow* stripShell = tabDropZoneShellAtGlobal(g);
 			if (!stripShell)
 			{
 				stripShell = m_dragSource;
 			}
-			// Pin Y only while the cursor is actually on the strip. During the leave
-			// slop (cursor already below the strip, window preview not yet shown) the
-			// tab must free-follow — otherwise it stays glued high while the pointer
-			// moves down and looks upwardly biased.
-			positionTabGhost(/*pinToStrip=*/overStrip, stripShell, /*bumpZ=*/wasDetached);
 
 			if (m_dragSource && m_dragTabId != 0)
 			{
@@ -2414,15 +2470,51 @@ namespace mps::host
 			return;
 		}
 
+		// Detached: if the cursor is over another shell's strip, pin the ghost
+		// into that yield gap and drop the window preview — otherwise the dest
+		// row shows an empty hole until mouse-up inserts the real tab.
+		{
+			ShellWindow* mergeShell = tabDropZoneShellAtGlobal(g);
+			if (mergeShell && mergeShell != m_dragSource && m_dragTabId != 0)
+			{
+				if (m_tearOutPreview)
+				{
+					m_tearOutPreview->hide();
+				}
+				if (m_dragSource)
+				{
+					m_dragSource->clearTabYieldPreview(/*keepDragTabHidden=*/true);
+				}
+				for (auto& s : m_shells)
+				{
+					if (s && s.get() != mergeShell)
+					{
+						s->clearDropInsertIndicator();
+						if (s.get() != m_dragSource)
+						{
+							s->clearTabYieldPreview();
+						}
+					}
+				}
+				const int guestW = m_dragTabWidth > 0 ? m_dragTabWidth : (m_tabDragGhost ? m_tabDragGhost->contentSize().width() : 80);
+				mergeShell->clearDropInsertIndicator();
+				mergeShell->previewTabYieldAtCursor(m_dragTabId, g, guestW, contentHotX);
+				if (m_tabDragGhost)
+				{
+					m_tabDragGhost->hide();
+				}
+				return;
+			}
+		}
+
 		// Detached: tab ghost follows the cursor; window preview is placed so its
 		// title/tab bar wraps (vertically centers) that tab — not an independent hotspot.
 		if (!wasDetached)
 		{
 			clearAllDropIndicators();
-			// As soon as the tear-out window appears, siblings claim the old slot.
 			if (m_dragSource && m_dragTabId != 0)
 			{
-				m_dragSource->collapseTornOutTabSlot(m_dragTabId);
+				m_dragSource->clearTabYieldPreview(/*keepDragTabHidden=*/true);
 			}
 			for (auto& s : m_shells)
 			{
@@ -2447,6 +2539,77 @@ namespace mps::host
 		}
 	}
 
+	void ShellApp::beginOleTabDrag()
+	{
+		++m_oleTabDragDepth;
+	}
+
+	void ShellApp::endOleTabDrag()
+	{
+		if (m_oleTabDragDepth > 0)
+		{
+			--m_oleTabDragDepth;
+		}
+		if (m_oleTabDragDepth == 0 && !m_dragActive && !m_autoMergeAnimActive)
+		{
+			flushPendingDestroyList();
+		}
+	}
+
+	bool ShellApp::oleTabDragActive() const
+	{
+		return m_oleTabDragDepth > 0;
+	}
+
+	void ShellApp::flushPendingDestroyList()
+	{
+		if (oleTabDragActive() || m_dragActive || m_autoMergeAnimActive)
+		{
+			return;
+		}
+		const auto pending = m_shellsPendingDestroy;
+		m_shellsPendingDestroy.clear();
+		for (const auto& weak : pending)
+		{
+			if (ShellWindow* doomed = weak.data(); doomed && shellStillAlive(doomed))
+			{
+				destroyShellIfEmpty(doomed);
+			}
+		}
+	}
+
+	void ShellApp::flushDeferredShellDestroysExcept(ShellWindow* keepAlive)
+	{
+		if (oleTabDragActive())
+		{
+			return;
+		}
+		QList<QPointer<ShellWindow>> kept;
+		const auto pending = m_shellsPendingDestroy;
+		m_shellsPendingDestroy.clear();
+		QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+		for (const auto& weak : pending)
+		{
+			ShellWindow* doomed = weak.data();
+			if (!doomed || !shellStillAlive(doomed) || doomed == keepAlive)
+			{
+				if (doomed && doomed == keepAlive)
+				{
+					kept.append(doomed);
+				}
+				continue;
+			}
+			destroyShellIfEmpty(doomed);
+		}
+		for (const auto& k : kept)
+		{
+			if (!m_shellsPendingDestroy.contains(k))
+			{
+				m_shellsPendingDestroy.append(k);
+			}
+		}
+	}
+
 	void ShellApp::destroyShellIfEmpty(ShellWindow* shell)
 	{
 		if (!shell)
@@ -2466,12 +2629,15 @@ namespace mps::host
 		// look synchronous). The QDrag is parented to ShellApp, but the source
 		// ShellWindow is still the drag source; destroying it mid-OLE still
 		// crashes the drag loop — see m_shellsPendingDestroy. Defer and let endTabDrag flush.
-		if (m_dragActive || m_autoMergeAnimActive)
+		if (m_dragActive || m_autoMergeAnimActive || oleTabDragActive())
 		{
 			if (!m_shellsPendingDestroy.contains(shell))
 			{
 				m_shellsPendingDestroy.append(shell);
 			}
+			// Last client tab already moved off; do not leave a Home-only husk
+			// on screen while the mouse button is still down (slow OLE release).
+			shell->hide();
 			return;
 		}
 		shell->setActiveTab(kHomeTabId);

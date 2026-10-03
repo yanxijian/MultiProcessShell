@@ -6,13 +6,13 @@
 
 #include <QAction>
 #include <QApplication>
+#include <QCoreApplication>
 #include <QCloseEvent>
 #include <QCursor>
 #include <QDrag>
 #include <QEasingCurve>
 #include <QEvent>
 #include <QFontMetrics>
-#include <QGraphicsOpacityEffect>
 #include <QHash>
 #include <QImage>
 #include <QMenu>
@@ -935,6 +935,12 @@ namespace mps::host
 	/// HiDPI: QHighDpi::toNativeLocalRegion scales each rect with rounding.
 	void ShellWindow::applyNativeWindowRegion()
 	{
+		// Hidden shells are created off-screen during tear-out; skip the 4×
+		// region raster until showEvent so the new window appears sooner.
+		if (!isVisible())
+		{
+			return;
+		}
 #ifdef Q_OS_WIN
 		QWindow* wh = windowHandle();
 		if (!wh)
@@ -1140,6 +1146,62 @@ namespace mps::host
 		m_embed->releaseActiveIfTab(tabId);
 	}
 
+	void ShellWindow::setYieldFacePixmap(const QPixmap& pm)
+	{
+		m_yieldFacePm = pm;
+		if (pm.isNull())
+		{
+			if (m_yieldFace)
+			{
+				m_yieldFace->hide();
+			}
+			return;
+		}
+		syncYieldFace();
+	}
+
+	void ShellWindow::syncYieldFace()
+	{
+		if (!m_titleBar)
+		{
+			return;
+		}
+		if (m_yieldFacePm.isNull() && m_app)
+		{
+			m_yieldFacePm = m_app->tabDragFacePixmap();
+		}
+		if (m_yieldFacePm.isNull() || m_yieldDragTabId == 0 || !m_yieldOrder.contains(m_yieldDragTabId))
+		{
+			if (m_yieldFace)
+			{
+				m_yieldFace->hide();
+			}
+			return;
+		}
+		const QRect glob = tabDragSlotGlobalRect(m_yieldDragTabId);
+		if (!glob.isValid() || glob.width() < 4)
+		{
+			if (m_yieldFace)
+			{
+				m_yieldFace->hide();
+			}
+			return;
+		}
+		if (!m_yieldFace)
+		{
+			m_yieldFace = new QLabel(m_titleBar);
+			m_yieldFace->setObjectName(QStringLiteral("TabYieldFace"));
+			m_yieldFace->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+			m_yieldFace->setAttribute(Qt::WA_TranslucentBackground, true);
+			m_yieldFace->setScaledContents(true);
+		}
+		const QPoint local = m_titleBar->mapFromGlobal(glob.topLeft());
+		m_yieldFace->setPixmap(m_yieldFacePm);
+		m_yieldFace->setGeometry(QRect(local, glob.size()));
+		m_yieldFace->show();
+		m_yieldFace->raise();
+	}
+
 	void ShellWindow::setTabDragHidden(qint64 tabId, bool hidden)
 	{
 		for (auto* btn : m_tabButtons)
@@ -1148,18 +1210,10 @@ namespace mps::host
 			{
 				continue;
 			}
-			if (hidden)
-			{
-				auto* eff = new QGraphicsOpacityEffect(btn);
-				eff->setOpacity(0.0);
-				btn->setGraphicsEffect(eff);
-				btn->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-			}
-			else
-			{
-				btn->setGraphicsEffect(nullptr);
-				btn->setAttribute(Qt::WA_TransparentForMouseEvents, false);
-			}
+			// hide() rather than opacity 0: a 0-opacity widget still paints a hole
+			// when re-inserted into the strip layout (flash on mouse-up tear-out).
+			btn->setAttribute(Qt::WA_TransparentForMouseEvents, hidden);
+			btn->setVisible(!hidden);
 			break;
 		}
 	}
@@ -1244,6 +1298,13 @@ namespace mps::host
 	{
 		if (dragTabId == kHomeTabId || !m_tabRow || !m_titleBar)
 		{
+			return;
+		}
+		// Detached tear-out: the source must not keep painting the dragged tab
+		// (yield face or button). DragMove still hits the old strip otherwise.
+		if (m_app && m_app->isTearOutDetached() && m_app->dragSourceWindow() == this)
+		{
+			clearTabYieldPreview(/*keepDragTabHidden=*/true);
 			return;
 		}
 
@@ -1397,6 +1458,7 @@ namespace mps::host
 			animateTabGeometry(btn, QRect(x, y, w, h));
 			x += w + tab_strip::kTabSpacing;
 		}
+		syncYieldFace();
 	}
 
 	int ShellWindow::yieldInsertIndex() const
@@ -1550,8 +1612,15 @@ namespace mps::host
 			}
 			btn->setParent(m_titleBar);
 			btn->setGeometry(geos.value(btn->info().tabId));
-			btn->show();
-			btn->raise();
+			if (hideTabId != 0 && btn->info().tabId == hideTabId)
+			{
+				btn->hide();
+			}
+			else
+			{
+				btn->show();
+				btn->raise();
+			}
 		}
 		if (hideTabId != 0)
 		{
@@ -1626,9 +1695,17 @@ namespace mps::host
 		{
 			setTabDragHidden(wasDragTab, false);
 		}
+		if (m_yieldFace)
+		{
+			m_yieldFace->hide();
+		}
 		if (!had || !m_tabRow)
 		{
 			return;
+		}
+		if (m_titleBar)
+		{
+			m_titleBar->setUpdatesEnabled(false);
 		}
 		while (QLayoutItem* item = m_tabRow->takeAt(0))
 		{
@@ -1640,6 +1717,10 @@ namespace mps::host
 			{
 				m_tabRow->addWidget(b);
 			}
+		}
+		if (m_titleBar)
+		{
+			m_titleBar->setUpdatesEnabled(true);
 		}
 		scheduleCaptionHitCacheRefresh(); // restored strip relayout shifts tab rects
 	}
@@ -1668,6 +1749,10 @@ namespace mps::host
 
 		ensureStripDragLayout(dragTabId, 0);
 		setTabDragHidden(dragTabId, true);
+		if (m_yieldFace)
+		{
+			m_yieldFace->hide();
+		}
 		clearDropInsertIndicator();
 
 		std::vector<int64_t> ids;
@@ -1698,10 +1783,7 @@ namespace mps::host
 			animateTabGeometry(btn, QRect(x, y, btn->width(), btn->height()));
 			x += btn->width() + tab_strip::kTabSpacing;
 		}
-		if (auto* dragBtn = byId.value(dragTabId, nullptr))
-		{
-			animateTabGeometry(dragBtn, QRect(x, y, 0, dragBtn->height()));
-		}
+		syncYieldFace();
 	}
 
 	QRect ShellWindow::tabStripGlobalRect() const
@@ -1783,9 +1865,9 @@ namespace mps::host
 		// title-bar margins — do not assume y == kTabStripTop (that looks too high).
 		for (auto* btn : m_tabButtons)
 		{
-			if (!btn || btn->graphicsEffect())
+			if (!btn || !btn->isVisibleTo(m_titleBar))
 			{
-				continue; // skip the opacity-hidden dragged tab
+				continue; // skip the hidden dragged tab
 			}
 			return btn->y();
 		}
@@ -1804,7 +1886,7 @@ namespace mps::host
 		// vertical centering — avoids the ghost sitting a few px above the row.
 		for (auto* btn : m_tabButtons)
 		{
-			if (!btn || btn->graphicsEffect())
+			if (!btn || !btn->isVisibleTo(m_titleBar))
 			{
 				continue;
 			}
@@ -2003,8 +2085,51 @@ namespace mps::host
 		// Home stays at index 0; client tabs occupy [1, size].
 		insertIndex = tab_strip::clampClientInsertIndex(insertIndex, m_tabs.size());
 		m_tabs.insert(insertIndex, info);
+		if (m_tabRow)
+		{
+			auto* btn = makeTabButton(info);
+			m_tabButtons.insert(insertIndex, btn);
+			if (m_stripDragLayoutActive)
+			{
+				btn->setParent(m_titleBar);
+				const int tabW = m_dragTabWidth > 0 ? m_dragTabWidth : qMax(btn->width(), 80);
+				int tabH = btn->height();
+				QRect gap;
+				if (insertIndex > 0)
+				{
+					if (auto* prev = m_tabButtons[insertIndex - 1])
+					{
+						const QRect r = prev->geometry();
+						gap = QRect(r.x() + r.width() + tab_strip::kTabSpacing, r.y(), tabW, r.height());
+					}
+				}
+				else if (insertIndex + 1 < m_tabButtons.size())
+				{
+					if (auto* next = m_tabButtons[insertIndex + 1])
+					{
+						const QRect r = next->geometry();
+						gap = QRect(r.x() - tabW - tab_strip::kTabSpacing, r.y(), tabW, r.height());
+					}
+				}
+				if (!gap.isValid())
+				{
+					if (tabH <= 0)
+					{
+						tabH = 28;
+					}
+					gap = QRect(tab_strip::kTabStripMargin, tabStripContentY(), tabW, tabH);
+				}
+				btn->setGeometry(gap);
+				btn->show();
+				btn->raise();
+			}
+			else
+			{
+				m_tabRow->insertWidget(insertIndex, btn);
+			}
+		}
 		setActiveTab(info.tabId);
-		rebuildTabs();
+		scheduleCaptionHitCacheRefresh();
 	}
 
 	void ShellWindow::moveTab(qint64 tabId, int insertIndex)
@@ -2070,7 +2195,7 @@ namespace mps::host
 		{
 			return;
 		}
-		if (m_embed)
+		if (m_embed && m_embed->has(tabId))
 		{
 			m_embed->unbind(tabId);
 		}
@@ -2084,15 +2209,14 @@ namespace mps::host
 			}
 		}
 		m_activationHistory.removeAll(tabId);
+		removeTabButton(tabId);
 		if (wasActive)
 		{
-			const qint64 next = previousActivationTarget(tabId);
-			rebuildTabs();
-			setActiveTab(next);
+			setActiveTab(previousActivationTarget(tabId));
 			return;
 		}
-		rebuildTabs();
 		syncWorkspace();
+		scheduleCaptionHitCacheRefresh();
 	}
 
 	void ShellWindow::setActiveTab(qint64 tabId)
@@ -2178,6 +2302,181 @@ namespace mps::host
 		syncWorkspace();
 	}
 
+	TabButton* ShellWindow::makeTabButton(const TabInfo& info)
+	{
+		auto* btn = new TabButton(info, m_titleBar);
+		btn->setActive(info.tabId == m_activeTabId);
+		connect(btn, &TabButton::activated, this, &ShellWindow::tabActivated);
+		connect(btn, &TabButton::closeRequested, this, &ShellWindow::tabCloseRequested);
+		connect(btn, &TabButton::terminateSessionRequested, this, &ShellWindow::terminateSessionRequested);
+		if (!info.isHome)
+		{
+			connect(btn, &TabButton::dragStarted, this, &ShellWindow::runTabDrag);
+		}
+		if (m_stripDropFilter)
+		{
+			btn->setAcceptDrops(true);
+			btn->installEventFilter(m_stripDropFilter);
+		}
+		return btn;
+	}
+
+	void ShellWindow::removeTabButton(qint64 tabId)
+	{
+		for (int i = 0; i < m_tabButtons.size(); ++i)
+		{
+			TabButton* btn = m_tabButtons[i];
+			if (!btn || btn->info().tabId != tabId)
+			{
+				continue;
+			}
+			m_tabButtons.removeAt(i);
+			if (m_tabRow)
+			{
+				m_tabRow->removeWidget(btn);
+			}
+			btn->setParent(nullptr);
+			btn->deleteLater();
+			return;
+		}
+	}
+
+	void ShellWindow::runTabDrag(qint64 tabId, QPoint localHotSpot)
+	{
+		ShellApp* app = m_app;
+		const QPointer<ShellWindow> self(this);
+		if (app)
+		{
+			app->beginTabDrag(this, tabId, localHotSpot);
+		}
+		auto* mime = new QMimeData;
+		mime->setData(QString::fromUtf8(kTabMimeType), QByteArray::number(tabId));
+		auto* drag = new QDrag(app ? static_cast<QObject*>(app) : qApp);
+		drag->setMimeData(mime);
+		QPixmap empty(1, 1);
+		empty.fill(Qt::transparent);
+		drag->setPixmap(empty);
+		drag->setHotSpot(QPoint(0, 0));
+		const QPixmap arrowPm = plainArrowDragCursorPixmap();
+		drag->setDragCursor(arrowPm, Qt::MoveAction);
+		drag->setDragCursor(arrowPm, Qt::CopyAction);
+		drag->setDragCursor(arrowPm, Qt::LinkAction);
+		drag->setDragCursor(arrowPm, Qt::IgnoreAction);
+		QApplication::setOverrideCursor(Qt::ArrowCursor);
+		const CaptionHitPauseGuard captionHitPause;
+		if (app)
+		{
+			app->flushDeferredShellDestroysExcept(self.data());
+		}
+		QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+#ifdef Q_OS_WIN
+		ReleaseCapture();
+		if (QWindow* wh = windowHandle(); wh && wh->handle())
+		{
+			SetCapture(reinterpret_cast<HWND>(wh->winId()));
+		}
+#endif
+		if (app)
+		{
+			app->beginOleTabDrag();
+		}
+		const auto drop = drag->exec(Qt::MoveAction);
+		if (app)
+		{
+			app->endOleTabDrag();
+		}
+		QApplication::restoreOverrideCursor();
+		if (!self)
+		{
+			if (app)
+			{
+				app->endTabDrag(/*tearOrMerge=*/false);
+			}
+			return;
+		}
+		if (m_app && m_app->isDragAutoMerged())
+		{
+			emit dropIndicatorsClearRequested();
+			clearDropInsertIndicator();
+			if (!m_app->isAutoMergeAnimating())
+			{
+				m_app->endTabDrag(/*tearOrMerge=*/false);
+			}
+			return;
+		}
+		const QRect previewGeom = m_app ? m_app->tearOutPreviewGeometry() : QRect(QCursor::pos() - QPoint(40, 20), size());
+		emit dropIndicatorsClearRequested();
+		clearDropInsertIndicator();
+		if (drop == Qt::IgnoreAction)
+		{
+			if (m_app && m_app->isTabDragDropHandled())
+			{
+				m_app->endTabDrag(/*tearOrMerge=*/false);
+				return;
+			}
+			const bool cancelled = m_app && m_app->consumeDragCancelled();
+			const QPoint releasePos = QCursor::pos();
+			ShellWindow* zoneShell = m_app ? m_app->tabDropZoneShellAtGlobal(releasePos) : nullptr;
+			if (!cancelled && zoneShell == this && m_app)
+			{
+				if (!(hasTabYieldPreview() && commitTabYieldPreview()))
+				{
+					int insertIndex = yieldInsertIndex();
+					if (insertIndex < 0)
+					{
+						insertIndex = tabInsertIndexAt(releasePos);
+					}
+					moveTab(tabId, insertIndex);
+				}
+				m_app->noteTabDragDropHandled();
+				m_app->endTabDrag(/*tearOrMerge=*/false);
+			}
+			else if (!cancelled && zoneShell && zoneShell != this && m_app)
+			{
+				int insertIndex = zoneShell->yieldInsertIndex();
+				if (insertIndex < 0)
+				{
+					insertIndex = zoneShell->tabInsertIndexAt(releasePos);
+				}
+				m_app->noteTabDragDropHandled();
+				m_app->mergeTab(tabId, zoneShell, insertIndex);
+				m_app->endTabDrag(/*tearOrMerge=*/false);
+			}
+			else if (!cancelled && hasTabYieldPreview() && m_app && m_app->shouldSuppressTearOutAt(releasePos))
+			{
+				commitTabYieldPreview();
+				m_app->noteTabDragDropHandled();
+				m_app->endTabDrag(/*tearOrMerge=*/false);
+			}
+			else if (cancelled || (m_app && m_app->shouldSuppressTearOutAt(releasePos))
+					 || (m_app && tab_strip::shouldCancelTearOutOverWindowButtons(m_app->isReleaseOverWindowButtons(releasePos))))
+			{
+				if (m_app)
+				{
+					m_app->endTabDrag(/*tearOrMerge=*/false);
+				}
+			}
+			else if (!cancelled && m_app && m_app->dragSnapZoneAt(releasePos).zone == snap::Zone::Maximize)
+			{
+				m_app->noteTearOutMaximizeNext();
+				m_app->endTabDrag(/*tearOrMerge=*/true);
+				emit tabTearOutRequested(tabId, QRect());
+			}
+			else
+			{
+				if (m_app)
+				{
+					m_app->endTabDrag(/*tearOrMerge=*/true);
+				}
+				emit tabTearOutRequested(tabId, previewGeom);
+			}
+		}
+		else if (m_app)
+		{
+			m_app->endTabDrag(/*tearOrMerge=*/false);
+		}
+	}
+
 	void ShellWindow::rebuildTabs()
 	{
 		while (QLayoutItem* item = m_tabRow->takeAt(0))
@@ -2191,161 +2490,9 @@ namespace mps::host
 		m_tabButtons.clear();
 		for (const auto& t : m_tabs)
 		{
-			auto* btn = new TabButton(t, m_titleBar);
+			auto* btn = makeTabButton(t);
 			m_tabButtons.push_back(btn);
 			m_tabRow->addWidget(btn);
-			btn->setActive(t.tabId == m_activeTabId);
-			connect(btn, &TabButton::activated, this, &ShellWindow::tabActivated);
-			connect(btn, &TabButton::closeRequested, this, &ShellWindow::tabCloseRequested);
-			connect(btn, &TabButton::terminateSessionRequested, this, &ShellWindow::terminateSessionRequested);
-			if (!t.isHome)
-			{
-				connect(
-					btn, &TabButton::dragStarted, this,
-					[this](qint64 tabId, QPoint localHotSpot)
-					{
-						ShellApp* app = m_app;
-						const QPointer<ShellWindow> self(this);
-						if (app)
-						{
-							app->beginTabDrag(this, tabId, localHotSpot);
-						}
-						auto* mime = new QMimeData;
-						mime->setData(QString::fromUtf8(kTabMimeType), QByteArray::number(tabId));
-						// Never parent the QDrag to this ShellWindow. The OLE drag
-						// loop pumps events (QueryContinueDrag -> processEvents),
-						// and a stale endTabDrag from a finishing auto-merge
-						// animation can clear m_dragActive while this drag still
-						// runs, letting a deferred destroy tear down the source
-						// shell inside the drag loop. A shell destroyed mid-drag
-						// would delete its child QDrag, QDragManager::currentDrag()
-						// then turns null and GiveFeedback crashes dereferencing
-						// it (verified dumps: NULL this in QDrag::dragCursor,
-						// tear-out -> merge -> re-drag). Parent the drag to the
-						// long-lived ShellApp; Qt's QDragManager deleteLaters it
-						// once exec() returns.
-						auto* drag = new QDrag(app ? static_cast<QObject*>(app) : qApp);
-						drag->setMimeData(mime);
-						// Invisible drag pixmap — tab ghost / whole-shell follow drawn separately.
-						QPixmap empty(1, 1);
-						empty.fill(Qt::transparent);
-						drag->setPixmap(empty);
-						drag->setHotSpot(QPoint(0, 0));
-						// Windows OLE ignores QApplication override cursors and uses setDragCursor.
-						// Paint our own arrow: system Arrow pixmap is often null, and the native
-						// Move cursor adds a small right-arrow badge under the pointer.
-						const QPixmap arrowPm = plainArrowDragCursorPixmap();
-						drag->setDragCursor(arrowPm, Qt::MoveAction);
-						drag->setDragCursor(arrowPm, Qt::CopyAction);
-						drag->setDragCursor(arrowPm, Qt::LinkAction);
-						// IgnoreAction custom cursors are unsupported on Windows — never rely on ignore.
-						drag->setDragCursor(arrowPm, Qt::IgnoreAction);
-						QApplication::setOverrideCursor(Qt::ArrowCursor);
-						// Pause NC hit testing process-wide while the OLE drag loop runs:
-						// target shell title bars must stay client area for Qt drag events.
-						const CaptionHitPauseGuard captionHitPause;
-						const auto drop = drag->exec(Qt::MoveAction);
-						QApplication::restoreOverrideCursor();
-						if (!self)
-						{
-							// The source shell was destroyed while the OLE loop
-							// ran (deferred destroy raced a stale endTabDrag).
-							// The QDrag is owned by ShellApp, so unwinding here
-							// is safe — just close the drag session.
-							if (app)
-							{
-								app->endTabDrag(/*tearOrMerge=*/false);
-							}
-							return;
-						}
-						if (m_app && m_app->isDragAutoMerged())
-						{
-							// Magnetic auto-merge: OLE aborted; endTabDrag runs after settle anim.
-							emit dropIndicatorsClearRequested();
-							clearDropInsertIndicator();
-							if (!m_app->isAutoMergeAnimating())
-							{
-								m_app->endTabDrag(/*tearOrMerge=*/false);
-							}
-							return;
-						}
-						const QRect previewGeom = m_app ? m_app->tearOutPreviewGeometry() : QRect(QCursor::pos() - QPoint(40, 20), size());
-						emit dropIndicatorsClearRequested();
-						clearDropInsertIndicator();
-						if (drop == Qt::IgnoreAction)
-						{
-							const bool cancelled = m_app && m_app->consumeDragCancelled();
-							const QPoint releasePos = QCursor::pos();
-							ShellWindow* zoneShell = m_app ? m_app->tabDropZoneShellAtGlobal(releasePos) : nullptr;
-							// Release in the open yield gap has no drop widget → IgnoreAction.
-							// Same-shell: commit live reorder. Foreign strip: merge.
-							if (!cancelled && zoneShell == this && m_app)
-							{
-								if (!(hasTabYieldPreview() && commitTabYieldPreview()))
-								{
-									int insertIndex = yieldInsertIndex();
-									if (insertIndex < 0)
-									{
-										insertIndex = tabInsertIndexAt(releasePos);
-									}
-									moveTab(tabId, insertIndex);
-								}
-								m_app->noteTabDragDropHandled();
-								m_app->endTabDrag(/*tearOrMerge=*/false);
-							}
-							else if (!cancelled && zoneShell && zoneShell != this && m_app)
-							{
-								int insertIndex = zoneShell->yieldInsertIndex();
-								if (insertIndex < 0)
-								{
-									insertIndex = zoneShell->tabInsertIndexAt(releasePos);
-								}
-								m_app->noteTabDragDropHandled();
-								m_app->endTabDrag(/*tearOrMerge=*/false);
-								m_app->mergeTab(tabId, zoneShell, insertIndex);
-							}
-							else if (!cancelled && hasTabYieldPreview() && m_app && m_app->shouldSuppressTearOutAt(releasePos))
-							{
-								// Near the strip with a live yield preview — keep the new order.
-								commitTabYieldPreview();
-								m_app->noteTabDragDropHandled();
-								m_app->endTabDrag(/*tearOrMerge=*/false);
-							}
-							else if (cancelled || (m_app && m_app->shouldSuppressTearOutAt(releasePos))
-									 || (m_app
-										 && tab_strip::shouldCancelTearOutOverWindowButtons(m_app->isReleaseOverWindowButtons(releasePos))))
-							{
-								// Esc, near strip without commit, or over min/max/close → restore.
-								if (m_app)
-								{
-									m_app->endTabDrag(/*tearOrMerge=*/false);
-								}
-							}
-							else if (!cancelled && m_app && m_app->dragSnapZoneAt(releasePos).zone == snap::Zone::Maximize)
-							{
-								// Released on the screen's top edge: tear out maximized
-								// (Aero-snap style). The suggested geometry is unused.
-								m_app->noteTearOutMaximizeNext();
-								m_app->endTabDrag(/*tearOrMerge=*/false);
-								emit tabTearOutRequested(tabId, QRect());
-							}
-							else
-							{
-								if (m_app)
-								{
-									m_app->endTabDrag(/*tearOrMerge=*/true); // keeps preview until tearOut
-								}
-								emit tabTearOutRequested(tabId, previewGeom);
-							}
-						}
-						else if (m_app)
-						{
-							// Drop already handled in ShellApp::eventFilter (incl. whole-shell
-							// merge redirected by strip geometry). Just end the drag session.
-							m_app->endTabDrag(/*tearOrMerge=*/false);
-						}
-					});
-			}
 		}
 		reinstallStripDropTargets();
 		scheduleCaptionHitCacheRefresh(); // tab set changed: refresh tab + button rects

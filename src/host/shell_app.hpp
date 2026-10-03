@@ -55,12 +55,28 @@ namespace mps::host
 		void clearAllDropIndicators();
 		void beginTabDrag(ShellWindow* source, qint64 tabId, QPoint localHotSpot = {});
 		void noteTabDragDropHandled();
+		[[nodiscard]] bool isTabDragDropHandled() const
+		{
+			return m_dragDropHandled;
+		}
+		[[nodiscard]] bool isTearOutDetached() const
+		{
+			return m_tearOutDetached;
+		}
+		[[nodiscard]] ShellWindow* dragSourceWindow() const
+		{
+			return m_dragSource;
+		}
 		[[nodiscard]] bool consumeDragCancelled();
 		[[nodiscard]] bool isDragAutoMerged() const;
 		[[nodiscard]] bool isAutoMergeAnimating() const;
 		[[nodiscard]] bool shouldSuppressTearOutAt(QPoint globalPos) const;
 		[[nodiscard]] bool isReleaseOverWindowButtons(QPoint globalPos) const;
 		[[nodiscard]] QRect tearOutPreviewGeometry() const;
+		[[nodiscard]] QPixmap tabDragFacePixmap() const
+		{
+			return m_tabDragFace;
+		}
 		/// Live snap-zone probe for drag release positions (drag-to-top maximize).
 		/// Merging into another shell's strip always wins over snapping — callers
 		/// that already resolved a strip target must not consult this.
@@ -78,6 +94,13 @@ namespace mps::host
 		[[nodiscard]] ShellWindow* shellFromStripDropTarget(QObject* watched) const;
 		[[nodiscard]] ShellWindow* tabDropZoneShellAtGlobal(QPoint globalPos) const;
 		void destroyShellIfEmpty(ShellWindow* shell);
+		/// Nesting around QDrag::exec (OLE processEvents). Destroying a shell
+		/// inside this window crashes qwindows (null handle / null currentDrag).
+		void beginOleTabDrag();
+		void endOleTabDrag();
+		[[nodiscard]] bool oleTabDragActive() const;
+		/// Run deferred empty-shell deletes. Safe only when OLE drag is not nested.
+		void flushDeferredShellDestroysExcept(ShellWindow* keepAlive);
 
 		/// Per-shell Home client-area factory (Demo installs Create Client / theme UI).
 		void setHomeContentFactory(HomeContentFactory factory)
@@ -141,6 +164,7 @@ namespace mps::host
 		void startGhostSnapBack();
 		void finishGhostSnapBack();
 		void flushCreatesDeferredDuringDrag();
+		void flushPendingDestroyList();
 		void tryCommitMagneticAutoMerge();
 		void startAutoMergeAnimation(ShellWindow* source, ShellWindow* target, qint64 tabId, int insertIndex);
 		void finishAutoMergeAnimation();
@@ -212,10 +236,12 @@ namespace mps::host
 		int m_pendingMergeIndex = -1;
 		QPoint m_dragHotSpot{40, 20};
 		QPoint m_tabGhostHotSpot{20, 16};
+		QPixmap m_tabDragFace;
 		QSize m_dragPreviewSize{720, 480};
 		int m_dragTabWidth = 0;
 		bool m_dragDropHandled = false;
 		bool m_dragActive = false;
+		int m_oleTabDragDepth = 0;
 		bool m_dragCancelled = false;
 		bool m_dragAutoMerged = false;
 		bool m_autoMergeAnimActive = false;
