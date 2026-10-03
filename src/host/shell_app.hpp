@@ -3,6 +3,7 @@
 
 #include "client_session.hpp"
 #include "shell_window.hpp"
+#include "snap_zone.hpp"
 #include "tear_out_preview.hpp"
 #include "theme_origin.hpp"
 #include "theme_scheme.hpp"
@@ -60,6 +61,17 @@ namespace mps::host
 		[[nodiscard]] bool shouldSuppressTearOutAt(QPoint globalPos) const;
 		[[nodiscard]] bool isReleaseOverWindowButtons(QPoint globalPos) const;
 		[[nodiscard]] QRect tearOutPreviewGeometry() const;
+		/// Live snap-zone probe for drag release positions (drag-to-top maximize).
+		/// Merging into another shell's strip always wins over snapping — callers
+		/// that already resolved a strip target must not consult this.
+		[[nodiscard]] snap::Result dragSnapZoneAt(QPoint globalPos) const;
+		/// Ask that the next tearOutTab() create its shell maximized (released in a
+		/// snap zone).
+		void noteTearOutMaximizeNext()
+		{
+			m_tearOutMaximizePending = true;
+		}
+
 		void endTabDrag(bool tearOrMerge);
 		[[nodiscard]] ShellWindow* shellForTab(qint64 tabId) const;
 		[[nodiscard]] ShellWindow* shellAtGlobal(QPoint globalPos) const;
@@ -175,6 +187,9 @@ namespace mps::host
 
 		TearOutPreview* m_tearOutPreview = nullptr;
 		TabDragGhost* m_tabDragGhost = nullptr;
+		SnapPreview* m_snapPreview = nullptr;
+		/// Next tearOutTab() should create its shell maximized (released in a snap zone).
+		bool m_tearOutMaximizePending = false;
 		QWidget* m_dragDropSink = nullptr;
 		QTimer* m_dragVisualTimer = nullptr;
 		QPropertyAnimation* m_ghostSnapAnim = nullptr;

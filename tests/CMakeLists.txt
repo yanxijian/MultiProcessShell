@@ -74,6 +74,28 @@ if(TARGET Qt6::Core)
   else()
     gtest_discover_tests(mps_caption_hit_tests)
   endif()
+
+  # Pure geometry rule tests for the drag snap zone (QtCore + GTest only).
+  add_executable(mps_snap_zone_tests
+    test_snap_zone.cpp
+  )
+
+  target_include_directories(mps_snap_zone_tests
+    PRIVATE
+      "${MPS_ROOT}/src/host"
+  )
+
+  target_link_libraries(mps_snap_zone_tests
+    PRIVATE
+      Qt6::Core
+      GTest::gtest_main
+  )
+
+  if(WIN32 AND MPS_BUILD_SHARED)
+    gtest_discover_tests(mps_snap_zone_tests DISCOVERY_MODE PRE_TEST)
+  else()
+    gtest_discover_tests(mps_snap_zone_tests)
+  endif()
 endif()
 
 # Offline Python frame/Envelope tests (no Qt). Skip if protobuf module missing.

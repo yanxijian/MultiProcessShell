@@ -2151,6 +2151,14 @@ namespace mps::host
 									m_app->endTabDrag(/*tearOrMerge=*/false);
 								}
 							}
+							else if (!cancelled && m_app && m_app->dragSnapZoneAt(releasePos).zone == snap::Zone::Maximize)
+							{
+								// Released on the screen's top edge: tear out maximized
+								// (Aero-snap style). The suggested geometry is unused.
+								m_app->noteTearOutMaximizeNext();
+								m_app->endTabDrag(/*tearOrMerge=*/false);
+								emit tabTearOutRequested(tabId, QRect());
+							}
 							else
 							{
 								if (m_app)

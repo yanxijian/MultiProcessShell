@@ -64,6 +64,22 @@ namespace mps::host
 	private:
 		QPixmap m_content;
 	};
+
+	/// Translucent overlay showing the snap target rect while a tab drag runs
+	/// (Aero snap preview look-alike for drags inside the OLE loop, where the
+	/// system never draws its own). Input-transparent, never activates.
+	class SnapPreview final : public QWidget
+	{
+		Q_OBJECT
+	public:
+		explicit SnapPreview(QWidget* parent = nullptr);
+
+		/// Show/raise at a global rect (screen work area), or hide on invalid.
+		void showAt(const QRect& globalRect);
+
+	protected:
+		void paintEvent(QPaintEvent* event) override;
+	};
 } // namespace mps::host
 
 #endif // __MPS_HOST_TEAR_OUT_PREVIEW_H__

@@ -19,6 +19,7 @@
 #include <QPainterPath>
 #include <QParallelAnimationGroup>
 #include <QPropertyAnimation>
+#include <QScreen>
 #include <QSize>
 #include <QTimer>
 #include <QUuid>
@@ -96,6 +97,8 @@ namespace mps::host
 		m_tearOutPreview->hide();
 		m_tabDragGhost = new TabDragGhost(nullptr);
 		m_tabDragGhost->hide();
+		m_snapPreview = new SnapPreview(nullptr);
+		m_snapPreview->hide();
 		m_dragDropSink = new TabDragDropSink();
 		m_dragDropSink->installEventFilter(this);
 		m_dragVisualTimer = new QTimer(this);
@@ -382,6 +385,18 @@ namespace mps::host
 							m_dragSource->setGeometry(m_dragSourceSavedGeometry);
 							m_dragSource->setWindowOpacity(1.0);
 						}
+						noteTabDragDropHandled();
+						de->acceptProposedAction();
+						return true;
+					}
+					// Dragged to the screen's top edge: maximize (Aero-snap style).
+					// Strip merge (resolved above) always wins over snapping.
+					if (m_dragSource && shellStillAlive(m_dragSource) && dragSnapZoneAt(releasePos).zone == snap::Zone::Maximize)
+					{
+						clearAllDropIndicators();
+						clearAllTabYieldPreviews();
+						m_dragSource->setWindowOpacity(1.0);
+						m_dragSource->showMaximized();
 						noteTabDragDropHandled();
 						de->acceptProposedAction();
 						return true;
@@ -1057,6 +1072,9 @@ namespace mps::host
 		}
 		clearAllDropIndicators();
 		clearAllTabYieldPreviews();
+		// Released in a snap zone (drag-to-top): create the shell maximized.
+		const bool maximizeNext = m_tearOutMaximizePending;
+		m_tearOutMaximizePending = false;
 		// Keep HWND visible for reparent; preview still covers the transition.
 		const quintptr wid = EmbedContainer::transferBinding(source->embedContainer(), nullptr, tabId);
 		source->removeTab(tabId);
@@ -1090,7 +1108,7 @@ namespace mps::host
 		{
 			neu->embedContainer()->resyncActive();
 		}
-		if (m_tearOutPreview)
+		if (m_tearOutPreview && !maximizeNext)
 		{
 			m_tearOutPreview->setGeometry(QRect(pos, sz));
 			if (!m_tearOutPreview->isVisible())
@@ -1103,7 +1121,14 @@ namespace mps::host
 		{
 			m_tabDragGhost->hide();
 		}
-		neu->show();
+		if (maximizeNext)
+		{
+			neu->showMaximized();
+		}
+		else
+		{
+			neu->show();
+		}
 		neu->raise();
 		neu->activateWindow();
 		if (neu->embedContainer())
@@ -1247,6 +1272,21 @@ namespace mps::host
 		return nullptr;
 	}
 
+	snap::Result ShellApp::dragSnapZoneAt(QPoint globalPos) const
+	{
+		// Aero-snap style probe for drags that run inside the OLE DoDragDrop
+		// loop, where the system never performs its own snap. Strip merge
+		// always wins — callers resolve merge targets first.
+		const QScreen* screen = QGuiApplication::screenAt(globalPos);
+		if (!screen)
+		{
+			return {};
+		}
+		// Native Aero arms at ~1px; a few px makes the zone forgiving.
+		constexpr int kSnapEdgeThickness = 12;
+		return snap::zoneAt(globalPos, screen->availableGeometry(), kSnapEdgeThickness);
+	}
+
 	bool ShellApp::shouldSuppressTearOutAt(QPoint globalPos) const
 	{
 		// Whole-shell mode already moved the real window; "drop outside" means keep it.
@@ -1304,6 +1344,7 @@ namespace mps::host
 		m_dragDropHandled = false;
 		m_dragCancelled = false;
 		m_dragAutoMerged = false;
+		m_tearOutMaximizePending = false;
 		m_autoMergeAnimActive = false;
 		m_pendingMergeTarget.clear();
 		m_pendingMergeSource.clear();
@@ -1961,6 +2002,10 @@ namespace mps::host
 		// Keep preview visible across tear-out until the new shell is shown.
 		if (!tearOrMerge)
 		{
+			if (m_snapPreview)
+			{
+				m_snapPreview->hide();
+			}
 			if (m_tearOutPreview)
 			{
 				m_tearOutPreview->hide();
@@ -2099,6 +2144,10 @@ namespace mps::host
 			{
 				m_tearOutPreview->hide();
 			}
+			if (m_snapPreview)
+			{
+				m_snapPreview->hide();
+			}
 			clearAllDropIndicators();
 			return;
 		}
@@ -2139,6 +2188,26 @@ namespace mps::host
 		else
 		{
 			m_tearOutDetached = tab_strip::nextTearOutDetached(wasDetached, overStrip, nearLeave, nearReturn);
+		}
+
+		// Drag-to-top snap preview (Aero-style maximize). Strip merge feedback
+		// always wins — never arm a snap zone while a strip target is under the
+		// cursor. Whole-shell drags are always detached: they snap too.
+		if (m_tearOutDetached)
+		{
+			const snap::Result snapZone = tabDropZoneShellAtGlobal(g) != nullptr ? snap::Result{} : dragSnapZoneAt(g);
+			if (snapZone.zone == snap::Zone::Maximize)
+			{
+				m_snapPreview->showAt(snapZone.targetRect);
+			}
+			else
+			{
+				m_snapPreview->hide();
+			}
+		}
+		else
+		{
+			m_snapPreview->hide();
 		}
 
 		const int contentHotX = m_tabGhostHotSpot.x() - (m_tabDragGhost ? m_tabDragGhost->contentOrigin().x() : 0);

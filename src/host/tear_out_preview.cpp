@@ -225,4 +225,39 @@ namespace mps::host
 			p.drawText(body, Qt::AlignCenter, QStringLiteral("Moving…"));
 		}
 	}
+
+	SnapPreview::SnapPreview(QWidget* parent)
+		: QWidget(parent, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::WindowDoesNotAcceptFocus)
+	{
+		setAttribute(Qt::WA_TranslucentBackground, true);
+		setAttribute(Qt::WA_ShowWithoutActivating, true);
+		setAttribute(Qt::WA_TransparentForMouseEvents, true);
+		setFocusPolicy(Qt::NoFocus);
+	}
+
+	void SnapPreview::showAt(const QRect& globalRect)
+	{
+		if (!globalRect.isValid())
+		{
+			hide();
+			return;
+		}
+		setGeometry(globalRect);
+		if (!isVisible())
+		{
+			show();
+		}
+		raise();
+	}
+
+	void SnapPreview::paintEvent(QPaintEvent* event)
+	{
+		Q_UNUSED(event);
+		QPainter p(this);
+		// Aero-style: soft accent fill + slightly stronger border.
+		p.fillRect(rect(), QColor(100, 150, 255, 46));
+		QPen pen(QColor(100, 150, 255, 170), 2);
+		p.setPen(pen);
+		p.drawRect(rect().adjusted(1, 1, -1, -1));
+	}
 } // namespace mps::host
