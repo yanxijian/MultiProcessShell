@@ -9,6 +9,7 @@
 | `build_qt.py` | Help build external Qt (qtbase) into a prefix |
 | `deploy_demo.py` | Windows: `windeployqt` beside `build-shared/demos` |
 | `format_source.py` | Format handwritten C/C++ via root `.clang-format` (skips path segments containing `build`, e.g. `build/` / `build-shared/`, plus `_deps/`, `*.pb.*`) |
+| `e2e_snap.py` | Windows E2E: synthesize a "drag the caption to the screen top" input and verify the system Aero snap maximizes the window (`--launch <exe>` / `--attach <name>`; exit code 0/1, CI-friendly) |
 
 ## Windows notes
 
@@ -26,6 +27,7 @@ python scripts\deploy_demo.py
 python scripts\format_source.py
 python scripts\format_source.py --check
 python scripts\build_qt.py --source <qt-everywhere-src> --build-dir <qt-build> --prefix %QTDIR%
+python scripts\e2e_snap.py --launch build-shared\demos\mps_demo_host.exe
 ```
 
 Double-click Host: `build-shared\demos\mps_demo_host.exe`.  

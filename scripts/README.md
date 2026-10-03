@@ -9,6 +9,7 @@
 | `build_qt.py` | 辅助外置编译 Qt（qtbase）到指定前缀 |
 | `deploy_demo.py` | Windows：`windeployqt` 到 `build-shared/demos` 旁 |
 | `format_source.py` | 按根目录 `.clang-format` 格式化手写 C/C++（排除路径段含 `build` 的目录如 `build/` / `build-shared/`，以及 `_deps/`、`*.pb.*`） |
+| `e2e_snap.py` | Windows E2E：合成"拖标题栏到屏幕顶"输入，验证系统 Aero Snap 最大化（`--launch <exe>` / `--attach <名称>`；退出码 0/1 可进 CI） |
 
 CI 说明见 [docs/zh/ci.md](../docs/zh/ci.md)。
 
@@ -28,6 +29,7 @@ python scripts\deploy_demo.py
 python scripts\format_source.py
 python scripts\format_source.py --check
 python scripts\build_qt.py --source <qt-everywhere-src> --build-dir <qt-build> --prefix %QTDIR%
+python scripts\e2e_snap.py --launch build-shared\demos\mps_demo_host.exe
 ```
 
 可双击运行：`build-shared\demos\mps_demo_host.exe`。  
