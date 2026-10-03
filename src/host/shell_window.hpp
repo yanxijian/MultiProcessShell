@@ -1,8 +1,8 @@
 ﻿#ifndef __MPS_HOST_SHELL_WINDOW_H__
 #define __MPS_HOST_SHELL_WINDOW_H__
 
-#include "embed_container.hpp"
 #include "caption_hit.hpp"
+#include "embed_container.hpp"
 #include "tab_info.hpp"
 
 #include <QFrame>

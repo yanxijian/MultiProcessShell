@@ -16,7 +16,7 @@ namespace mps::host
 	{
 		/// Process-wide NC hit pause flag; see CaptionHitPauseGuard.
 		bool g_captionHitPaused = false;
-	}
+	} // namespace
 
 	CaptionHitPauseGuard::CaptionHitPauseGuard()
 	{
@@ -55,7 +55,8 @@ namespace mps::host
 		// from a different DPI context). ScreenToClient on the top-level window
 		// already subtracts the client origin, and this frameless window's
 		// client origin equals its window origin (no non-client frame).
-		const auto localPoint = [this, msg]() -> QPoint {
+		const auto localPoint = [this, msg]() -> QPoint
+		{
 			const POINT pt = {GET_X_LPARAM(msg->lParam), GET_Y_LPARAM(msg->lParam)};
 			POINT local = pt;
 			ScreenToClient(msg->hwnd, &local);
@@ -63,7 +64,8 @@ namespace mps::host
 			return QPoint(qRound(local.x / dpr), qRound(local.y / dpr));
 		};
 
-		const auto hitAt = [this, &localPoint]() -> CaptionHitPart {
+		const auto hitAt = [this, &localPoint]() -> CaptionHitPart
+		{
 			CaptionHitInput in;
 			in.point = localPoint();
 			in.windowSize = size();
@@ -78,7 +80,8 @@ namespace mps::host
 			return captionHitTest(in);
 		};
 
-		const auto ncButton = [this](int idx) -> QPushButton* {
+		const auto ncButton = [this](int idx) -> QPushButton*
+		{
 			switch (idx)
 			{
 			case 0:
@@ -91,7 +94,8 @@ namespace mps::host
 				return nullptr;
 			}
 		};
-		const auto buttonIndex = [](CaptionHitPart part) -> int {
+		const auto buttonIndex = [](CaptionHitPart part) -> int
+		{
 			switch (part)
 			{
 			case CaptionHitPart::Minimize:
@@ -109,7 +113,8 @@ namespace mps::host
 		// State_MouseOver and QAbstractButton::setDown feeds State_Sunken.
 		// Client-side Enter/Leave never reach these buttons once they report
 		// HT*BUTTON, hence this NC-driven state (plan risk R7).
-		const auto applyVisual = [this, &ncButton](int idx) {
+		const auto applyVisual = [this, &ncButton](int idx)
+		{
 			if (QPushButton* b = ncButton(idx))
 			{
 				b->setAttribute(Qt::WA_UnderMouse, idx == m_ncHoverButton);

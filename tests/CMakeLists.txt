@@ -49,27 +49,31 @@ gtest_discover_tests(mps_tab_strip_tests)
 
 # Pure geometry rule tests for the frameless caption hit module
 # (QtCore + GTest only — no Host, no widgets, no windows.h).
-add_executable(mps_caption_hit_tests
-  test_caption_hit.cpp
-)
+# Guarded like mps_tests_m4b_hello: the no-Qt protocol job configures tests
+# without Qt, where Qt6::Core does not exist.
+if(TARGET Qt6::Core)
+  add_executable(mps_caption_hit_tests
+    test_caption_hit.cpp
+  )
 
-target_include_directories(mps_caption_hit_tests
-  PRIVATE
-    "${MPS_ROOT}/src/host"
-)
+  target_include_directories(mps_caption_hit_tests
+    PRIVATE
+      "${MPS_ROOT}/src/host"
+  )
 
-target_link_libraries(mps_caption_hit_tests
-  PRIVATE
-    Qt6::Core
-    GTest::gtest_main
-)
+  target_link_libraries(mps_caption_hit_tests
+    PRIVATE
+      Qt6::Core
+      GTest::gtest_main
+  )
 
-# Same discovery caveat as mps_tests_m4b_hello: build-time discovery cannot
-# load Qt DLLs beside the exe on Windows shared builds.
-if(WIN32 AND MPS_BUILD_SHARED)
-  gtest_discover_tests(mps_caption_hit_tests DISCOVERY_MODE PRE_TEST)
-else()
-  gtest_discover_tests(mps_caption_hit_tests)
+  # Same discovery caveat as mps_tests_m4b_hello: build-time discovery cannot
+  # load Qt DLLs beside the exe on Windows shared builds.
+  if(WIN32 AND MPS_BUILD_SHARED)
+    gtest_discover_tests(mps_caption_hit_tests DISCOVERY_MODE PRE_TEST)
+  else()
+    gtest_discover_tests(mps_caption_hit_tests)
+  endif()
 endif()
 
 # Offline Python frame/Envelope tests (no Qt). Skip if protobuf module missing.

@@ -99,7 +99,7 @@ TEST(CaptionHit, MaximizedForcesBandToZero)
 	CaptionHitInput in = baseInput();
 	in.maximized = true;
 	in.titleBarRect = QRect(0, 0, 960, 40); // zero gutter when maximized
-	in.resizeBandThickness = 8; // stale value must be ignored
+	in.resizeBandThickness = 8;				// stale value must be ignored
 	setPoint(in, 3, 20);
 	EXPECT_EQ(captionHitTest(in), CaptionHitPart::Caption); // not EdgeLeft
 	setPoint(in, 500, 5);

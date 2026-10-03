@@ -160,7 +160,7 @@ namespace mps::host
 				QPainter painter(this);
 				// No AA: opaque shell cannot blend against desktop; AA fringe looks like leak.
 				painter.setRenderHint(QPainter::Antialiasing, false);
-			painter.setPen(Qt::NoPen);
+				painter.setPen(Qt::NoPen);
 				// The border is a fill-subtract ring, not a stroked outline, and both
 				// the ring and the window region are rasterized at NATIVE pixel
 				// resolution: geometry is computed in physical pixels (the same numbers
@@ -794,8 +794,7 @@ namespace mps::host
 					{
 						break;
 					}
-					const bool on = lsb ? ((line[bx] >> bit) & 1) != 0
-										: ((line[bx] >> (7 - bit)) & 1) != 0;
+					const bool on = lsb ? ((line[bx] >> bit) & 1) != 0 : ((line[bx] >> (7 - bit)) & 1) != 0;
 					if (on)
 					{
 						if (x0 < 0)
@@ -808,8 +807,7 @@ namespace mps::host
 			}
 			if (x0 >= 0)
 			{
-				spans.push_back(RECT{static_cast<LONG>(x0), static_cast<LONG>(y),
-					static_cast<LONG>(x1 + 1), static_cast<LONG>(y + 1)});
+				spans.push_back(RECT{static_cast<LONG>(x0), static_cast<LONG>(y), static_cast<LONG>(x1 + 1), static_cast<LONG>(y + 1)});
 			}
 		}
 		if (spans.empty())
@@ -846,7 +844,6 @@ namespace mps::host
 #endif
 	}
 
-
 	void ShellWindow::scheduleCaptionHitCacheRefresh()
 	{
 		if (m_hitCacheRefreshScheduled)
@@ -855,11 +852,12 @@ namespace mps::host
 		}
 		m_hitCacheRefreshScheduled = true;
 		// Next tick: layout must be activated before child geometry is final.
-		QTimer::singleShot(0, this, [this]()
-		{
-			m_hitCacheRefreshScheduled = false;
-			refreshCaptionHitCache();
-		});
+		QTimer::singleShot(0, this,
+						   [this]()
+						   {
+							   m_hitCacheRefreshScheduled = false;
+							   refreshCaptionHitCache();
+						   });
 	}
 
 	void ShellWindow::refreshCaptionHitCache()
@@ -871,7 +869,8 @@ namespace mps::host
 		// Window-local logical rects — the same space caption_hit_win.cpp
 		// converts physical screen coordinates into.
 		m_hitTitleBarRect = QRect(m_titleBar->mapTo(this, QPoint(0, 0)), m_titleBar->size());
-		const auto windowLocalRect = [this](const QWidget* w) -> QRect {
+		const auto windowLocalRect = [this](const QWidget* w) -> QRect
+		{
 			return w ? QRect(w->mapTo(this, QPoint(0, 0)), w->size()) : QRect();
 		};
 		m_hitMinRect = windowLocalRect(m_minBtn);
@@ -1413,10 +1412,11 @@ namespace mps::host
 			anim->setDuration(kTabSlideMs);
 			anim->setEasingCurve(QEasingCurve::OutCubic);
 			// Settled geometry feeds the NC hit-test rect cache.
-			connect(anim, &QPropertyAnimation::finished, this, [this]()
-			{
-				scheduleCaptionHitCacheRefresh();
-			});
+			connect(anim, &QPropertyAnimation::finished, this,
+					[this]()
+					{
+						scheduleCaptionHitCacheRefresh();
+					});
 		}
 		anim->stop();
 		anim->setStartValue(btn->geometry());

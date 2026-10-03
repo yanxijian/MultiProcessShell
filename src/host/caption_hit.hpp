@@ -67,15 +67,13 @@ namespace mps::host
 
 		// Points outside the window never hit anything (WM_NCHITTEST only asks
 		// about points inside the window; guards the band logic below).
-		if (input.windowSize.width() <= 0 || input.windowSize.height() <= 0
-			|| input.point.x() < 0 || input.point.y() < 0
+		if (input.windowSize.width() <= 0 || input.windowSize.height() <= 0 || input.point.x() < 0 || input.point.y() < 0
 			|| input.point.x() >= input.windowSize.width() || input.point.y() >= input.windowSize.height())
 		{
 			return CaptionHitPart::None;
 		}
 
-		const int thickness =
-			(input.maximized || input.fullScreen) ? 0 : input.resizeBandThickness;
+		const int thickness = (input.maximized || input.fullScreen) ? 0 : input.resizeBandThickness;
 		if (thickness > 0)
 		{
 			const bool left = input.point.x() < thickness;
