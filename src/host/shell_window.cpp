@@ -503,6 +503,22 @@ namespace mps::host
 		resize(960, 640);
 		setWindowTitle(QStringLiteral("Shell"));
 
+#ifdef Q_OS_WIN
+		// Windows Aero snap (drag caption to the screen top → maximize, edge
+		// halves, Win+arrows) is silently disabled for windows without
+		// WS_MAXIMIZEBOX: Qt's FramelessWindowHint creates a plain WS_POPUP
+		// (qwindowswindow.cpp WindowCreationData), and the system move loop
+		// refuses to snap windows that "cannot maximize". Restore the style —
+		// NC hit-testing already routes the caption/buttons ourselves, so the
+		// flag has no visual side effects; Qt still controls maximized
+		// geometry via WM_GETMINMAXINFO (work area, not full screen).
+		if (HWND hwnd = reinterpret_cast<HWND>(winId()))
+		{
+			const LONG_PTR style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+			SetWindowLongPtrW(hwnd, GWL_STYLE, style | WS_MAXIMIZEBOX);
+		}
+#endif
+
 		auto* root = new ChromeRoot(this);
 		m_root = root;
 		setCentralWidget(m_root);
