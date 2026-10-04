@@ -88,3 +88,13 @@ elseif(UNIX)
   # per-rect scaling that coarsens setMask on fractional DPI).
   target_link_libraries(mps_host PRIVATE Qt6::GuiPrivate)
 endif()
+
+# Host library UI strings only (not demos). English source + translations/mps_*.ts.
+find_package(Qt6 REQUIRED COMPONENTS LinguistTools)
+set(MPS_HOST_TS_FILES "${MPS_ROOT}/translations/mps_zh_CN.ts")
+set(MPS_QM_FILES "" CACHE INTERNAL "Generated MPS host .qm files" FORCE)
+qt_add_lrelease(mps_host
+  TS_FILES ${MPS_HOST_TS_FILES}
+  QM_FILES_OUTPUT_VARIABLE MPS_QM_FILES
+)
+set(MPS_QM_FILES "${MPS_QM_FILES}" CACHE INTERNAL "Generated MPS host .qm files" FORCE)

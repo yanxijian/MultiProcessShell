@@ -6,6 +6,8 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
+#include <QLocale>
+#include <QTranslator>
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
@@ -19,6 +21,23 @@ int main(int argc, char* argv[])
 	QApplication app(argc, argv);
 	QCoreApplication::setOrganizationName(QStringLiteral("yanxijian"));
 	QCoreApplication::setApplicationName(QStringLiteral("mps_demo_host"));
+
+	// Host-library catalog only (mps_*.qm). Demo UI has its own mps_demo_*.qm in the client.
+	QTranslator hostTr;
+	for (QString lang : QLocale::system().uiLanguages())
+	{
+		lang.replace(QLatin1Char('-'), QLatin1Char('_'));
+		if (!lang.startsWith(QLatin1String("zh"), Qt::CaseInsensitive))
+		{
+			continue;
+		}
+		const QString qm = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("langs/mps_zh_CN.qm"));
+		if (hostTr.load(qm))
+		{
+			app.installTranslator(&hostTr);
+		}
+		break;
+	}
 
 	mps::demo_host::ThemeService theme;
 	theme.start(&app);

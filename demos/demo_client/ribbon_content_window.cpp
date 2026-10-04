@@ -140,7 +140,7 @@ namespace mps::demo
 		status->setFont(f);
 		const QString windowLabel = windowTitle();
 
-		auto* newWindowBtn = new QPushButton(QStringLiteral("新建窗口"), this);
+		auto* newWindowBtn = new QPushButton(tr("New Window"), this);
 		newWindowBtn->setFixedSize(140, 36);
 		connect(newWindowBtn, &QPushButton::clicked, this, &RibbonContentWindow::requestNewContentView);
 

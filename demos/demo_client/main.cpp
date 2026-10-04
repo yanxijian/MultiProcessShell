@@ -14,6 +14,8 @@
 #include <QCommandLineParser>
 #include <QCoreApplication>
 #include <QDir>
+#include <QLocale>
+#include <QTranslator>
 
 #include <memory>
 
@@ -61,6 +63,24 @@ int main(int argc, char* argv[])
 	QApplication app(argc, argv);
 	QCoreApplication::setOrganizationName(QStringLiteral("yanxijian"));
 	QCoreApplication::setApplicationName(QStringLiteral("mps_demo_client"));
+
+	// Demo-only catalog (mps_demo_*.qm). Host library strings live in mps_*.qm.
+	QTranslator demoTr;
+	for (QString lang : QLocale::system().uiLanguages())
+	{
+		lang.replace(QLatin1Char('-'), QLatin1Char('_'));
+		if (!lang.startsWith(QLatin1String("zh"), Qt::CaseInsensitive))
+		{
+			continue;
+		}
+		const QString qm = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("langs/mps_demo_zh_CN.qm"));
+		if (demoTr.load(qm))
+		{
+			app.installTranslator(&demoTr);
+		}
+		break;
+	}
+
 	QCommandLineParser parser;
 	parser.addHelpOption();
 	QCommandLineOption fromHost(QStringLiteral("from-host"));

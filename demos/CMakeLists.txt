@@ -44,6 +44,34 @@ add_custom_command(TARGET mps_demo_host POST_BUILD
   COMMENT "Copy mps_demo_client beside mps_demo_host"
 )
 
+# Demo-only translations (separate catalog from mps_host).
+find_package(Qt6 REQUIRED COMPONENTS LinguistTools)
+set(MPS_DEMO_TS_FILES "${CMAKE_CURRENT_SOURCE_DIR}/translations/mps_demo_zh_CN.ts")
+qt_add_lrelease(mps_demo_client
+  TS_FILES ${MPS_DEMO_TS_FILES}
+  QM_FILES_OUTPUT_VARIABLE MPS_DEMO_QM_FILES
+)
+
+# Ship host + demo catalogs beside the demo host (two products, two .qm prefixes).
+set(_mps_demo_langs_copy
+  COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:mps_demo_host>/langs"
+)
+if(MPS_QM_FILES)
+  list(APPEND _mps_demo_langs_copy
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MPS_QM_FILES} "$<TARGET_FILE_DIR:mps_demo_host>/langs/"
+  )
+endif()
+if(MPS_DEMO_QM_FILES)
+  list(APPEND _mps_demo_langs_copy
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MPS_DEMO_QM_FILES} "$<TARGET_FILE_DIR:mps_demo_host>/langs/"
+  )
+endif()
+add_custom_command(TARGET mps_demo_host POST_BUILD
+  ${_mps_demo_langs_copy}
+  COMMENT "Copy host (mps_*) and demo (mps_demo_*) translation .qm files to langs/"
+  VERBATIM
+)
+
 if(WIN32 AND MPS_BUILD_SHARED)
   set(_mps_demo_dll_copy_cmds
     COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_ipc> $<TARGET_FILE_DIR:mps_demo_host>

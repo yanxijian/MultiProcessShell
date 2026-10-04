@@ -54,6 +54,9 @@ namespace mps::host
 		constexpr int kTabCornerRadius = 4;
 		constexpr int kTabButtonMaxWidth = 200;
 		constexpr int kTabButtonMinWidth = 72;
+		constexpr int kTitleBarHeight = 40;
+		constexpr int kCaptionButtonW = 28;
+		constexpr int kCaptionButtonH = 24;
 		constexpr int kDefaultWindowRadius = 8;
 		constexpr int kDefaultWindowBorderWidth = 1;
 		constexpr auto kPropWindowRadius = "qtheme.window.radius";
@@ -530,7 +533,7 @@ namespace mps::host
 			if (!m_info.isHome && m_info.unhealthy && m_info.session)
 			{
 				QMenu menu(this);
-				QAction* terminate = menu.addAction(QStringLiteral("终止进程"));
+				QAction* terminate = menu.addAction(tr("Terminate process"));
 				if (menu.exec(event->globalPosition().toPoint()) == terminate)
 				{
 					emit terminateSessionRequested(m_info.session);
@@ -640,7 +643,7 @@ namespace mps::host
 
 		m_titleBar = new QWidget(m_root);
 		m_titleBar->setObjectName(QStringLiteral("TitleBar"));
-		m_titleBar->setFixedHeight(40);
+		m_titleBar->setFixedHeight(kTitleBarHeight);
 		auto* titleLay = new QHBoxLayout(m_titleBar);
 		titleLay->setContentsMargins(8, 4, 8, 4);
 		titleLay->setSpacing(6);
@@ -667,7 +670,7 @@ namespace mps::host
 		m_closeBtn = closeBtn;
 		for (auto* b : {minBtn, maxBtn, closeBtn})
 		{
-			b->setFixedSize(28, 24);
+			b->setFixedSize(kCaptionButtonW, kCaptionButtonH);
 			b->setFlat(true);
 			b->setFocusPolicy(Qt::NoFocus);
 			titleLay->addWidget(b);
@@ -696,7 +699,7 @@ namespace mps::host
 		faultLay->setContentsMargins(32, 32, 32, 32);
 		faultLay->setSpacing(12);
 		faultLay->addStretch(1);
-		m_faultTitle = new QLabel(QStringLiteral("此标签页无响应"), m_faultPage);
+		m_faultTitle = new QLabel(tr("This tab is not responding"), m_faultPage);
 		{
 			QFont titleFont = m_faultTitle->font();
 			titleFont.setPointSizeF(titleFont.pointSizeF() + 4.0);
@@ -709,8 +712,8 @@ namespace mps::host
 		m_faultDetail->setAlignment(Qt::AlignHCenter);
 		auto* faultBtns = new QHBoxLayout();
 		faultBtns->addStretch(1);
-		m_faultCloseBtn = new QPushButton(QStringLiteral("关闭标签"), m_faultPage);
-		m_faultTerminateBtn = new QPushButton(QStringLiteral("终止进程"), m_faultPage);
+		m_faultCloseBtn = new QPushButton(tr("Close tab"), m_faultPage);
+		m_faultTerminateBtn = new QPushButton(tr("Terminate process"), m_faultPage);
 		faultBtns->addWidget(m_faultCloseBtn);
 		faultBtns->addWidget(m_faultTerminateBtn);
 		faultBtns->addStretch(1);
@@ -1231,14 +1234,15 @@ namespace mps::host
 		}
 		if (active->crashed)
 		{
-			m_faultTitle->setText(QStringLiteral("此标签页已崩溃"));
-			m_faultDetail->setText(QStringLiteral("客户端进程已退出。可以关闭此标签，或重新打开文档。"));
+			m_faultTitle->setText(tr("This tab has crashed"));
+			m_faultDetail->setText(tr("The client process has exited. You can close this tab or reopen the document."));
 			m_faultTerminateBtn->setVisible(false);
 		}
 		else
 		{
-			m_faultTitle->setText(QStringLiteral("此标签页无响应"));
-			m_faultDetail->setText(QStringLiteral("客户端一段时间没有心跳。可以终止进程并关闭标签，或稍后再试。"));
+			m_faultTitle->setText(tr("This tab is not responding"));
+			m_faultDetail->setText(
+				tr("The client has not sent a heartbeat for a while. You can terminate the process and close the tab, or try again later."));
 			m_faultTerminateBtn->setVisible(active->session != nullptr);
 		}
 	}
@@ -1286,7 +1290,7 @@ namespace mps::host
 		}
 
 		int dragW = m_dragTabWidth;
-		int dragH = 28;
+		int dragH = tab_strip::kTabButtonHeight;
 		for (auto* b : m_tabButtons)
 		{
 			if (!b)
@@ -1302,7 +1306,7 @@ namespace mps::host
 				dragH = b->height();
 				break;
 			}
-			if (dragH == 28 && b->height() > 0)
+			if (dragH == tab_strip::kTabButtonHeight && b->height() > 0)
 			{
 				dragH = b->height();
 			}
@@ -1489,7 +1493,7 @@ namespace mps::host
 				}
 			}
 			auto* btn = byId.value(id, nullptr);
-			return btn ? btn->width() : 80;
+			return btn ? btn->width() : tab_strip::kTabButtonFallbackWidth;
 		};
 
 		Q_UNUSED(globalPos);
@@ -1653,14 +1657,14 @@ namespace mps::host
 					return b->width();
 				}
 			}
-			return m_dragTabWidth > 0 ? m_dragTabWidth : 80;
+			return m_dragTabWidth > 0 ? m_dragTabWidth : tab_strip::kTabButtonFallbackWidth;
 		};
 
 		if (m_yieldDragTabId == tabId && !m_yieldOrder.isEmpty())
 		{
 			int x = m_stripDragOriginX > 0 ? m_stripDragOriginX : tab_strip::kTabStripMargin;
 			const int y = tabStripContentY();
-			int h = 28;
+			int h = tab_strip::kTabButtonHeight;
 			for (auto* b : m_tabButtons)
 			{
 				if (b)
@@ -1995,10 +1999,10 @@ namespace mps::host
 						return b->width();
 					}
 				}
-				return m_dragTabWidth > 0 ? m_dragTabWidth : 80;
+				return m_dragTabWidth > 0 ? m_dragTabWidth : tab_strip::kTabButtonFallbackWidth;
 			};
 			int x = m_stripDragOriginX > 0 ? m_stripDragOriginX : tab_strip::kTabStripMargin;
-			int h = 28;
+			int h = tab_strip::kTabButtonHeight;
 			for (auto* b : m_tabButtons)
 			{
 				if (b)
@@ -2065,7 +2069,7 @@ namespace mps::host
 		if (m_titleBar)
 		{
 			const int avail = qMax(1, m_titleBar->height() - 8);
-			const int tabH = m_tabButtons.isEmpty() || !m_tabButtons.first() ? 28 : m_tabButtons.first()->height();
+			const int tabH = m_tabButtons.isEmpty() || !m_tabButtons.first() ? tab_strip::kTabButtonHeight : m_tabButtons.first()->height();
 			return 4 + qMax(0, (avail - tabH) / 2);
 		}
 		return kTabStripTop;
@@ -2283,7 +2287,7 @@ namespace mps::host
 			if (m_stripDragLayoutActive)
 			{
 				btn->setParent(m_titleBar);
-				const int tabW = m_dragTabWidth > 0 ? m_dragTabWidth : qMax(btn->width(), 80);
+				const int tabW = m_dragTabWidth > 0 ? m_dragTabWidth : qMax(btn->width(), tab_strip::kTabButtonFallbackWidth);
 				int tabH = btn->height();
 				QRect gap;
 				if (insertIndex > 0)
@@ -2306,7 +2310,7 @@ namespace mps::host
 				{
 					if (tabH <= 0)
 					{
-						tabH = 28;
+						tabH = tab_strip::kTabButtonHeight;
 					}
 					gap = QRect(tab_strip::kTabStripMargin, tabStripContentY(), tabW, tabH);
 				}
@@ -2374,7 +2378,7 @@ namespace mps::host
 		}
 		for (const auto& t : m_tabs)
 		{
-			widths.push_back(byId.value(t.tabId, 80));
+			widths.push_back(byId.value(t.tabId, tab_strip::kTabButtonFallbackWidth));
 		}
 		const int localX = m_titleBar->mapFromGlobal(globalPos).x();
 		return tab_strip::midpointInsertIndex(localX, widths);

@@ -1,6 +1,7 @@
 ﻿#ifndef __MPS_HOST_TAB_INFO_H__
 #define __MPS_HOST_TAB_INFO_H__
 
+#include <QCoreApplication>
 #include <QString>
 
 #include <cstdint>
@@ -42,11 +43,11 @@ namespace mps::host
 			}
 			if (crashed)
 			{
-				return title + QStringLiteral("（已崩溃）");
+				return title + QCoreApplication::translate("mps::host::TabInfo", " (Crashed)");
 			}
 			if (unhealthy)
 			{
-				return title + QStringLiteral("（无响应）");
+				return title + QCoreApplication::translate("mps::host::TabInfo", " (Not responding)");
 			}
 			return title;
 		}

@@ -39,6 +39,12 @@ namespace mps::tab_strip
 	inline constexpr int kTabStripMargin = 8;
 	inline constexpr int kTabSpacing = 6;
 	inline constexpr int kDragInset = 16;
+	/// Default Client tab button height (prefer live QWidget::height() at runtime).
+	inline constexpr int kTabButtonHeight = 28;
+	/// Fallback width when a tab button has not been measured yet (ghost / yield).
+	inline constexpr int kTabButtonFallbackWidth = 80;
+	/// Initial TabDragGhost content width before a real tab is grabbed.
+	inline constexpr int kTabGhostDefaultWidth = 120;
 
 	inline constexpr int kTearOutLeaveSlopV = 28;
 	inline constexpr int kTearOutLeaveSlopH = 10;

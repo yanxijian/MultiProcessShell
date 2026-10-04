@@ -264,7 +264,9 @@ namespace mps::host
 				dropGlobal = w->mapToGlobal(de->position().toPoint());
 			}
 			const qint64 tabId = de->mimeData()->data(QString::fromUtf8(kTabMimeType)).toLongLong();
-			const int guestW = m_dragTabWidth > 0 ? m_dragTabWidth : (m_tabDragGhost ? m_tabDragGhost->contentSize().width() : 80);
+			const int guestW = m_dragTabWidth > 0
+								   ? m_dragTabWidth
+								   : (m_tabDragGhost ? m_tabDragGhost->contentSize().width() : tab_strip::kTabButtonFallbackWidth);
 			const int hotX = m_tabGhostHotSpot.x() - (m_tabDragGhost ? m_tabDragGhost->contentOrigin().x() : 0);
 
 			// Whole-shell tear-out / cursor sink: resolve merge by strip geometry.
@@ -1450,7 +1452,7 @@ namespace mps::host
 
 		// Snapshot tab face + content BEFORE hiding / switching away.
 		const QSize tabLogicalSize = source->tabButtonSize(tabId);
-		m_dragTabWidth = tabLogicalSize.width() > 0 ? tabLogicalSize.width() : 80;
+		m_dragTabWidth = tabLogicalSize.width() > 0 ? tabLogicalSize.width() : tab_strip::kTabButtonFallbackWidth;
 		const QPixmap tabGhostPm = source->grabTabButton(tabId);
 		m_tabDragFace = tabGhostPm;
 		source->setYieldFacePixmap(tabGhostPm);
@@ -1483,7 +1485,8 @@ namespace mps::host
 
 		if (m_tabDragGhost)
 		{
-			const QSize contentSz = tabLogicalSize.isValid() ? tabLogicalSize : QSize(m_dragTabWidth, 28);
+			const QSize contentSz =
+				tabLogicalSize.isValid() ? tabLogicalSize : QSize(m_dragTabWidth, tab_strip::kTabButtonHeight);
 			m_tabDragGhost->setTabPixmap(tabGhostPm, contentSz);
 			// Press-point hotspot: keep grab point under the cursor while free-
 			// following. Strip mode still pins content top to the tab row (see below).
@@ -1734,7 +1737,9 @@ namespace mps::host
 				constexpr int kApproxTabTop = 6;
 				const QSize ts = source->tabButtonSize(tabId);
 				tabStart = QRect(source->mapToGlobal(QPoint(kApproxHomeAndMargin, kApproxTabTop)),
-								 ts.isValid() ? ts : QSize(m_dragTabWidth > 0 ? m_dragTabWidth : 120, 28));
+								 ts.isValid() ? ts
+											  : QSize(m_dragTabWidth > 0 ? m_dragTabWidth : tab_strip::kTabGhostDefaultWidth,
+													  tab_strip::kTabButtonHeight));
 			}
 
 			QRect endGeo = startGeo;
@@ -2374,7 +2379,7 @@ namespace mps::host
 				m_dragSource->setWindowOpacity(0.92);
 			}
 			ShellWindow* otherShell = tabDropZoneShellAtGlobal(g);
-			const int guestW = m_dragTabWidth > 0 ? m_dragTabWidth : 80;
+			const int guestW = m_dragTabWidth > 0 ? m_dragTabWidth : tab_strip::kTabButtonFallbackWidth;
 			if (m_dragSource)
 			{
 				if (m_dragTabId != 0)
@@ -2457,7 +2462,9 @@ namespace mps::host
 				{
 					stripShell = m_dragSource;
 				}
-				const int guestW = m_dragTabWidth > 0 ? m_dragTabWidth : (m_tabDragGhost ? m_tabDragGhost->contentSize().width() : 80);
+				const int guestW = m_dragTabWidth > 0
+								   ? m_dragTabWidth
+								   : (m_tabDragGhost ? m_tabDragGhost->contentSize().width() : tab_strip::kTabButtonFallbackWidth);
 				if (stripShell == m_dragSource)
 				{
 					for (auto& s : m_shells)
@@ -2516,7 +2523,9 @@ namespace mps::host
 						}
 					}
 				}
-				const int guestW = m_dragTabWidth > 0 ? m_dragTabWidth : (m_tabDragGhost ? m_tabDragGhost->contentSize().width() : 80);
+				const int guestW = m_dragTabWidth > 0
+								   ? m_dragTabWidth
+								   : (m_tabDragGhost ? m_tabDragGhost->contentSize().width() : tab_strip::kTabButtonFallbackWidth);
 				mergeShell->clearDropInsertIndicator();
 				mergeShell->previewTabYieldAtCursor(m_dragTabId, g, guestW, contentHotX);
 				if (m_tabDragGhost)

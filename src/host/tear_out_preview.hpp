@@ -1,6 +1,8 @@
 ﻿#ifndef __MPS_HOST_TEAR_OUT_PREVIEW_H__
 #define __MPS_HOST_TEAR_OUT_PREVIEW_H__
 
+#include "tab_strip.hpp"
+
 #include <QPixmap>
 #include <QWidget>
 
@@ -31,7 +33,7 @@ namespace mps::host
 
 	private:
 		QPixmap m_pm;
-		QSize m_contentSize{120, 28};
+		QSize m_contentSize{tab_strip::kTabGhostDefaultWidth, tab_strip::kTabButtonHeight};
 		// Soft drop shadow below/right only (no top pad) so content top == widget top
 		// and strip pinning does not look vertically biased.
 		QPoint m_contentOrigin{6, 0};
