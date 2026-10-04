@@ -1241,8 +1241,8 @@ namespace mps::host
 		else
 		{
 			m_faultTitle->setText(tr("This tab is not responding"));
-			m_faultDetail->setText(
-				tr("The client has not sent a heartbeat for a while. You can terminate the process and close the tab, or try again later."));
+			m_faultDetail->setText(tr(
+				"The client has not sent a heartbeat for a while. You can terminate the process and close the tab, or try again later."));
 			m_faultTerminateBtn->setVisible(active->session != nullptr);
 		}
 	}

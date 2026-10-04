@@ -1485,8 +1485,7 @@ namespace mps::host
 
 		if (m_tabDragGhost)
 		{
-			const QSize contentSz =
-				tabLogicalSize.isValid() ? tabLogicalSize : QSize(m_dragTabWidth, tab_strip::kTabButtonHeight);
+			const QSize contentSz = tabLogicalSize.isValid() ? tabLogicalSize : QSize(m_dragTabWidth, tab_strip::kTabButtonHeight);
 			m_tabDragGhost->setTabPixmap(tabGhostPm, contentSz);
 			// Press-point hotspot: keep grab point under the cursor while free-
 			// following. Strip mode still pins content top to the tab row (see below).
@@ -2463,8 +2462,8 @@ namespace mps::host
 					stripShell = m_dragSource;
 				}
 				const int guestW = m_dragTabWidth > 0
-								   ? m_dragTabWidth
-								   : (m_tabDragGhost ? m_tabDragGhost->contentSize().width() : tab_strip::kTabButtonFallbackWidth);
+									   ? m_dragTabWidth
+									   : (m_tabDragGhost ? m_tabDragGhost->contentSize().width() : tab_strip::kTabButtonFallbackWidth);
 				if (stripShell == m_dragSource)
 				{
 					for (auto& s : m_shells)
@@ -2524,8 +2523,8 @@ namespace mps::host
 					}
 				}
 				const int guestW = m_dragTabWidth > 0
-								   ? m_dragTabWidth
-								   : (m_tabDragGhost ? m_tabDragGhost->contentSize().width() : tab_strip::kTabButtonFallbackWidth);
+									   ? m_dragTabWidth
+									   : (m_tabDragGhost ? m_tabDragGhost->contentSize().width() : tab_strip::kTabButtonFallbackWidth);
 				mergeShell->clearDropInsertIndicator();
 				mergeShell->previewTabYieldAtCursor(m_dragTabId, g, guestW, contentHotX);
 				if (m_tabDragGhost)
