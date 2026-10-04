@@ -49,7 +49,7 @@ External review 2026-10; only items that match the tree and are not done.
 
 | Item | Fact | Later |
 |------|------|-------|
-| Crash overlay in the embed slot | M6 is heartbeat + tab suffix「无响应」+ terminate; no Chrome-style page in `EmbedContainer` | Placeholder page (retry / close tab) on session death |
+| Crash overlay in the embed slot | **Done (2026-10-04)**: `SessionFaultPage` on process death only; unhealthy stays tab-suffix + terminate | Optional: relaunch Client |
 | `IEmbedBackend` | Spec exists; Win Demo still `SetParent` in `EmbedContainer` | Extract when a second adapter (X11 / Cocoa) is real |
 | Shared-memory data plane | Control plane stays Protobuf envelopes | Large frames via SHM + protobuf for signaling only |
 

@@ -70,7 +70,7 @@
 
 | 项 | 核实 | 拟做 |
 |----|------|------|
-| Client 崩溃槽 UI | M6 已有心跳 2s / Host 6s、「无响应」Tab 后缀与右键终止；`EmbedContainer` 无 Chrome 式整页黄屏/重试 | 在嵌入槽加崩溃占位页（重试 / 关闭 Tab），与 Session 死亡、`reset()` 对齐 |
+| Client 崩溃槽 UI | **已落地（2026-10-04）**：进程退出保留 Tab 并切 `SessionFaultPage`（关闭标签）；心跳无响应仍只做 Tab 后缀 + 终止（不盖住 HWND） | 可选：重试拉起 Client |
 | 跨平台 embed 策略 | `wid` 已收在 `EmbedContainer` / `TabEmbedMap`；`IEmbedBackend` 规格有、代码未落地；Win Demo 直接 `SetParent` | 第二平台（X11 / Cocoa）动手时再抽 `IEmbedBackend`，避免空接口 |
 | 大数据面 | 控制面仍是 Protobuf Envelope + 管道；规格把嵌入与 IPC 分开 | 大帧（截图 / 文档块）用共享内存 + 信号量，Protobuf 只送信令；不为此预换 gRPC |
 

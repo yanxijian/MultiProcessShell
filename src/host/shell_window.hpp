@@ -155,6 +155,8 @@ namespace mps::host
 		void forceClose();
 		/// Refresh tab labels / styles for a session's health (M6).
 		void setSessionUnhealthy(ClientSession* session, bool unhealthy);
+		/// Keep the tab, drop the dead HWND, and show the Host fault page.
+		void markSessionCrashed(ClientSession* session);
 		/// Re-apply title bar / Home slot / tab chrome from the app palette (QTE in demos).
 		void applyThemeChrome();
 		/// Force DWM to rebuild this window's frame. Needed after Qt removes
@@ -202,6 +204,7 @@ namespace mps::host
 		void runTabDrag(qint64 tabId, QPoint localHotSpot);
 		void syncEmbedToActive();
 		void syncWorkspace();
+		void updateFaultPage();
 		void pushActivationHistory(qint64 tabId);
 		void reinstallStripDropTargets();
 		void scheduleEmbedResync();
@@ -245,6 +248,11 @@ namespace mps::host
 		QHBoxLayout* m_tabRow = nullptr;
 		QStackedWidget* m_stack = nullptr;
 		QWidget* m_homeSlot = nullptr; // empty host for HomeContent; not HomeContent itself
+		QWidget* m_faultPage = nullptr;
+		QLabel* m_faultTitle = nullptr;
+		QLabel* m_faultDetail = nullptr;
+		QPushButton* m_faultCloseBtn = nullptr;
+		QPushButton* m_faultTerminateBtn = nullptr;
 		EmbedContainer* m_embed = nullptr;
 		QVector<TabInfo> m_tabs;
 		qint64 m_activeTabId = kHomeTabId;

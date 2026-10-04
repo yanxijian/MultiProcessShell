@@ -690,8 +690,51 @@ namespace mps::host
 		homeLay->setContentsMargins(0, 0, 0, 0);
 		homeLay->setSpacing(0);
 		m_embed = new EmbedContainer(m_stack);
+		m_faultPage = new QWidget(m_stack);
+		m_faultPage->setObjectName(QStringLiteral("SessionFaultPage"));
+		auto* faultLay = new QVBoxLayout(m_faultPage);
+		faultLay->setContentsMargins(32, 32, 32, 32);
+		faultLay->setSpacing(12);
+		faultLay->addStretch(1);
+		m_faultTitle = new QLabel(QStringLiteral("此标签页无响应"), m_faultPage);
+		{
+			QFont titleFont = m_faultTitle->font();
+			titleFont.setPointSizeF(titleFont.pointSizeF() + 4.0);
+			titleFont.setBold(true);
+			m_faultTitle->setFont(titleFont);
+		}
+		m_faultTitle->setAlignment(Qt::AlignHCenter);
+		m_faultDetail = new QLabel(m_faultPage);
+		m_faultDetail->setWordWrap(true);
+		m_faultDetail->setAlignment(Qt::AlignHCenter);
+		auto* faultBtns = new QHBoxLayout();
+		faultBtns->addStretch(1);
+		m_faultCloseBtn = new QPushButton(QStringLiteral("关闭标签"), m_faultPage);
+		m_faultTerminateBtn = new QPushButton(QStringLiteral("终止进程"), m_faultPage);
+		faultBtns->addWidget(m_faultCloseBtn);
+		faultBtns->addWidget(m_faultTerminateBtn);
+		faultBtns->addStretch(1);
+		faultLay->addWidget(m_faultTitle);
+		faultLay->addWidget(m_faultDetail);
+		faultLay->addSpacing(8);
+		faultLay->addLayout(faultBtns);
+		faultLay->addStretch(2);
+		connect(m_faultCloseBtn, &QPushButton::clicked, this,
+				[this]()
+				{
+					emit tabCloseRequested(m_activeTabId);
+				});
+		connect(m_faultTerminateBtn, &QPushButton::clicked, this,
+				[this]()
+				{
+					if (const TabInfo* t = findTab(m_activeTabId); t && t->session)
+					{
+						emit terminateSessionRequested(t->session);
+					}
+				});
 		m_stack->addWidget(m_homeSlot);
 		m_stack->addWidget(m_embed);
+		m_stack->addWidget(m_faultPage);
 		connect(m_embed, &EmbedContainer::embedHostChanged, this, &ShellWindow::scheduleRenderHeal);
 
 		m_rootLay->addWidget(m_titleBar);
@@ -1118,22 +1161,85 @@ namespace mps::host
 			return;
 		}
 		const TabInfo* active = findTab(m_activeTabId);
-		const bool showHome = !active || active->isHome || !m_embed || !m_embed->has(m_activeTabId);
-		if (showHome)
+		if (!active || active->isHome)
 		{
-			m_embed->clearActive(true);
+			if (m_embed)
+			{
+				m_embed->clearActive(true);
+				m_embed->hide();
+			}
+			if (m_faultPage)
+			{
+				m_faultPage->hide();
+			}
 			m_stack->setCurrentWidget(m_homeSlot);
-			m_embed->hide();
 			m_homeSlot->show();
 			m_homeSlot->raise();
+			return;
+		}
+		if (active->needsFaultPage())
+		{
+			if (m_embed)
+			{
+				m_embed->clearActive(true);
+				m_embed->hide();
+			}
+			if (m_homeSlot)
+			{
+				m_homeSlot->hide();
+			}
+			updateFaultPage();
+			m_stack->setCurrentWidget(m_faultPage);
+			m_faultPage->show();
+			m_faultPage->raise();
+			return;
+		}
+		if (!m_embed || !m_embed->has(m_activeTabId))
+		{
+			m_embed->clearActive(true);
+			m_embed->hide();
+			if (m_faultPage)
+			{
+				m_faultPage->hide();
+			}
+			m_stack->setCurrentWidget(m_homeSlot);
+			m_homeSlot->show();
+			m_homeSlot->raise();
+			return;
+		}
+		if (m_faultPage)
+		{
+			m_faultPage->hide();
+		}
+		if (m_homeSlot)
+		{
+			m_homeSlot->hide();
+		}
+		m_stack->setCurrentWidget(m_embed);
+		m_embed->show();
+		m_embed->activate(m_activeTabId);
+		scheduleEmbedResync();
+		scheduleRenderHeal();
+	}
+
+	void ShellWindow::updateFaultPage()
+	{
+		const TabInfo* active = findTab(m_activeTabId);
+		if (!m_faultPage || !active)
+		{
+			return;
+		}
+		if (active->crashed)
+		{
+			m_faultTitle->setText(QStringLiteral("此标签页已崩溃"));
+			m_faultDetail->setText(QStringLiteral("客户端进程已退出。可以关闭此标签，或重新打开文档。"));
+			m_faultTerminateBtn->setVisible(false);
 		}
 		else
 		{
-			m_stack->setCurrentWidget(m_embed);
-			m_embed->show();
-			m_embed->activate(m_activeTabId);
-			scheduleEmbedResync();
-			scheduleRenderHeal();
+			m_faultTitle->setText(QStringLiteral("此标签页无响应"));
+			m_faultDetail->setText(QStringLiteral("客户端一段时间没有心跳。可以终止进程并关闭标签，或稍后再试。"));
+			m_faultTerminateBtn->setVisible(active->session != nullptr);
 		}
 	}
 
@@ -2560,6 +2666,53 @@ namespace mps::host
 			TabInfo info = btn->info();
 			info.unhealthy = unhealthy;
 			btn->setInfo(info);
+		}
+	}
+
+	void ShellWindow::markSessionCrashed(ClientSession* session)
+	{
+		if (!session)
+		{
+			return;
+		}
+		bool touchedActive = false;
+		for (auto& t : m_tabs)
+		{
+			if (t.session != session)
+			{
+				continue;
+			}
+			if (m_embed && m_embed->has(t.tabId))
+			{
+				m_embed->unbind(t.tabId);
+			}
+			t.session = nullptr;
+			t.unhealthy = false;
+			t.crashed = true;
+			if (t.tabId == m_activeTabId)
+			{
+				touchedActive = true;
+			}
+		}
+		for (auto* btn : m_tabButtons)
+		{
+			if (!btn || btn->info().session != session)
+			{
+				continue;
+			}
+			TabInfo info = btn->info();
+			info.session = nullptr;
+			info.unhealthy = false;
+			info.crashed = true;
+			btn->setInfo(info);
+		}
+		if (touchedActive)
+		{
+			syncWorkspace();
+		}
+		else
+		{
+			scheduleCaptionHitCacheRefresh();
 		}
 	}
 

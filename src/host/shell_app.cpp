@@ -901,29 +901,13 @@ namespace mps::host
 		// Disconnect further death signals — process finished + socket disconnect both fire.
 		session->disconnect(this);
 
-		QList<qint64> tabs;
+		// Keep Host tabs and show a fault page (Chrome-style) instead of silently
+		// stripping them — the user closes when ready.
 		for (auto& shell : m_shells)
 		{
-			if (!shell)
+			if (shell)
 			{
-				continue;
-			}
-			const auto copy = shell->tabs();
-			for (const auto& t : copy)
-			{
-				if (t.session == session)
-				{
-					tabs.push_back(t.tabId);
-				}
-			}
-		}
-		for (qint64 id : tabs)
-		{
-			if (auto* shell = m_tabToShell.take(id))
-			{
-				shell->releaseEmbedTrackingForTab(id);
-				shell->removeTab(id);
-				destroyShellIfEmpty(shell);
+				shell->markSessionCrashed(session);
 			}
 		}
 		m_pendingFirstShell.remove(session);

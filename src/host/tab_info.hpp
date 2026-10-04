@@ -22,6 +22,8 @@ namespace mps::host
 		class ClientSession* session = nullptr;
 		bool isHome = false;
 		bool unhealthy = false;
+		/// Client process exited; tab kept with a Host-side fault page (Chrome-style).
+		bool crashed = false;
 
 		static TabInfo makeHome()
 		{
@@ -34,11 +36,27 @@ namespace mps::host
 
 		[[nodiscard]] QString displayTitle() const
 		{
-			if (unhealthy && !isHome)
+			if (isHome)
+			{
+				return title;
+			}
+			if (crashed)
+			{
+				return title + QStringLiteral("（已崩溃）");
+			}
+			if (unhealthy)
 			{
 				return title + QStringLiteral("（无响应）");
 			}
 			return title;
+		}
+
+		/// Full-page Host placeholder is for dead Clients only.
+		/// Unhealthy (heartbeat timeout) keeps the embed visible — Spec M6 is
+		/// tab suffix + terminate, not an interstitial that hides the HWND.
+		[[nodiscard]] bool needsFaultPage() const
+		{
+			return !isHome && crashed;
 		}
 	};
 } // namespace mps::host
