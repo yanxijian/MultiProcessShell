@@ -17,17 +17,17 @@ TEST(TabStripTearOut, LeaveRequiresExitBeyondLeaveSlop)
 	EXPECT_TRUE(nextTearOutDetached(false, false, /*nearLeave=*/false, false));
 }
 
-TEST(TabStripTearOut, ReturnUsesTighterSlop)
+TEST(TabStripTearOut, ReturnRequiresSourceStrip)
 {
-	// Detached: near return slop → re-attach.
-	EXPECT_FALSE(nextTearOutDetached(/*was=*/true,
-									 /*over=*/false,
-									 /*nearLeave=*/false,
-									 /*nearReturn=*/true));
-	// Detached: over strip → re-attach.
-	EXPECT_FALSE(nextTearOutDetached(true, /*over=*/true, false, false));
-	// Detached: far away (not over, not near return) → stay detached.
-	EXPECT_TRUE(nextTearOutDetached(true, false, /*nearLeave=*/true, /*nearReturn=*/false));
+	// Detached: over other strip only → stay detached (merge path).
+	EXPECT_TRUE(nextTearOutDetached(/*was=*/true,
+									/*overAny=*/true,
+									/*nearLeave=*/false,
+									/*overSource=*/false));
+	// Detached: over source strip → re-attach (reorder).
+	EXPECT_FALSE(nextTearOutDetached(true, true, false, /*overSource=*/true));
+	// Detached: far away → stay detached.
+	EXPECT_TRUE(nextTearOutDetached(true, false, /*nearLeave=*/true, /*overSource=*/false));
 }
 
 TEST(TabStripTearOut, SuppressWhenOverStripOrNearSource)

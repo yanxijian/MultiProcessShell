@@ -63,6 +63,19 @@ namespace mps::host
 		{
 			return m_tearOutDetached;
 		}
+		[[nodiscard]] bool isTabDragActive() const
+		{
+			return m_dragActive;
+		}
+		[[nodiscard]] qint64 dragTabId() const
+		{
+			return m_dragTabId;
+		}
+		/// Sole-Client tear-out moves the real shell; the Client tab stays visible.
+		[[nodiscard]] bool isDragMoveWholeShell() const
+		{
+			return m_dragMoveWholeShell;
+		}
 		[[nodiscard]] ShellWindow* dragSourceWindow() const
 		{
 			return m_dragSource;

@@ -1406,11 +1406,12 @@ namespace mps::host
 		{
 			return;
 		}
-		// Detached tear-out: the source must not keep painting the dragged tab
-		// (yield face or button). DragMove still hits the old strip otherwise.
+		// While detached, source must stay collapsed (TearOutPreview owns the face).
+		// Do not key off preview visibility alone — that blocked re-attach yield when
+		// dragging back onto the source strip in the same gesture.
 		if (m_app && m_app->isTearOutDetached() && m_app->dragSourceWindow() == this)
 		{
-			clearTabYieldPreview(/*keepDragTabHidden=*/true);
+			collapseTornOutTabSlot(dragTabId);
 			return;
 		}
 
@@ -1539,6 +1540,9 @@ namespace mps::host
 		{
 			return;
 		}
+		// First yield frame after a collapsed tear-out: snap geometry (no slide)
+		// so tab widths/positions do not animate through a bogus intermediate.
+		const bool snapYield = (m_yieldDragTabId == 0 && m_stripDragLayoutActive);
 		m_yieldDragTabId = dragTabId;
 		m_yieldOrder = ids;
 
@@ -1561,7 +1565,19 @@ namespace mps::host
 			}
 			const int w = (id == dragTabId) ? dragW : widthOf(id);
 			const int h = btn->height();
-			animateTabGeometry(btn, QRect(x, y, w, h));
+			const QRect geo(x, y, w, h);
+			if (snapYield)
+			{
+				if (auto* anim = m_tabSlideAnims.value(btn->info().tabId))
+				{
+					anim->stop();
+				}
+				btn->setGeometry(geo);
+			}
+			else
+			{
+				animateTabGeometry(btn, geo);
+			}
 			x += w + tab_strip::kTabSpacing;
 		}
 		syncYieldFace();
@@ -1664,7 +1680,9 @@ namespace mps::host
 			next.push_back(it.value());
 		}
 		const qint64 dragId = m_yieldDragTabId;
-		clearTabYieldPreview();
+		// Keep the drag tab hidden across strip restore so layout reflow cannot
+		// flash a second face before rebuildTabs replaces the buttons.
+		clearTabYieldPreview(/*keepDragTabHidden=*/true);
 		m_tabs = next;
 		rebuildTabs();
 		setActiveTab(dragId);
@@ -1788,6 +1806,19 @@ namespace mps::host
 		stopTabSlideAnimations();
 		const qint64 wasDragTab = m_yieldDragTabId;
 		const bool had = (m_yieldDragTabId != 0) || !m_yieldOrder.isEmpty() || m_stripDragLayoutActive;
+		// Multi-tab tear-out: OLE sink / other-shell DragMove often clears yield with
+		// keep=false. That must not resurrect the source drag tab while DoDragDrop
+		// is still running (mid-drag strip residue). Cancel paths unhide explicitly
+		// after m_dragActive is cleared, or via setTabDragHidden in endTabDrag.
+		qint64 forceKeepHiddenId = 0;
+		if (m_app && m_app->isTabDragActive() && m_app->dragSourceWindow() == this && !m_app->isDragMoveWholeShell())
+		{
+			forceKeepHiddenId = m_app->dragTabId();
+			if (forceKeepHiddenId != 0)
+			{
+				keepDragTabHidden = true;
+			}
+		}
 		m_yieldDragTabId = 0;
 		m_yieldOrder.clear();
 		m_stripDragLayoutActive = false;
@@ -1804,6 +1835,10 @@ namespace mps::host
 		if (m_yieldFace)
 		{
 			m_yieldFace->hide();
+		}
+		if (forceKeepHiddenId != 0)
+		{
+			setTabDragHidden(forceKeepHiddenId, true);
 		}
 		if (!had || !m_tabRow)
 		{
@@ -1874,9 +1909,11 @@ namespace mps::host
 		{
 			packed.push_back(id);
 		}
-		m_yieldDragTabId = dragTabId;
+		// Keep drag id out of the yield order so syncYieldFace cannot resurrect the face.
+		m_yieldDragTabId = 0;
 		m_yieldOrder = packed;
 
+		stopTabSlideAnimations();
 		int x = m_stripDragOriginX > 0 ? m_stripDragOriginX : tab_strip::kTabStripMargin;
 		const int y = tabStripContentY();
 		for (qint64 id : packed)
@@ -1886,10 +1923,10 @@ namespace mps::host
 			{
 				continue;
 			}
-			animateTabGeometry(btn, QRect(x, y, btn->width(), btn->height()));
+			// Instant pack — animated collapse fought TearOutPreview and jittered widths.
+			btn->setGeometry(QRect(x, y, btn->width(), btn->height()));
 			x += btn->width() + tab_strip::kTabSpacing;
 		}
-		syncYieldFace();
 	}
 
 	QRect ShellWindow::tabStripGlobalRect() const

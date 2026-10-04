@@ -293,7 +293,15 @@ namespace mps::host
 						continue;
 					}
 					s->clearDropInsertIndicator();
-					s->clearTabYieldPreview();
+					if (s.get() == m_dragSource && m_tearOutDetached && !m_dragMoveWholeShell && m_dragTabId != 0)
+					{
+						// Stay collapsed with the tear-out preview; do not restore strip layout.
+						s->collapseTornOutTabSlot(m_dragTabId);
+					}
+					else
+					{
+						s->clearTabYieldPreview(/*keepDragTabHidden=*/s.get() == m_dragSource && !m_dragMoveWholeShell);
+					}
 				}
 				if (!zone || zone == m_dragSource)
 				{
@@ -334,7 +342,7 @@ namespace mps::host
 			{
 				if (m_tearOutDetached)
 				{
-					m_dragSource->clearTabYieldPreview(/*keepDragTabHidden=*/true);
+					m_dragSource->collapseTornOutTabSlot(tabId);
 					de->setDropAction(Qt::MoveAction);
 					de->accept();
 					return true;
@@ -350,7 +358,14 @@ namespace mps::host
 			{
 				if (m_dragSource && m_dragSource != shell)
 				{
-					m_dragSource->clearTabYieldPreview();
+					if (m_tearOutDetached && !m_dragMoveWholeShell)
+					{
+						m_dragSource->collapseTornOutTabSlot(tabId);
+					}
+					else
+					{
+						m_dragSource->clearTabYieldPreview(/*keepDragTabHidden=*/!m_dragMoveWholeShell);
+					}
 				}
 				// Merge target: live tab yield, not only a blue bar.
 				shell->clearDropInsertIndicator();
@@ -395,8 +410,10 @@ namespace mps::host
 			if (fromSink || (m_dragMoveWholeShell && m_tearOutDetached))
 			{
 				ShellWindow* zone = tabDropZoneShellAtGlobal(QCursor::pos());
-				if (zone && zone != m_dragSource)
+				if (zone)
 				{
+					// Source or other strip under the cursor: fall through to
+					// reorder / merge. (Previously zone==source tore out again.)
 					dropShell = zone;
 				}
 				else
@@ -1266,7 +1283,9 @@ namespace mps::host
 	{
 		// Sole-Client whole-shell tear-out: the moving source sits under the cursor and
 		// would always win hit-tests. Prefer other shells' strips so merge remains possible.
-		const bool preferOtherShell = m_dragActive && m_tearOutDetached;
+		// Multi-tab tear-out keeps the source shell still — it must remain hittable so
+		// the same gesture can drag back onto the source strip (sink + re-attach).
+		const bool preferOtherShell = m_dragActive && m_tearOutDetached && m_dragMoveWholeShell;
 		if (preferOtherShell)
 		{
 			// Exact strip hit first, then a wider magnetic band (Chrome-like merge aim).
@@ -2210,11 +2229,11 @@ namespace mps::host
 			}
 		}
 
-		const bool overStrip = tabDropZoneShellAtGlobal(g) != nullptr;
+		ShellWindow* zoneShell = tabDropZoneShellAtGlobal(g);
+		const bool overStrip = zoneShell != nullptr;
+		const bool overSourceStrip = zoneShell != nullptr && zoneShell == m_dragSource;
 		const bool nearLeave =
 			m_dragSource && m_dragSource->isNearTabDropZone(g, tab_strip::kTearOutLeaveSlopV, tab_strip::kTearOutLeaveSlopH);
-		const bool nearReturn =
-			m_dragSource && m_dragSource->isNearTabDropZone(g, tab_strip::kTearOutReturnSlopV, tab_strip::kTearOutReturnSlopH);
 
 		const bool wasDetached = m_tearOutDetached;
 		if (m_dragMoveWholeShell)
@@ -2224,12 +2243,12 @@ namespace mps::host
 		}
 		else
 		{
-			m_tearOutDetached = tab_strip::nextTearOutDetached(wasDetached, overStrip, nearLeave, nearReturn);
+			m_tearOutDetached = tab_strip::nextTearOutDetached(wasDetached, overStrip, nearLeave, overSourceStrip);
 		}
-		if (m_tearOutDetached && !m_dragMoveWholeShell && m_dragSource && m_dragTabId != 0)
-		{
-			m_dragSource->clearTabYieldPreview(/*keepDragTabHidden=*/true);
-		}
+		// Source strip suppress is applied in the TearOutPreview transition below
+		// (!wasDetached) so hide/collapse and the floating tab appear together.
+		// Do not clearTabYieldPreview every frame while detached — that restores
+		// the full row and fights collapseTornOutTabSlot.
 
 		// Drag-to-top snap preview (Aero-style maximize). Strip merge feedback
 		// always wins — never arm a snap zone while a strip target is under the
@@ -2411,11 +2430,18 @@ namespace mps::host
 
 		if (!m_tearOutDetached)
 		{
-			if (wasDetached && m_tearOutPreview)
+			if (wasDetached)
 			{
-				m_tearOutPreview->hide();
+				if (m_tearOutPreview)
+				{
+					m_tearOutPreview->hide();
+				}
+				if (m_tabDragGhost)
+				{
+					m_tabDragGhost->hide();
+				}
 			}
-			if (m_tabDragGhost)
+			else if (m_tabDragGhost)
 			{
 				m_tabDragGhost->hide();
 			}
@@ -2442,11 +2468,21 @@ namespace mps::host
 							s->clearTabYieldPreview();
 						}
 					}
+					// Reclaiming the source strip: drop floating chrome first so
+					// yield and TearOutPreview do not coexist.
+					if (m_tearOutPreview)
+					{
+						m_tearOutPreview->hide();
+					}
+					if (m_tabDragGhost)
+					{
+						m_tabDragGhost->hide();
+					}
 					m_dragSource->previewTabYieldAtCursor(m_dragTabId, g, 0, contentHotX);
 				}
 				else if (stripShell)
 				{
-					m_dragSource->clearTabYieldPreview();
+					m_dragSource->clearTabYieldPreview(/*keepDragTabHidden=*/true);
 					stripShell->clearDropInsertIndicator();
 					stripShell->previewTabYieldAtCursor(m_dragTabId, g, guestW, contentHotX);
 				}
@@ -2465,9 +2501,9 @@ namespace mps::host
 				{
 					m_tearOutPreview->hide();
 				}
-				if (m_dragSource)
+				if (m_dragSource && m_dragTabId != 0)
 				{
-					m_dragSource->clearTabYieldPreview(/*keepDragTabHidden=*/true);
+					m_dragSource->collapseTornOutTabSlot(m_dragTabId);
 				}
 				for (auto& s : m_shells)
 				{
@@ -2491,14 +2527,13 @@ namespace mps::host
 			}
 		}
 
-		// Detached: tab ghost follows the cursor; window preview is placed so its
-		// title/tab bar wraps (vertically centers) that tab — not an independent hotspot.
+		// Detached: tab ghost + window preview appear together with source collapse.
 		if (!wasDetached)
 		{
 			clearAllDropIndicators();
 			if (m_dragSource && m_dragTabId != 0)
 			{
-				m_dragSource->clearTabYieldPreview(/*keepDragTabHidden=*/true);
+				m_dragSource->collapseTornOutTabSlot(m_dragTabId);
 			}
 			for (auto& s : m_shells)
 			{
@@ -2507,6 +2542,10 @@ namespace mps::host
 					s->clearTabYieldPreview();
 				}
 			}
+		}
+		else if (m_dragSource && m_dragTabId != 0)
+		{
+			m_dragSource->setTabDragHidden(m_dragTabId, true);
 		}
 		positionTabGhost(/*pinToStrip=*/false, nullptr, /*bumpZ=*/!wasDetached);
 		if (m_tearOutPreview && m_tabDragGhost)

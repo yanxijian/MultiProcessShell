@@ -218,17 +218,17 @@ namespace mps::tab_strip
 
 	// --- Tear-out hysteresis / suppress -----------------------------------------
 
-	inline bool nextTearOutDetached(bool wasDetached, bool overStrip, bool nearLeave, bool nearReturn)
+	/// overAnyStrip: leave hysteresis (any shell strip).
+	/// overSourceStrip: re-attach only onto the drag source (other strips stay
+	/// detached so merge yield keeps working). Do not re-attach on return-slop alone.
+	inline bool nextTearOutDetached(bool wasDetached, bool overAnyStrip, bool nearLeave, bool overSourceStrip)
 	{
 		if (wasDetached)
 		{
-			if (overStrip || nearReturn)
-			{
-				return false;
-			}
-			return true;
+			return !overSourceStrip;
 		}
-		if (!overStrip && !nearLeave)
+		(void)overSourceStrip;
+		if (!overAnyStrip && !nearLeave)
 		{
 			return true;
 		}
