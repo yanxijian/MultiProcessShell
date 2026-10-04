@@ -1284,15 +1284,47 @@ namespace mps::host
 			}
 			return;
 		}
-		const QRect glob = tabDragSlotGlobalRect(m_yieldDragTabId);
-		if (!glob.isValid() || glob.width() < 4)
+
+		int dragW = m_dragTabWidth;
+		int dragH = 28;
+		for (auto* b : m_tabButtons)
 		{
-			if (m_yieldFace)
+			if (!b)
 			{
-				m_yieldFace->hide();
+				continue;
 			}
-			return;
+			if (b->info().tabId == m_yieldDragTabId && b->width() > 0)
+			{
+				if (dragW <= 0)
+				{
+					dragW = b->width();
+				}
+				dragH = b->height();
+				break;
+			}
+			if (dragH == 28 && b->height() > 0)
+			{
+				dragH = b->height();
+			}
 		}
+		if (dragW <= 0)
+		{
+			const qreal dpr = qMax(qreal(1), m_yieldFacePm.devicePixelRatio());
+			dragW = qMax(4, int(m_yieldFacePm.width() / dpr));
+		}
+
+		const int hsX = m_yieldFaceHotSpotX >= 0 ? m_yieldFaceHotSpotX : (dragW / 2);
+		const QPoint cur = QCursor::pos();
+		int leftGlobal = cur.x() - hsX;
+		const QRect band = tabStripGlobalRect();
+		if (band.isValid())
+		{
+			leftGlobal = qBound(band.left(), leftGlobal, qMax(band.left(), band.right() - dragW));
+		}
+		// Slight lift so the face reads as sliding over the strip (Chrome-like).
+		constexpr int kLiftPx = 2;
+		const int topGlobal = tabRowTopGlobal() - kLiftPx;
+
 		if (!m_yieldFace)
 		{
 			m_yieldFace = new QLabel(m_titleBar);
@@ -1301,9 +1333,9 @@ namespace mps::host
 			m_yieldFace->setAttribute(Qt::WA_TranslucentBackground, true);
 			m_yieldFace->setScaledContents(true);
 		}
-		const QPoint local = m_titleBar->mapFromGlobal(glob.topLeft());
+		const QPoint local = m_titleBar->mapFromGlobal(QPoint(leftGlobal, topGlobal));
 		m_yieldFace->setPixmap(m_yieldFacePm);
-		m_yieldFace->setGeometry(QRect(local, glob.size()));
+		m_yieldFace->setGeometry(QRect(local, QSize(dragW, dragH)));
 		m_yieldFace->show();
 		m_yieldFace->raise();
 	}
@@ -1536,13 +1568,15 @@ namespace mps::host
 			ids.push_back(id);
 		}
 
+		m_yieldFaceHotSpotX = hsX;
 		if (m_yieldDragTabId == dragTabId && m_yieldOrder == ids && m_stripDragLayoutActive)
 		{
+			// Order unchanged: siblings stay put; only the floating face tracks the cursor.
+			syncYieldFace();
 			return;
 		}
-		// First yield frame after a collapsed tear-out: snap geometry (no slide)
-		// so tab widths/positions do not animate through a bogus intermediate.
-		const bool snapYield = (m_yieldDragTabId == 0 && m_stripDragLayoutActive);
+		const bool snapYield = m_snapNextYieldLayout;
+		m_snapNextYieldLayout = false;
 		m_yieldDragTabId = dragTabId;
 		m_yieldOrder = ids;
 
@@ -1555,6 +1589,14 @@ namespace mps::host
 		{
 			if (id == dragTabId && !localDrag)
 			{
+				// Guest merge: reserve the insert gap; the face rides the cursor above it.
+				x += dragW + tab_strip::kTabSpacing;
+				continue;
+			}
+			if (id == dragTabId && localDrag)
+			{
+				// Local reorder: leave an empty slot under the cursor-following face
+				// so siblings slide apart like Chrome (face is not parked in the gap).
 				x += dragW + tab_strip::kTabSpacing;
 				continue;
 			}
@@ -1563,7 +1605,7 @@ namespace mps::host
 			{
 				continue;
 			}
-			const int w = (id == dragTabId) ? dragW : widthOf(id);
+			const int w = widthOf(id);
 			const int h = btn->height();
 			const QRect geo(x, y, w, h);
 			if (snapYield)
@@ -1822,6 +1864,8 @@ namespace mps::host
 		m_yieldDragTabId = 0;
 		m_yieldOrder.clear();
 		m_stripDragLayoutActive = false;
+		m_snapNextYieldLayout = false;
+		m_yieldFaceHotSpotX = -1;
 		m_dragTabWidth = 0;
 		m_stripDragOriginX = 0;
 		if (m_titleBar)
@@ -1912,6 +1956,10 @@ namespace mps::host
 		// Keep drag id out of the yield order so syncYieldFace cannot resurrect the face.
 		m_yieldDragTabId = 0;
 		m_yieldOrder = packed;
+		// Next time yield opens a gap again (drag back onto this strip), snap once
+		// instead of sliding through the collapsed intermediate — does not affect
+		// ordinary left/right reorder, which never sets this flag.
+		m_snapNextYieldLayout = true;
 
 		stopTabSlideAnimations();
 		int x = m_stripDragOriginX > 0 ? m_stripDragOriginX : tab_strip::kTabStripMargin;

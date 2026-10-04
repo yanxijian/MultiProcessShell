@@ -141,8 +141,9 @@ namespace mps::host
 		void setTabDragHidden(qint64 tabId, bool hidden);
 		[[nodiscard]] qint64 previousActivationTarget(qint64 closingTabId) const;
 		[[nodiscard]] QPixmap grabTabButton(qint64 tabId) const;
-		/// Snapshot used to paint a child-widget tab face in the yield gap (OLE
-		/// Tool-window ghosts are often suppressed for the whole DoDragDrop).
+		/// Snapshot used to paint a strip-child tab face while OLE suppresses Tool
+		/// ghosts. Chrome-style: face follows the cursor over the strip; siblings
+		/// open a gap underneath.
 		void setYieldFacePixmap(const QPixmap& pm);
 		void syncYieldFace();
 		/// Logical size of a tab button (for drag ghost hotspot on high-DPI).
@@ -262,8 +263,12 @@ namespace mps::host
 		qint64 m_yieldDragTabId = 0;
 		QVector<qint64> m_yieldOrder;
 		bool m_stripDragLayoutActive = false;
+		/// After tear-out collapse: next yield layout snaps once (no slide jitter).
+		/// Normal left/right reorder always animates.
+		bool m_snapNextYieldLayout = false;
 		int m_dragTabWidth = 0;
 		int m_stripDragOriginX = 0;
+		int m_yieldFaceHotSpotX = -1;
 		QLabel* m_yieldFace = nullptr;
 		QPixmap m_yieldFacePm;
 		QHash<qint64, QPropertyAnimation*> m_tabSlideAnims;
