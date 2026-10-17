@@ -2,8 +2,10 @@
 
 #include "envelope_codec.hpp"
 
+#include <QDebug>
 #include <QIODevice>
 #include <QLocalSocket>
+#include <QPointer>
 #include <QUuid>
 
 namespace mps::ipc
@@ -86,8 +88,23 @@ namespace mps::ipc
 		{
 			return;
 		}
+		// Bound the receive buffer even when the peer never completes a frame:
+		// framing alone only rejects an oversized declared length.
+		constexpr std::size_t kMaxBufferedBytes = static_cast<std::size_t>(kMaxFramePayloadBytes) + 4u;
+		if (m_decoder.bufferedSize() + static_cast<std::size_t>(chunk.size()) > kMaxBufferedBytes)
+		{
+			qWarning("EnvelopeChannel: receive buffer exceeded %llu bytes, closing", static_cast<unsigned long long>(kMaxBufferedBytes));
+			m_decoder.reset();
+			if (m_device->isOpen())
+			{
+				m_device->close();
+			}
+			notifyDisconnected();
+			return;
+		}
 		m_decoder.append(reinterpret_cast<const std::uint8_t*>(chunk.constData()), static_cast<std::size_t>(chunk.size()));
 
+		const QPointer<EnvelopeChannel> self(this);
 		for (;;)
 		{
 			std::string payload;
@@ -114,6 +131,12 @@ namespace mps::ipc
 			if (m_handler)
 			{
 				m_handler(std::move(env));
+				// The handler may delete this channel (deferred or immediate). Do
+				// not touch members after it returns on a dead object.
+				if (!self)
+				{
+					return;
+				}
 			}
 		}
 	}

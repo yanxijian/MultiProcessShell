@@ -47,6 +47,34 @@ target_link_libraries(mps_tab_strip_tests
 
 gtest_discover_tests(mps_tab_strip_tests)
 
+# Invoke timeout / session callback contract. Drives a real QLocalSocket pair
+# through ClientSession; links mps_host (and transitively Qt Widgets).
+if(TARGET mps::host)
+  add_executable(mps_session_tests
+    test_client_session_invoke.cpp
+  )
+
+  target_link_libraries(mps_session_tests
+    PRIVATE
+      mps::host
+      GTest::gtest_main
+  )
+
+  if(WIN32 AND MPS_BUILD_SHARED)
+    add_custom_command(TARGET mps_session_tests POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_host> $<TARGET_FILE_DIR:mps_session_tests>
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_ipc_qt> $<TARGET_FILE_DIR:mps_session_tests>
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:mps_ipc> $<TARGET_FILE_DIR:mps_session_tests>
+      COMMENT "Copy mps_host/ipc DLLs beside mps_session_tests"
+      VERBATIM
+    )
+    mps_copy_protobuf_runtime(mps_session_tests)
+    gtest_discover_tests(mps_session_tests DISCOVERY_MODE PRE_TEST)
+  else()
+    gtest_discover_tests(mps_session_tests)
+  endif()
+endif()
+
 # Pure geometry rule tests for the frameless caption hit module
 # (QtCore + GTest only — no Host, no widgets, no windows.h).
 # Guarded like mps_tests_m4b_hello: the no-Qt protocol job configures tests

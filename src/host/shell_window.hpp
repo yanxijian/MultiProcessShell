@@ -125,8 +125,11 @@ namespace mps::host
 		/// button invisible (tear-out path — the tab is about to be removed;
 		/// unhiding it first makes it flash in the strip for one repaint).
 		void clearTabYieldPreview(bool keepDragTabHidden = false);
-		/// Tear-out: siblings immediately claim the vacated strip slot (no gap).
-		void collapseTornOutTabSlot(qint64 dragTabId);
+		/// Batch tab-strip relayout. Nested calls are reference-counted; the
+		/// title bar repaints once on the outermost end(). Used by mergeTab so
+		/// remove+insert+clear-yield never paints an intermediate strip.
+		void beginTabStripUpdate();
+		void endTabStripUpdate();
 		[[nodiscard]] bool hasTabYieldPreview() const
 		{
 			return m_yieldDragTabId != 0;
@@ -145,7 +148,10 @@ namespace mps::host
 		/// ghosts. Chrome-style: face follows the cursor over the strip; siblings
 		/// open a gap underneath.
 		void setYieldFacePixmap(const QPixmap& pm);
-		void syncYieldFace();
+		/// Park the 50 %-opacity preview face in the reserved gap. It never
+		/// follows the cursor; only slot changes animate (120 ms).
+		void positionYieldFaceAt(const QRect& globalGap, bool animate);
+		void hideYieldFace();
 		/// Logical size of a tab button (for drag ghost hotspot on high-DPI).
 		[[nodiscard]] QSize tabButtonSize(qint64 tabId) const;
 		void installStripDropFilter(QObject* filter);
@@ -263,13 +269,18 @@ namespace mps::host
 		qint64 m_yieldDragTabId = 0;
 		QVector<qint64> m_yieldOrder;
 		bool m_stripDragLayoutActive = false;
+		int m_tabStripUpdateDepth = 0;
 		/// After tear-out collapse: next yield layout snaps once (no slide jitter).
 		/// Normal left/right reorder always animates.
-		bool m_snapNextYieldLayout = false;
+		/// Cursor X where the current yield direction was committed. Once a
+		/// direction is chosen, reversing it needs a clearly larger move than
+		/// the pixel or two that straddle a slot boundary.
+		int m_yieldCommitX = 0;
+		bool m_hasYieldCommitX = false;
 		int m_dragTabWidth = 0;
 		int m_stripDragOriginX = 0;
-		int m_yieldFaceHotSpotX = -1;
 		QLabel* m_yieldFace = nullptr;
+		QPropertyAnimation* m_yieldFaceAnim = nullptr;
 		QPixmap m_yieldFacePm;
 		QHash<qint64, QPropertyAnimation*> m_tabSlideAnims;
 		bool m_embedResyncPending = false;

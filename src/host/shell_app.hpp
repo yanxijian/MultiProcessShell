@@ -14,7 +14,9 @@
 #include <QParallelAnimationGroup>
 #include <QPointer>
 #include <QPropertyAnimation>
+#include <QSet>
 #include <QTimer>
+#include <QVector>
 
 #include <functional>
 #include <memory>
@@ -44,7 +46,8 @@ namespace mps::host
 		/// First Host tab id for a live session of appName, or 0.
 		[[nodiscard]] qint64 findTabIdForApp(const QString& appName) const;
 		/// Host → Client Invoke on a ContentView tab (requires live session owning tabId).
-		void invokeOnTab(qint64 tabId, const QString& method, const QByteArray& params);
+		/// The optional callback fires on InvokeResult / RpcError / dead session.
+		void invokeOnTab(qint64 tabId, const QString& method, const QByteArray& params, ClientSession::InvokeCallback callback = {});
 		/// Update Host tab label for tabId (no-op if unknown / empty).
 		void setTabTitle(qint64 tabId, const QString& title);
 		void closeTab(qint64 tabId);
@@ -106,6 +109,9 @@ namespace mps::host
 		[[nodiscard]] ShellWindow* shellAtGlobal(QPoint globalPos) const;
 		[[nodiscard]] ShellWindow* shellFromStripDropTarget(QObject* watched) const;
 		[[nodiscard]] ShellWindow* tabDropZoneShellAtGlobal(QPoint globalPos) const;
+		/// Strip target for preview/merge: the dragged tab's near edge (top or
+		/// bottom) is probed against each strip; once a gap is open it is sticky.
+		[[nodiscard]] ShellWindow* previewZoneShellAtGlobal();
 		void destroyShellIfEmpty(ShellWindow* shell);
 		/// Nesting around QDrag::exec (OLE processEvents). Destroying a shell
 		/// inside this window crashes qwindows (null handle / null currentDrag).
@@ -199,6 +205,17 @@ namespace mps::host
 			ShellWindow* preferredShell = nullptr;
 		};
 
+		/// Create requests that arrived while the Client process was still
+		/// handshaking. Flushed on HelloOk so a second document opened during
+		/// startup is not silently dropped.
+		struct LaunchRequest
+		{
+			QString appName;
+			QPointer<ShellWindow> shell;
+		};
+
+		void startNextPendingLaunch();
+
 		QString m_clientExe;
 		QHash<QString, QString> m_clientLaunchers;
 		/// appName → live session (Volition multi-kind: one process per kind).
@@ -219,8 +236,19 @@ namespace mps::host
 		int m_nextInstanceIndex = 1;
 		QHash<int, int> m_nextContentIndex;
 		QHash<ClientSession*, ShellWindow*> m_pendingFirstShell;
+		/// tabId → window that should receive the ContentView. Unlike the
+		/// per-session map this survives several creates in flight at once.
+		QHash<qint64, QPointer<ShellWindow>> m_pendingTabShell;
+		/// Creates whose window closed after the request was sent. Their late
+		/// SubWindowAdded must be closed, not attached to another window.
+		QSet<qint64> m_cancelledTabs;
 		std::vector<DeferredCreate> m_deferredCreatesDuringDrag;
+		/// Handshake guard. Only one Client may be between launch and Hello at a
+		/// time: onNewConnection routes a new socket to "the newest session
+		/// without a channel", so two unconnected sessions make that routing
+		/// ambiguous (clients share one auth token).
 		bool m_clientLaunchInFlight = false;
+		QVector<LaunchRequest> m_pendingLaunches;
 
 		TearOutPreview* m_tearOutPreview = nullptr;
 		TabDragGhost* m_tabDragGhost = nullptr;
@@ -234,6 +262,7 @@ namespace mps::host
 		ShellWindow* m_dragSource = nullptr;
 		QPointer<ShellWindow> m_pendingMergeTarget;
 		QPointer<ShellWindow> m_pendingMergeSource;
+		QPointer<ShellWindow> m_previewTarget;
 		/// Shells that became empty while a tab drag (or its OLE loop) was still
 		/// running. Windows' DoDragDrop pumps events internally (QueryContinueDrag
 		/// -> processEvents), so a deleteLater queued mid-drag executes inside the

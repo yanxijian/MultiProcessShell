@@ -9,7 +9,9 @@
 #include <QFileInfo>
 #include <QHash>
 #include <QLocalSocket>
+#include <QPointer>
 #include <QTimer>
+#include <QVector>
 
 namespace mps::host
 {
@@ -33,6 +35,7 @@ namespace mps::host
 
 	ClientSession::~ClientSession()
 	{
+		failPendingInvokes(QStringLiteral("session destroyed"));
 		stopHeartbeatWatch();
 		if (m_process)
 		{
@@ -131,7 +134,97 @@ namespace mps::host
 			m_handshakeTimer->stop();
 		}
 		stopHeartbeatWatch();
+		failPendingInvokes(QStringLiteral("client disconnected"));
 		emit sessionDead(this);
+	}
+
+	void ClientSession::failPendingInvokes(const QString& reason)
+	{
+		if (m_invokeWatch)
+		{
+			m_invokeWatch->stop();
+		}
+		if (m_invokeCallbacks.isEmpty())
+		{
+			return;
+		}
+		QHash<QString, PendingInvoke> callbacks = std::move(m_invokeCallbacks);
+		m_invokeCallbacks.clear();
+		for (auto it = callbacks.begin(); it != callbacks.end(); ++it)
+		{
+			PendingInvoke pending = std::move(it.value());
+			if (!pending.callback)
+			{
+				continue;
+			}
+			// markDead() can run inside EnvelopeChannel::onReadyRead. Defer the
+			// caller's rollback so it cannot re-enter the session/socket stack.
+			if (auto* app = QCoreApplication::instance())
+			{
+				QMetaObject::invokeMethod(
+					app,
+					[callback = std::move(pending.callback), reason]()
+					{
+						callback(false, {}, reason);
+					},
+					Qt::QueuedConnection);
+			}
+			else
+			{
+				pending.callback(false, {}, reason);
+			}
+		}
+	}
+
+	void ClientSession::ensureInvokeWatch()
+	{
+		if (!m_invokeWatch)
+		{
+			m_invokeWatch = new QTimer(this);
+			m_invokeWatch->setInterval(250);
+			connect(m_invokeWatch, &QTimer::timeout, this, &ClientSession::onInvokeWatchTick);
+		}
+		if (!m_invokeWatch->isActive())
+		{
+			m_invokeWatch->start();
+		}
+	}
+
+	void ClientSession::onInvokeWatchTick()
+	{
+		if (m_invokeCallbacks.isEmpty())
+		{
+			m_invokeWatch->stop();
+			return;
+		}
+		const qint64 now = QDateTime::currentMSecsSinceEpoch();
+		QVector<PendingInvoke> expired;
+		for (auto it = m_invokeCallbacks.begin(); it != m_invokeCallbacks.end();)
+		{
+			if (now >= it.value().deadlineMs)
+			{
+				expired.push_back(std::move(it.value()));
+				it = m_invokeCallbacks.erase(it);
+			}
+			else
+			{
+				++it;
+			}
+		}
+		if (m_invokeCallbacks.isEmpty())
+		{
+			m_invokeWatch->stop();
+		}
+		const QPointer<ClientSession> self(this);
+		for (PendingInvoke& pending : expired)
+		{
+			if (!self || !pending.callback)
+			{
+				break;
+			}
+			pending.callback(false, {},
+							 QStringLiteral("invoke timed out: %1").arg(pending.method.isEmpty() ? QStringLiteral("?") : pending.method));
+		}
 	}
 
 	void ClientSession::terminateProcess()
@@ -291,17 +384,44 @@ namespace mps::host
 		m_channel->send(env);
 	}
 
-	void ClientSession::sendInvoke(const QString& method, const QByteArray& params, qint64 tabId)
+	void ClientSession::sendInvoke(const QString& method, const QByteArray& params, qint64 tabId, InvokeCallback callback)
 	{
 		if (m_dead || !m_channel || method.isEmpty())
 		{
+			if (callback)
+			{
+				callback(false, {}, QStringLiteral("client not available"));
+			}
 			return;
 		}
 		auto env = mps::ipc::makeEnvelope(1, mps::ipc::newCorrelationId(), shell::ipc::v1::DIR_REQ, QDateTime::currentMSecsSinceEpoch(),
 										  m_sessionId, tabId);
 		env->mutable_invoke()->set_method(method.toStdString());
 		env->mutable_invoke()->set_params(params.constData(), static_cast<int>(params.size()));
-		m_channel->send(env);
+		const QString correlationId = QString::fromStdString(env->id());
+		if (callback)
+		{
+			m_invokeCallbacks.insert(correlationId,
+									 PendingInvoke{std::move(callback), QDateTime::currentMSecsSinceEpoch() + m_invokeTimeoutMs, method});
+			ensureInvokeWatch();
+		}
+		if (!m_channel->send(env))
+		{
+			auto it = m_invokeCallbacks.find(correlationId);
+			if (it != m_invokeCallbacks.end())
+			{
+				PendingInvoke failed = std::move(it.value());
+				m_invokeCallbacks.erase(it);
+				if (m_invokeCallbacks.isEmpty() && m_invokeWatch)
+				{
+					m_invokeWatch->stop();
+				}
+				if (failed.callback)
+				{
+					failed.callback(false, {}, QStringLiteral("send failed"));
+				}
+			}
+		}
 	}
 
 	void ClientSession::onEnvelope(mps::ipc::EnvelopePtr env)
@@ -327,6 +447,43 @@ namespace mps::host
 			sendHelloAck();
 			emit sessionHelloOk(this);
 			return;
+		}
+		// Nothing but Hello is trusted before the token check. Previously a local
+		// process could attach to a half-open session and drive embedding with
+		// MainWindowAdded/SubWindowAdded before authenticating.
+		if (!m_helloSeen)
+		{
+			qWarning("ClientSession %lld: message before Hello, closing", static_cast<long long>(m_sessionId));
+			markDead();
+			return;
+		}
+		if (env->has_invoke_result() || env->has_error())
+		{
+			const QString correlationId = QString::fromStdString(env->id());
+			auto it = m_invokeCallbacks.find(correlationId);
+			if (it != m_invokeCallbacks.end())
+			{
+				InvokeCallback callback = std::move(it.value().callback);
+				m_invokeCallbacks.erase(it);
+				if (m_invokeCallbacks.isEmpty() && m_invokeWatch)
+				{
+					m_invokeWatch->stop();
+				}
+				if (!callback)
+				{
+					return;
+				}
+				if (env->has_invoke_result())
+				{
+					const std::string& payload = env->invoke_result().payload();
+					callback(true, QByteArray(payload.data(), static_cast<int>(payload.size())), {});
+				}
+				else
+				{
+					callback(false, {}, QString::fromStdString(env->error().message()));
+				}
+				return;
+			}
 		}
 		if (env->has_main_window_added())
 		{

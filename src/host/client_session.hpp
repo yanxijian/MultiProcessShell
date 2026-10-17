@@ -6,18 +6,21 @@
 #include "theme_scheme.hpp"
 
 #include <QByteArray>
+#include <QHash>
 #include <QLocalSocket>
 #include <QObject>
 #include <QProcess>
 #include <QTimer>
 
+#include <functional>
 #include <memory>
+#include <mps/mps_host_export.hpp>
 
 namespace mps::host
 {
 	class ShellWindow;
 
-	class ClientSession final : public QObject
+	class MPS_HOST_EXPORT ClientSession final : public QObject
 	{
 		Q_OBJECT
 	public:
@@ -52,10 +55,23 @@ namespace mps::host
 		/// Host → Client: push global ColorScheme ("light" / "dark").
 		void pushThemeScheme(const QByteArray& params);
 		/// Host → Client: opaque Invoke (e.g. Volition open_document).
-		void sendInvoke(const QString& method, const QByteArray& params, qint64 tabId = 0);
+		/// The optional callback fires exactly once on InvokeResult / RpcError /
+		/// session death, so callers can roll back optimistic UI state.
+		using InvokeCallback = std::function<void(bool ok, const QByteArray& payload, const QString& error)>;
+		void sendInvoke(const QString& method, const QByteArray& params, qint64 tabId = 0, InvokeCallback callback = {});
+		/// Deadline for an Invoke whose Client never answers (default 30 s).
+		/// Mainly for tests / hosts that need faster failure feedback.
+		void setInvokeTimeoutMs(int ms)
+		{
+			m_invokeTimeoutMs = ms > 0 ? ms : 1;
+		}
 		[[nodiscard]] bool isDead() const
 		{
 			return m_dead;
+		}
+		[[nodiscard]] bool helloSeen() const
+		{
+			return m_helloSeen;
 		}
 		[[nodiscard]] bool isUnhealthy() const
 		{
@@ -87,6 +103,16 @@ namespace mps::host
 		void stopHeartbeatWatch();
 		void onHeartbeatWatchTick();
 		void onHandshakeTimeout();
+		void failPendingInvokes(const QString& reason);
+		void ensureInvokeWatch();
+		void onInvokeWatchTick();
+
+		struct PendingInvoke
+		{
+			InvokeCallback callback;
+			qint64 deadlineMs = 0;
+			QString method;
+		};
 
 		int m_instanceIndex = 0;
 		qint64 m_sessionId = 0;
@@ -104,6 +130,9 @@ namespace mps::host
 		QProcess* m_process = nullptr;
 		QLocalSocket* m_socket = nullptr;
 		std::unique_ptr<mps::ipc::EnvelopeChannel> m_channel;
+		QHash<QString, PendingInvoke> m_invokeCallbacks;
+		QTimer* m_invokeWatch = nullptr;
+		int m_invokeTimeoutMs = 30000;
 		// pending CreateSubWindow (proto) / ContentView tab ids awaiting SubWindowAdded (same order)
 		QList<qint64> m_pendingTabs;
 		quintptr m_embedRootWid = 0;

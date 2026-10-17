@@ -13,6 +13,7 @@
 #include <QEasingCurve>
 #include <QEvent>
 #include <QFontMetrics>
+#include <QGraphicsOpacityEffect>
 #include <QHash>
 #include <QImage>
 #include <QMenu>
@@ -49,8 +50,14 @@ namespace mps::host
 	namespace
 	{
 		qint64 g_nextShellId = 1;
+
 		constexpr int kTabStripTop = 4;
 		constexpr int kTabSlideMs = 120;
+		/// Direction lock: after the insert direction is committed, the cursor
+		/// must travel this far horizontally before the opposite direction is
+		/// accepted. Prevents slot-boundary flip-flop from restarting every slide
+		/// animation (the visible left/right shake on slow approaches).
+		constexpr int kYieldSwitchMarginPx = 16;
 		constexpr int kTabCornerRadius = 4;
 		constexpr int kTabButtonMaxWidth = 200;
 		constexpr int kTabButtonMinWidth = 72;
@@ -939,13 +946,21 @@ namespace mps::host
 			case QEvent::DevicePixelRatioChange:
 			case QEvent::WindowBlocked:
 			case QEvent::WindowUnblocked:
+				scheduleRenderHeal();
+				break;
 			// Alt-tab / switching back from another app: Win10 DWM
 			// repaints WS_THICKFRAME in the system chrome color. Tab
 			// switches already heal (syncWorkspace); activation must too.
+			// But during a tab drag, activation bounces between source and
+			// target; heal() is a synchronous full repaint + DWM rebuild and
+			// reads as tab-strip jitter while the target opens its yield gap.
 			case QEvent::ActivationChange:
 			case QEvent::WindowActivate:
 			case QEvent::WindowDeactivate:
-				scheduleRenderHeal();
+				if (!(m_app && m_app->isTabDragActive()))
+				{
+					scheduleRenderHeal();
+				}
 				break;
 			default:
 				break;
@@ -1261,74 +1276,46 @@ namespace mps::host
 		m_yieldFacePm = pm;
 		if (pm.isNull())
 		{
-			if (m_yieldFace)
-			{
-				m_yieldFace->hide();
-			}
+			hideYieldFace();
 			return;
 		}
-		syncYieldFace();
+		if (m_yieldFace)
+		{
+			m_yieldFace->setPixmap(pm);
+		}
 	}
 
-	void ShellWindow::syncYieldFace()
+	void ShellWindow::hideYieldFace()
+	{
+		if (m_yieldFaceAnim)
+		{
+			m_yieldFaceAnim->stop();
+		}
+		if (m_yieldFace)
+		{
+			m_yieldFace->hide();
+		}
+	}
+
+	void ShellWindow::positionYieldFaceAt(const QRect& globalGap, bool animate)
 	{
 		if (!m_titleBar)
 		{
 			return;
 		}
-		if (m_yieldFacePm.isNull() && m_app)
+		if (m_app)
 		{
-			m_yieldFacePm = m_app->tabDragFacePixmap();
-		}
-		if (m_yieldFacePm.isNull() || m_yieldDragTabId == 0 || !m_yieldOrder.contains(m_yieldDragTabId))
-		{
-			if (m_yieldFace)
+			const QPixmap dragFace = m_app->tabDragFacePixmap();
+			if (!dragFace.isNull())
 			{
-				m_yieldFace->hide();
+				m_yieldFacePm = dragFace;
 			}
+		}
+		if (m_yieldFacePm.isNull() || !globalGap.isValid())
+		{
+			hideYieldFace();
 			return;
 		}
-
-		int dragW = m_dragTabWidth;
-		int dragH = tab_strip::kTabButtonHeight;
-		for (auto* b : m_tabButtons)
-		{
-			if (!b)
-			{
-				continue;
-			}
-			if (b->info().tabId == m_yieldDragTabId && b->width() > 0)
-			{
-				if (dragW <= 0)
-				{
-					dragW = b->width();
-				}
-				dragH = b->height();
-				break;
-			}
-			if (dragH == tab_strip::kTabButtonHeight && b->height() > 0)
-			{
-				dragH = b->height();
-			}
-		}
-		if (dragW <= 0)
-		{
-			const qreal dpr = qMax(qreal(1), m_yieldFacePm.devicePixelRatio());
-			dragW = qMax(4, int(m_yieldFacePm.width() / dpr));
-		}
-
-		const int hsX = m_yieldFaceHotSpotX >= 0 ? m_yieldFaceHotSpotX : (dragW / 2);
-		const QPoint cur = QCursor::pos();
-		int leftGlobal = cur.x() - hsX;
-		const QRect band = tabStripGlobalRect();
-		if (band.isValid())
-		{
-			leftGlobal = qBound(band.left(), leftGlobal, qMax(band.left(), band.right() - dragW));
-		}
-		// Slight lift so the face reads as sliding over the strip (Chrome-like).
-		constexpr int kLiftPx = 2;
-		const int topGlobal = tabRowTopGlobal() - kLiftPx;
-
 		if (!m_yieldFace)
 		{
 			m_yieldFace = new QLabel(m_titleBar);
@@ -1336,10 +1323,33 @@ namespace mps::host
 			m_yieldFace->setAttribute(Qt::WA_TransparentForMouseEvents, true);
 			m_yieldFace->setAttribute(Qt::WA_TranslucentBackground, true);
 			m_yieldFace->setScaledContents(true);
+			auto* opacity = new QGraphicsOpacityEffect(m_yieldFace);
+			opacity->setOpacity(0.5);
+			m_yieldFace->setGraphicsEffect(opacity);
 		}
-		const QPoint local = m_titleBar->mapFromGlobal(QPoint(leftGlobal, topGlobal));
 		m_yieldFace->setPixmap(m_yieldFacePm);
-		m_yieldFace->setGeometry(QRect(local, QSize(dragW, dragH)));
+		const QRect local(m_titleBar->mapFromGlobal(globalGap.topLeft()), globalGap.size());
+		if (!m_yieldFace->isVisible() || !animate)
+		{
+			if (m_yieldFaceAnim)
+			{
+				m_yieldFaceAnim->stop();
+			}
+			m_yieldFace->setGeometry(local);
+		}
+		else
+		{
+			if (!m_yieldFaceAnim)
+			{
+				m_yieldFaceAnim = new QPropertyAnimation(m_yieldFace, QByteArrayLiteral("geometry"), this);
+				m_yieldFaceAnim->setDuration(120);
+				m_yieldFaceAnim->setEasingCurve(QEasingCurve::OutCubic);
+			}
+			m_yieldFaceAnim->stop();
+			m_yieldFaceAnim->setStartValue(m_yieldFace->geometry());
+			m_yieldFaceAnim->setEndValue(local);
+			m_yieldFaceAnim->start();
+		}
 		m_yieldFace->show();
 		m_yieldFace->raise();
 	}
@@ -1442,14 +1452,8 @@ namespace mps::host
 		{
 			return;
 		}
-		// While detached, source must stay collapsed (TearOutPreview owns the face).
-		// Do not key off preview visibility alone — that blocked re-attach yield when
-		// dragging back onto the source strip in the same gesture.
-		if (m_app && m_app->isTearOutDetached() && m_app->dragSourceWindow() == this)
-		{
-			collapseTornOutTabSlot(dragTabId);
-			return;
-		}
+		// Detached tear-out still keeps the source gap: the user can keep dragging
+		// within the source strip to push sibling tabs around before release.
 
 		QHash<qint64, TabButton*> byId;
 		for (auto* b : m_tabButtons)
@@ -1572,15 +1576,23 @@ namespace mps::host
 			ids.push_back(id);
 		}
 
-		m_yieldFaceHotSpotX = hsX;
 		if (m_yieldDragTabId == dragTabId && m_yieldOrder == ids && m_stripDragLayoutActive)
 		{
-			// Order unchanged: siblings stay put; only the floating face tracks the cursor.
-			syncYieldFace();
+			// Order unchanged: siblings and the parked preview face stay put.
 			return;
 		}
-		const bool snapYield = m_snapNextYieldLayout;
-		m_snapNextYieldLayout = false;
+		// Direction lock: once this drag has an applied insert slot, changing it
+		// requires a deliberate horizontal move away from the commit point. A
+		// 1–2 px straddle at the boundary keeps the current slot.
+		const bool hasApplied = m_yieldDragTabId == dragTabId && !m_yieldOrder.isEmpty();
+		const int appliedAmong = hasApplied ? static_cast<int>(m_yieldOrder.indexOf(dragTabId)) : -1;
+		if (hasApplied && appliedAmong >= 0 && insertAmong != appliedAmong && m_hasYieldCommitX
+			&& qAbs(cur.x() - m_yieldCommitX) < kYieldSwitchMarginPx)
+		{
+			return;
+		}
+		m_yieldCommitX = cur.x();
+		m_hasYieldCommitX = true;
 		m_yieldDragTabId = dragTabId;
 		m_yieldOrder = ids;
 
@@ -1589,18 +1601,13 @@ namespace mps::host
 
 		int x = m_stripDragOriginX > 0 ? m_stripDragOriginX : tab_strip::kTabStripMargin;
 		const int y = tabStripContentY();
+		QRect gapGlobal;
+		const int gapH = m_tabButtons.isEmpty() ? tab_strip::kTabButtonHeight : m_tabButtons.first()->height();
 		for (qint64 id : ids)
 		{
-			if (id == dragTabId && !localDrag)
+			if (id == dragTabId)
 			{
-				// Guest merge: reserve the insert gap; the face rides the cursor above it.
-				x += dragW + tab_strip::kTabSpacing;
-				continue;
-			}
-			if (id == dragTabId && localDrag)
-			{
-				// Local reorder: leave an empty slot under the cursor-following face
-				// so siblings slide apart like Chrome (face is not parked in the gap).
+				gapGlobal = QRect(m_titleBar->mapToGlobal(QPoint(x, y)), QSize(dragW, gapH));
 				x += dragW + tab_strip::kTabSpacing;
 				continue;
 			}
@@ -1612,21 +1619,10 @@ namespace mps::host
 			const int w = widthOf(id);
 			const int h = btn->height();
 			const QRect geo(x, y, w, h);
-			if (snapYield)
-			{
-				if (auto* anim = m_tabSlideAnims.value(btn->info().tabId))
-				{
-					anim->stop();
-				}
-				btn->setGeometry(geo);
-			}
-			else
-			{
-				animateTabGeometry(btn, geo);
-			}
+			animateTabGeometry(btn, geo);
 			x += w + tab_strip::kTabSpacing;
 		}
-		syncYieldFace();
+		positionYieldFaceAt(gapGlobal, /*animate=*/true);
 	}
 
 	int ShellWindow::yieldInsertIndex() const
@@ -1847,6 +1843,27 @@ namespace mps::host
 		m_tabSlideAnims.clear();
 	}
 
+	void ShellWindow::beginTabStripUpdate()
+	{
+		if (m_tabStripUpdateDepth++ == 0 && m_titleBar)
+		{
+			m_titleBar->setUpdatesEnabled(false);
+		}
+	}
+
+	void ShellWindow::endTabStripUpdate()
+	{
+		if (m_tabStripUpdateDepth <= 0)
+		{
+			return;
+		}
+		if (--m_tabStripUpdateDepth == 0 && m_titleBar)
+		{
+			m_titleBar->setUpdatesEnabled(true);
+			m_titleBar->update();
+		}
+	}
+
 	void ShellWindow::clearTabYieldPreview(bool keepDragTabHidden)
 	{
 		stopTabSlideAnimations();
@@ -1868,8 +1885,8 @@ namespace mps::host
 		m_yieldDragTabId = 0;
 		m_yieldOrder.clear();
 		m_stripDragLayoutActive = false;
-		m_snapNextYieldLayout = false;
-		m_yieldFaceHotSpotX = -1;
+		m_yieldCommitX = 0;
+		m_hasYieldCommitX = false;
 		m_dragTabWidth = 0;
 		m_stripDragOriginX = 0;
 		if (m_titleBar)
@@ -1882,7 +1899,7 @@ namespace mps::host
 		}
 		if (m_yieldFace)
 		{
-			m_yieldFace->hide();
+			hideYieldFace();
 		}
 		if (forceKeepHiddenId != 0)
 		{
@@ -1892,10 +1909,7 @@ namespace mps::host
 		{
 			return;
 		}
-		if (m_titleBar)
-		{
-			m_titleBar->setUpdatesEnabled(false);
-		}
+		beginTabStripUpdate();
 		while (QLayoutItem* item = m_tabRow->takeAt(0))
 		{
 			delete item;
@@ -1907,78 +1921,8 @@ namespace mps::host
 				m_tabRow->addWidget(b);
 			}
 		}
-		if (m_titleBar)
-		{
-			m_titleBar->setUpdatesEnabled(true);
-		}
+		endTabStripUpdate();
 		scheduleCaptionHitCacheRefresh(); // restored strip relayout shifts tab rects
-	}
-
-	void ShellWindow::collapseTornOutTabSlot(qint64 dragTabId)
-	{
-		// Once the tear-out window preview is up, remaining tabs should close the gap
-		// immediately — do not keep an empty slot until mouse release.
-		if (dragTabId == 0 || dragTabId == kHomeTabId || !m_titleBar)
-		{
-			return;
-		}
-
-		QHash<qint64, TabButton*> byId;
-		for (auto* b : m_tabButtons)
-		{
-			if (b)
-			{
-				byId.insert(b->info().tabId, b);
-			}
-		}
-		if (!byId.contains(dragTabId))
-		{
-			return;
-		}
-
-		ensureStripDragLayout(dragTabId, 0);
-		setTabDragHidden(dragTabId, true);
-		if (m_yieldFace)
-		{
-			m_yieldFace->hide();
-		}
-		clearDropInsertIndicator();
-
-		std::vector<int64_t> ids;
-		ids.reserve(static_cast<size_t>(m_tabs.size()));
-		for (const auto& t : m_tabs)
-		{
-			ids.push_back(t.tabId);
-		}
-		const auto packedStd = tab_strip::collapseSlotOrder(ids, dragTabId);
-		QVector<qint64> packed;
-		packed.reserve(static_cast<int>(packedStd.size()));
-		for (int64_t id : packedStd)
-		{
-			packed.push_back(id);
-		}
-		// Keep drag id out of the yield order so syncYieldFace cannot resurrect the face.
-		m_yieldDragTabId = 0;
-		m_yieldOrder = packed;
-		// Next time yield opens a gap again (drag back onto this strip), snap once
-		// instead of sliding through the collapsed intermediate — does not affect
-		// ordinary left/right reorder, which never sets this flag.
-		m_snapNextYieldLayout = true;
-
-		stopTabSlideAnimations();
-		int x = m_stripDragOriginX > 0 ? m_stripDragOriginX : tab_strip::kTabStripMargin;
-		const int y = tabStripContentY();
-		for (qint64 id : packed)
-		{
-			auto* btn = byId.value(id, nullptr);
-			if (!btn)
-			{
-				continue;
-			}
-			// Instant pack — animated collapse fought TearOutPreview and jittered widths.
-			btn->setGeometry(QRect(x, y, btn->width(), btn->height()));
-			x += btn->width() + tab_strip::kTabSpacing;
-		}
 	}
 
 	QRect ShellWindow::tabStripGlobalRect() const
@@ -2611,7 +2555,7 @@ namespace mps::host
 			}
 			const bool cancelled = m_app && m_app->consumeDragCancelled();
 			const QPoint releasePos = QCursor::pos();
-			ShellWindow* zoneShell = m_app ? m_app->tabDropZoneShellAtGlobal(releasePos) : nullptr;
+			ShellWindow* zoneShell = m_app ? m_app->previewZoneShellAtGlobal() : nullptr;
 			if (!cancelled && zoneShell == this && m_app)
 			{
 				if (!(hasTabYieldPreview() && commitTabYieldPreview()))
