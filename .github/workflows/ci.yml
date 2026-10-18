@@ -3,7 +3,26 @@ name: CI
 on:
   push:
     branches: [main, master]
+    # Build only when a build input changes. A documentation-only commit cannot
+    # break the build, so it must not start three runners. Repository rules stay
+    # out of this workflow: they belong to hygiene.yml, which has to run on docs.
+    # Rationale and alternatives: RepoRules docs/ci-scheduling.md.
+    paths: &build_inputs
+      - "src/**"
+      - "clients/**"
+      - "proto/**"
+      - "cmake/**"
+      - "demos/**"
+      - "tests/**"
+      - "translations/**"
+      - "scripts/**"
+      - "CMakeLists.txt"
+      - "CMakePresets.json"
+      - ".clang-format"
+      - ".clang-format-ignore"
+      - ".github/workflows/ci.yml"
   pull_request:
+    paths: *build_inputs
   workflow_dispatch:
 
 jobs:
