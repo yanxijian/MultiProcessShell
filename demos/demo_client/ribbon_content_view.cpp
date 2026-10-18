@@ -1,4 +1,4 @@
-#include "ribbon_content_view.hpp"
+﻿#include "ribbon_content_view.hpp"
 
 #include "qfluentribbon/ribbon_bar.hpp"
 #include "qfluentribbon/ribbon_tokens.hpp"

@@ -1,6 +1,6 @@
-﻿# tests/
+# tests/
 
-> **中文主文档**: [`../tests/README.md`](../tests/README.md)
+> **中文主文档**: [`../tests/README.md`](../../tests/README.md)
 
 - **M0** `mps_ipc_tests`: framing + `Envelope` protobuf round-trip.  
 - **Detachable tab strip** `mps_tab_strip_tests`: activate/MRU, strip yield + Home pin, tear-out hysteresis/slot claim, merge/empty-shell rules (pure logic, no Qt UI).

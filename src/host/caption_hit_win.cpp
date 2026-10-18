@@ -1,4 +1,4 @@
-#include "caption_hit_win.hpp"
+﻿#include "caption_hit_win.hpp"
 
 #include "caption_hit.hpp"
 #include "shell_window.hpp"

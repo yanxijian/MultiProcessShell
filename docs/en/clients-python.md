@@ -1,6 +1,6 @@
 # clients/python
 
-> **中文主文档**: [`../clients/python/README.md`](../clients/python/README.md)
+> **中文主文档**: [`../clients/python/README.md`](../../clients/python/README.md)
 
 Milestone **M4b** Python smoke client: same length-prefixed `Envelope` wire format as C++, `Hello` / `HelloAck` with `EMBED_NONE`.
 

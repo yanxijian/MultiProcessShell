@@ -1,6 +1,6 @@
 # clients/python
 
-> **English**：[../docs/en/clients-python.md](../docs/en/clients-python.md)
+> **English**：[../../docs/en/clients-python.md](../../docs/en/clients-python.md)
 
 里程碑 **M4b**：Python 烟测客户端，走与 C++ 相同的长度前缀 `Envelope` + `Hello` / `HelloAck`（`EMBED_NONE`）。
 

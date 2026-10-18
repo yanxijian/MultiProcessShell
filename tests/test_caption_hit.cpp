@@ -1,4 +1,4 @@
-// Pure geometry rule tests for the frameless caption hit module.
+﻿// Pure geometry rule tests for the frameless caption hit module.
 // Links Qt6::Core + GTest only: no Host, no widgets, no windows.h.
 
 #include "caption_hit.hpp"

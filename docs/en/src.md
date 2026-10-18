@@ -1,6 +1,6 @@
 # src/
 
-> **中文主文档**: [`../src/README.md`](../src/README.md)
+> **中文主文档**: [`../src/README.md`](../../src/README.md)
 
 | Path | Status |
 |------|--------|

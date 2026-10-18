@@ -1,4 +1,4 @@
-#include "snap_zone.hpp"
+﻿#include "snap_zone.hpp"
 
 #include <gtest/gtest.h>
 

@@ -1,4 +1,4 @@
-﻿# tests/
+# tests/
 
 > **English**：[../docs/en/tests.md](../docs/en/tests.md)
 

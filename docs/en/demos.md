@@ -1,6 +1,6 @@
 # demos/
 
-> **中文主文档**: [`../demos/README.md`](../demos/README.md)
+> **中文主文档**: [`../demos/README.md`](../../demos/README.md)
 
 | Target | Role |
 |--------|------|

@@ -1,4 +1,4 @@
-﻿# Pure tab-strip rules (no Qt / protobuf) — shared by Host + unit tests.
+# Pure tab-strip rules (no Qt / protobuf) — shared by Host + unit tests.
 add_library(mps_tab_strip INTERFACE)
 add_library(mps::tab_strip ALIAS mps_tab_strip)
 target_include_directories(mps_tab_strip

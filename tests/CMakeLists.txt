@@ -1,4 +1,4 @@
-﻿# Protocol / framing unit tests (M0) + detachable tab-strip rule tests.
+# Protocol / framing unit tests (M0) + detachable tab-strip rule tests.
 # Optional M4b: Python Hello over QLocalServer (needs Qt + Python + protobuf).
 
 add_executable(mps_ipc_tests

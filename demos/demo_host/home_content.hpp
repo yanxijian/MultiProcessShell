@@ -1,4 +1,4 @@
-#ifndef __MPS_DEMO_HOST_HOME_CONTENT_H__
+﻿#ifndef __MPS_DEMO_HOST_HOME_CONTENT_H__
 #define __MPS_DEMO_HOST_HOME_CONTENT_H__
 
 #include <QWidget>

@@ -1,4 +1,4 @@
-#ifndef __MPS_HOST_SNAP_ZONE_H__
+﻿#ifndef __MPS_HOST_SNAP_ZONE_H__
 #define __MPS_HOST_SNAP_ZONE_H__
 
 #include <QPoint>

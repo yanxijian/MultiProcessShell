@@ -1,4 +1,4 @@
-#ifndef __MPS_DEMO_CLIENT_RIBBON_CONTENT_WINDOW_H__
+﻿#ifndef __MPS_DEMO_CLIENT_RIBBON_CONTENT_WINDOW_H__
 #define __MPS_DEMO_CLIENT_RIBBON_CONTENT_WINDOW_H__
 
 #include "qfluentribbon/ribbon_window.hpp"

@@ -1,4 +1,4 @@
-#ifndef __MPS_HOST_CAPTION_HIT_H__
+﻿#ifndef __MPS_HOST_CAPTION_HIT_H__
 #define __MPS_HOST_CAPTION_HIT_H__
 
 #include <QPoint>

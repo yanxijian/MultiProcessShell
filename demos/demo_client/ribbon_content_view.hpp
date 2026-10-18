@@ -1,4 +1,4 @@
-#ifndef __MPS_DEMO_CLIENT_RIBBON_CONTENT_VIEW_H__
+﻿#ifndef __MPS_DEMO_CLIENT_RIBBON_CONTENT_VIEW_H__
 #define __MPS_DEMO_CLIENT_RIBBON_CONTENT_VIEW_H__
 
 #include "content_view.hpp"
