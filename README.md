@@ -1,13 +1,13 @@
 # MultiProcessShell
 
+[English](README.en.md) · **简体中文**
+
 [![CI](https://github.com/yanxijian/MultiProcessShell/actions/workflows/ci.yml/badge.svg)](https://github.com/yanxijian/MultiProcessShell/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 C++/Qt 多进程壳：**Host 壳框 + Client 原生窗嵌入 + Protobuf IPC**。
 
 首期平台：**Windows（形态 A）**；macOS / Linux 目录占位。
-
-> English overview：[docs/en/README.md](docs/en/README.md)
 
 ## 特性
 
