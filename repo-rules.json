@@ -37,7 +37,15 @@
   "headers": { "globs": [], "first_line": "#pragma once", "forbid_namespace_using": false },
   "versions": [],
   "changelog": null,
-  "required_files": ["LICENSE", "README.md", "README.en.md", "repo-rules.json", "scripts/repo_rules.py", ".githooks/pre-commit", ".github/workflows/hygiene.yml"],
-  "markdown": { "globs": ["*.md"], "check_links": true, "bilingual_pairs": [["README.md", "README.en.md"]] },
+  "required_files": ["LICENSE", "README.md", "README.zh-CN.md", "README.ja.md", "README.ko.md", "repo-rules.json", "scripts/repo_rules.py", ".githooks/pre-commit", ".github/workflows/hygiene.yml"],
+  "markdown": {
+    "globs": ["*.md"],
+    "check_links": true,
+    "languages": {
+      "default": "README.md",
+      "variants": ["README.zh-CN.md", "README.ja.md", "README.ko.md"],
+      "switch_line": true
+    }
+  },
   "gitattributes": { "path": ".gitattributes", "required_patterns": [] }
 }
