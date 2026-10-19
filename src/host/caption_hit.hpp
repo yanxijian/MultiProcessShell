@@ -51,7 +51,7 @@ namespace mps::host
 		bool paused = false;
 	};
 
-	/// Judgment order (design doc "命中规则"):
+	/// Judgment order (the design doc calls this section "命中规则" = hit rules) — cjk-ok
 	/// 1. paused → None; maximized/fullscreen force the band thickness to 0.
 	/// 2. Resize band (corners beat edges) beats caption and buttons.
 	/// 3. Outside the title bar → None (content area / embedded child HWNDs stay client).
