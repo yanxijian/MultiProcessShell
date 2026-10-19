@@ -1,5 +1,7 @@
 # MultiProcessShell development plan
 
+<!-- translated-from: docs/zh/dev-plan.md sha256:7401b8e3da54 -->
+
 > **中文主文档**：[../zh/dev-plan.md](../zh/dev-plan.md)  
 > Status: near/mid-term investment notes. Product vision/milestones remain in the spec; Demo authority is demo-ipc / `.proto`.  
 > Updated: 2026-10-04 (deferred improvements verified against tree)

@@ -1,5 +1,7 @@
 # M5 gap audit (Tab tear-out / merge)
 
+<!-- translated-from: docs/zh/m5-gap-audit.md sha256:ed413ef6b62c -->
+
 > **中文主文档**：[../zh/m5-gap-audit.md](../zh/m5-gap-audit.md)
 
 Status: closeout audit of spec §7 / §12.4 M5 vs the Windows Demo.  

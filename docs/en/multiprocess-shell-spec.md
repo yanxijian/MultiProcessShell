@@ -1,5 +1,7 @@
 # MultiProcessShell — Technical Specification (v2)
 
+<!-- translated-from: docs/zh/multiprocess-shell-spec.md sha256:bafcc09ea29e -->
+
 > **中文主文档**: [`../zh/multiprocess-shell-spec.md`](../zh/multiprocess-shell-spec.md)  
 > This English file is a **summary companion**. For full defect matrices, state machines, and appendices, read the Chinese document.  
 >

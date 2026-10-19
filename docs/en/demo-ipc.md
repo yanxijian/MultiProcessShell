@@ -1,5 +1,7 @@
 # Demo IPC Contract (Final)
 
+<!-- translated-from: docs/zh/demo-ipc.md sha256:7f2b30f3d5fd -->
+
 > **中文主文档**: [`../zh/demo-ipc.md`](../zh/demo-ipc.md)  
 > Companion to [demo-morphology.md](demo-morphology.md). Control plane: `shell.ipc.v1` + length-prefixed `Envelope`.  
 > **Authoritative IDL**: `proto/shell/ipc/v1/ipc.proto` (prefer this file + `.proto` over older sketches in the long-form product spec).  

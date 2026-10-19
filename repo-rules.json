@@ -208,6 +208,52 @@
       ],
       "switch_line": true,
       "stale": "warning"
+    },
+    "translations": {
+      "pairs": [
+        [
+          "docs/zh/README.md",
+          "docs/en/README.md"
+        ],
+        [
+          "docs/zh/build.md",
+          "docs/en/build.md"
+        ],
+        [
+          "docs/zh/ci.md",
+          "docs/en/ci.md"
+        ],
+        [
+          "docs/zh/demo-acceptance.md",
+          "docs/en/demo-acceptance.md"
+        ],
+        [
+          "docs/zh/demo-ipc.md",
+          "docs/en/demo-ipc.md"
+        ],
+        [
+          "docs/zh/demo-morphology.md",
+          "docs/en/demo-morphology.md"
+        ],
+        [
+          "docs/zh/dev-plan.md",
+          "docs/en/dev-plan.md"
+        ],
+        [
+          "docs/zh/ipc-alternatives.md",
+          "docs/en/ipc-alternatives.md"
+        ],
+        [
+          "docs/zh/m5-gap-audit.md",
+          "docs/en/m5-gap-audit.md"
+        ],
+        [
+          "docs/zh/multiprocess-shell-spec.md",
+          "docs/en/multiprocess-shell-spec.md"
+        ]
+      ],
+      "marker": "translated-from:",
+      "stale": "warning"
     }
   },
   "gitattributes": {

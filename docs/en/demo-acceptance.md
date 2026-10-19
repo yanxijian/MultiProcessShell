@@ -1,5 +1,7 @@
 # Demo acceptance checklist (Windows form A)
 
+<!-- translated-from: docs/zh/demo-acceptance.md sha256:99f22b697dfe -->
+
 > **中文主文档**：[../zh/demo-acceptance.md](../zh/demo-acceptance.md)  
 > **Companion**: [demo-morphology.md](demo-morphology.md), [demo-ipc.md](demo-ipc.md)  
 > **Run**: `build-shared/demos/mps_demo_host.exe` (build/deploy per [build.md](build.md))

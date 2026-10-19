@@ -1,5 +1,7 @@
 # MultiProcessShell
 
+<!-- translated-from: docs/zh/README.md sha256:0dc10eeceb1f -->
+
 [![CI](https://github.com/yanxijian/MultiProcessShell/actions/workflows/ci.yml/badge.svg)](https://github.com/yanxijian/MultiProcessShell/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE)
 

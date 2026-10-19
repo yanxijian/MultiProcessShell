@@ -1,5 +1,7 @@
 # Demo Morphology (Final)
 
+<!-- translated-from: docs/zh/demo-morphology.md sha256:7b9302df66b8 -->
+
 > **中文主文档**: [`../zh/demo-morphology.md`](../zh/demo-morphology.md)  
 > **Status**: Finalized (matches the in-repo Demo)
 

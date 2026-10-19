@@ -1,5 +1,7 @@
 # Build guide
 
+<!-- translated-from: docs/zh/build.md sha256:3c53befb9210 -->
+
 > **中文主文档**: [`../zh/build.md`](../zh/build.md)
 
 ## Architecture: independent frameworks, composed demos

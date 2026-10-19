@@ -1,5 +1,7 @@
 # IPC Alternatives (Future Reference)
 
+<!-- translated-from: docs/zh/ipc-alternatives.md sha256:8a3e7da7fa1f -->
+
 > **中文主文档**：[../zh/ipc-alternatives.md](../zh/ipc-alternatives.md)  
 > **Status**: Alternatives list — **not** the current implementation.  
 > **Current path**: [demo-ipc.md](demo-ipc.md) and spec §5 — **Protobuf + length-prefixed Envelope + Named Pipe / UDS**.
