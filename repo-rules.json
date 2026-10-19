@@ -253,7 +253,18 @@
         ]
       ],
       "marker": "translated-from:",
-      "stale": "warning"
+      "stale": "warning",
+      "cover": [
+        {
+          "from": "docs/zh",
+          "to": "docs/en",
+          "ignore": [
+            "qfr-demo-client.md"
+          ],
+          "missing": "error"
+        }
+      ],
+      "untracked": true
     }
   },
   "gitattributes": {
