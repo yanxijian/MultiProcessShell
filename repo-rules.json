@@ -289,5 +289,9 @@
       "actions/workflows/",
       "img.shields.io/badge/License"
     ]
+  },
+  "about": {
+    "description": "Multi-process Qt shell: native window embedding and Protobuf IPC | 多进程 Qt 壳：原生窗口嵌入与 Protobuf IPC",
+    "order": "en-zh"
   }
 }
