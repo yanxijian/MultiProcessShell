@@ -2,10 +2,14 @@
 
 **한국어** · [English](README.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md)
 
-<!-- translated-from: README.md sha256:d6e25b36267b -->
-
 [![CI](https://github.com/yanxijian/MultiProcessShell/actions/workflows/ci.yml/badge.svg)](https://github.com/yanxijian/MultiProcessShell/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Qt](https://img.shields.io/badge/Qt-6.8%2B-green.svg)](https://www.qt.io/)
+[![CI](https://github.com/yanxijian/MultiProcessShell/actions/workflows/ci.yml/badge.svg)](https://github.com/yanxijian/MultiProcessShell/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+<!-- translated-from: README.md sha256:45a7ef36d758 -->
+
 
 C++/Qt 멀티 프로세스 셸: **Host 외곽 + Client 네이티브 창 임베드 + Protobuf IPC**.
 
